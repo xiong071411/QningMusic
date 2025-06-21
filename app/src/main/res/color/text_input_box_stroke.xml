@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 获取焦点时的状态 -->
+    <item android:color="@android:color/white" android:state_focused="true"/>
+    <!-- 激活状态 -->
+    <item android:color="@android:color/white" android:state_activated="true"/>
+    <!-- 错误状态 -->
+    <item android:color="@android:color/white" android:state_enabled="false"/>
+    <!-- 默认状态 -->
+    <item android:color="@android:color/white"/>
+</selector> 

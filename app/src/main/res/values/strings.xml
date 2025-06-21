@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">LiMusic</string>
+    <string name="app_description">OPPO Watch 2 音乐播放器</string>
+    
+    <!-- 按钮描述 -->
+    <string name="play_pause_button_desc">播放/暂停</string>
+    <string name="prev_button_desc">上一首</string>
+    <string name="next_button_desc">下一首</string>
+    <string name="repeat_mode_button_desc">播放模式</string>
+    <string name="playlist_button_desc">播放列表</string>
+    <string name="album_art_desc">专辑封面</string>
+    <string name="album_art_description">专辑封面</string>
+    <string name="play_pause_description">播放/暂停</string>
+    <string name="repeat_mode_description">播放模式</string>
+    
+    <!-- 提示信息 -->
+    <string name="loading">加载中...</string>
+    <string name="error_network">网络错误</string>
+    <string name="error_server">服务器错误</string>
+    <string name="error_playback">播放出错</string>
+    <string name="error_no_songs">没有找到歌曲</string>
+    <string name="error_no_server">请先配置服务器设置</string>
+    
+    <!-- 播放模式 -->
+    <string name="repeat_mode_all">列表循环</string>
+    <string name="repeat_mode_one">单曲循环</string>
+    <string name="repeat_mode_off">顺序播放</string>
+    <string name="repeat_off">顺序播放</string>
+    <string name="repeat_one">单曲循环</string>
+    <string name="repeat_all">列表循环</string>
+    
+    <!-- 设置 -->
+    <string name="settings">设置</string>
+    <string name="server_address">服务器地址</string>
+    <string name="username">用户名</string>
+    <string name="password">密码</string>
+    <string name="save">保存</string>
+    <string name="cancel">取消</string>
+    
+    <!-- 导航抽屉 -->
+    <string name="navigation_drawer_open">打开导航菜单</string>
+    <string name="navigation_drawer_close">关闭导航菜单</string>
+    <string name="nav_all_songs">所有歌曲</string>
+    <string name="nav_playlists">播放列表</string>
+    <string name="nav_artists">艺术家</string>
+    <string name="nav_albums">专辑</string>
+    <string name="nav_settings">设置</string>
+    <string name="nav_about">关于</string>
+    
+    <!-- 其他字符串 -->
+    <string name="all_songs">所有歌曲</string>
+    <string name="playlists">播放列表</string>
+    <string name="artists">艺术家</string>
+    <string name="albums">专辑</string>
+    <string name="about">关于</string>
+    <string name="now_playing">正在播放</string>
+    <string name="no_song_playing">暂无播放</string>
+    <string name="no_artist">未知艺术家</string>
+    <string name="no_album">未知专辑</string>
+    <string name="no_songs_found">没有找到歌曲</string>
+    
+    <!-- 设置 -->
+    <string name="server_settings">服务器设置</string>
+    <string name="cache_settings">缓存设置</string>
+    <string name="server_url">服务器地址</string>
+    <string name="test_connection">测试连接</string>
+    <string name="settings_empty_fields">请填写所有字段</string>
+    <string name="settings_saved">设置已保存</string>
+    <string name="settings_testing">正在测试连接...</string>
+    <string name="settings_test_success">连接成功</string>
+    <string name="settings_test_failed">连接失败</string>
+    
+    <!-- 字母索引 -->
+    <string name="letter_index">字母索引</string>
+    <string name="letter_index_title">快速索引</string>
+    <string name="letter_special_symbol">#</string>
+    <string name="play_all">播放全部</string>
+    
+    <!-- 新增字符串 -->
+</resources>

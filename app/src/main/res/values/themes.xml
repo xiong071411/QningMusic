@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- 基础主题 -->
+    <style name="Theme.LiMusic" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorPrimaryDark">@color/primary_dark</item>
+        <item name="colorAccent">@color/accent</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
+        <item name="toolbarStyle">@style/Widget.LiMusic.Toolbar</item>
+        <item name="drawerArrowStyle">@style/Widget.LiMusic.DrawerArrow</item>
+        
+        <!-- 设置TextInputLayout默认样式 -->
+        <item name="textInputStyle">@style/Widget.App.TextInputLayout.White</item>
+    </style>
+
+    <!-- 无ActionBar的主题 -->
+    <style name="Theme.LiMusic.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+
+    <style name="Widget.LiMusic.Toolbar" parent="Widget.MaterialComponents.Toolbar.Primary">
+        <item name="android:background">@color/toolbar_background</item>
+        <item name="titleTextColor">@color/toolbar_text</item>
+        <item name="subtitleTextColor">@color/toolbar_text</item>
+        <item name="android:elevation">4dp</item>
+    </style>
+
+    <style name="Widget.LiMusic.DrawerArrow" parent="Widget.AppCompat.DrawerArrowToggle">
+        <item name="color">@color/toolbar_icon</item>
+        <item name="spinBars">true</item>
+        <item name="barLength">24dp</item>
+        <item name="thickness">2.5dp</item>
+        <item name="gapBetweenBars">4dp</item>
+    </style>
+</resources>

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 布局内边距 -->
+    <dimen name="box_inset_layout_padding">8dp</dimen>
+    <dimen name="inner_frame_layout_padding">4dp</dimen>
+    
+    <!-- 文字大小 -->
+    <dimen name="text_size_title">16sp</dimen>
+    <dimen name="text_size_subtitle">14sp</dimen>
+    <dimen name="text_size_body">12sp</dimen>
+    
+    <!-- 控件尺寸 -->
+    <dimen name="album_art_size">200dp</dimen>
+    <dimen name="button_size_large">56dp</dimen>
+    <dimen name="button_size_normal">48dp</dimen>
+    <dimen name="button_size_small">40dp</dimen>
+    
+    <!-- 间距 -->
+    <dimen name="spacing_small">4dp</dimen>
+    <dimen name="spacing_normal">8dp</dimen>
+    <dimen name="spacing_large">16dp</dimen>
+</resources> 
