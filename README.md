@@ -142,4 +142,4 @@ app/
 
 ---
 
-欢迎 star ⭐、fork 🍴、提 Issue 💬！如果 LiMusic 对你有帮助，请不吝给项目一个小小的鼓励。 
+欢迎 star ⭐、fork 🍴、提 Issue 💬！如果 LiMusic 软件对你有帮助，请不吝给项目一个小小的鼓励。
