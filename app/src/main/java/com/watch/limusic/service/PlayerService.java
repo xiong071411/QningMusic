@@ -42,6 +42,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import com.google.android.exoplayer2.DefaultLoadControl;
+
 public class PlayerService extends Service {
     private static final String TAG = "PlayerService";
     private static final String CHANNEL_ID = "music_playback_channel";
@@ -105,11 +107,29 @@ public class PlayerService extends Service {
         
         // 创建轨道选择器
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(context);
+        // 设置轨道选择器参数，减少内存使用
+        trackSelector.setParameters(
+            trackSelector.buildUponParameters()
+                .setForceHighestSupportedBitrate(false)  // 不强制使用最高比特率
+                .setExceedRendererCapabilitiesIfNecessary(false) // 不超过渲染器能力
+        );
+        
+        // 设置自定义加载控制，优化内存和缓冲
+        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
+            .setBufferDurationsMs(
+                DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
+                DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
+                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
+            .setPrioritizeTimeOverSizeThresholds(true)
+            .setBackBuffer(5000, false)  // 5秒后备缓冲，不保留
+            .build();
         
         // 构建播放器
         player = new ExoPlayer.Builder(context)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .setTrackSelector(trackSelector)
+                .setLoadControl(loadControl)
                 .setAudioAttributes(
                     new com.google.android.exoplayer2.audio.AudioAttributes.Builder()
                         .setContentType(C.CONTENT_TYPE_MUSIC)
@@ -191,7 +211,7 @@ public class PlayerService extends Service {
                 }
                 updateNotification();
                 // 立即广播，确保UI更新标题/作者
-                sendPlaybackStateBroadcast();
+                sendSongChangedBroadcast();
             }
         });
     }
@@ -324,11 +344,36 @@ public class PlayerService extends Service {
         intent.putExtra("position", player.getCurrentPosition());
         intent.putExtra("duration", player.getDuration());
         intent.putExtra("playbackMode", playbackMode);
+        
+        // 只在歌曲切换或特定事件时才发送标题和艺术家信息
         if (currentSong != null) {
-            intent.putExtra("title", currentSong.getTitle());
-            intent.putExtra("artist", currentSong.getArtist());
-            intent.putExtra("albumId", currentSong.getAlbumId());
+            // 使用额外的标志来标记是否需要更新标题
+            boolean isSongChanged = intent.getBooleanExtra("songChanged", false);
+            
+            if (isSongChanged) {
+                intent.putExtra("title", currentSong.getTitle());
+                intent.putExtra("artist", currentSong.getArtist());
+                intent.putExtra("albumId", currentSong.getAlbumId());
+            }
         }
+        
+        sendBroadcast(intent);
+    }
+    
+    // 在歌曲变化时调用此方法
+    private void sendSongChangedBroadcast() {
+        if (player == null || currentSong == null) return;
+        
+        Intent intent = new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED");
+        intent.putExtra("isPlaying", player.isPlaying());
+        intent.putExtra("position", player.getCurrentPosition());
+        intent.putExtra("duration", player.getDuration());
+        intent.putExtra("playbackMode", playbackMode);
+        intent.putExtra("songChanged", true);
+        intent.putExtra("title", currentSong.getTitle());
+        intent.putExtra("artist", currentSong.getArtist());
+        intent.putExtra("albumId", currentSong.getAlbumId());
+        
         sendBroadcast(intent);
     }
     
@@ -339,7 +384,8 @@ public class PlayerService extends Service {
             // 只要UI可见就发送广播，不管是否播放
             if (isUiVisible && player != null) {
                 sendPlaybackStateBroadcast();
-                handler.postDelayed(this, 1000);
+                // 从1秒改为2秒更新一次，减少系统开销
+                handler.postDelayed(this, 2000);
             }
         }
     };
@@ -444,7 +490,7 @@ public class PlayerService extends Service {
         
         player.seekTo(currentIndex, 0);
         Log.d(TAG, "播放下一首: 索引 " + currentIndex);
-        sendPlaybackStateBroadcast();
+        sendSongChangedBroadcast();
     }
 
     public void previous() {
@@ -470,7 +516,7 @@ public class PlayerService extends Service {
         
         player.seekTo(currentIndex, 0);
         Log.d(TAG, "播放上一首: 索引 " + currentIndex);
-        sendPlaybackStateBroadcast();
+        sendSongChangedBroadcast();
     }
 
     public boolean isPlaying() {
@@ -498,6 +544,9 @@ public class PlayerService extends Service {
         // 开始播放
         play();
         
+        // 发送歌曲变化广播
+        sendSongChangedBroadcast();
+        
         Log.d(TAG, "播放单曲: " + song.getTitle() + ", URL: " + streamUrl);
     }
     
@@ -510,10 +559,17 @@ public class PlayerService extends Service {
         Log.d(TAG, "准备设置播放列表: " + songs.size() + " 首歌曲, 请求索引: " + startIndex + ", 当前播放模式: " + 
               (playbackMode == PLAYBACK_MODE_REPEAT_ALL ? "列表循环" : "单曲循环"));
         
+        // 限制加载的歌曲数量，避免内存溢出
+        List<Song> limitedSongs = songs;
+        if (songs.size() > 200) {
+            Log.w(TAG, "歌曲列表过大，限制为200首");
+            limitedSongs = songs.subList(0, 200);
+        }
+        
         // 保存播放列表
         playlist.clear();
-        playlist.addAll(songs);
-        currentIndex = Math.min(Math.max(startIndex, 0), songs.size() - 1);
+        playlist.addAll(limitedSongs);
+        currentIndex = Math.min(Math.max(startIndex, 0), limitedSongs.size() - 1);
         currentSong = playlist.get(currentIndex);
         
         Log.d(TAG, "设置当前索引为: " + currentIndex + ", 歌曲: " + currentSong.getTitle());
@@ -547,6 +603,9 @@ public class PlayerService extends Service {
         
         // 开始播放
         play();
+        
+        // 发送歌曲变化广播
+        sendSongChangedBroadcast();
         
         Log.d(TAG, "设置播放列表: " + playlist.size() + " 首歌曲, 从索引 " + currentIndex + " 开始播放");
     }

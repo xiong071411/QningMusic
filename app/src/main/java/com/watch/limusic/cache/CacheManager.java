@@ -14,6 +14,9 @@ import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 
 import java.io.File;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.concurrent.Executors;
 
 public class CacheManager {
     private static final String TAG = "CacheManager";
@@ -66,11 +69,28 @@ public class CacheManager {
     public static void clearCache(Context context) {
         if (cache != null) {
             try {
-                for (String key : cache.getKeys()) {
+                // 使用线程池执行清理操作，避免阻塞主线程
+                Executors.newSingleThreadExecutor().execute(() -> {
                     try {
-                        cache.removeResource(key);
-                    } catch (Exception ignore) {}
-                }
+                        Log.d(TAG, "开始清理缓存...");
+                        long startTime = System.currentTimeMillis();
+                        
+                        // 获取所有键并进行清理
+                        Set<String> keys = new HashSet<>(cache.getKeys());
+                        for (String key : keys) {
+                            try {
+                                cache.removeResource(key);
+                            } catch (Exception e) {
+                                Log.w(TAG, "清理单个缓存项失败: " + key, e);
+                            }
+                        }
+                        
+                        long duration = System.currentTimeMillis() - startTime;
+                        Log.d(TAG, "缓存清理完成, 耗时: " + duration + "ms");
+                    } catch (Exception e) {
+                        Log.e(TAG, "清理缓存过程中出错", e);
+                    }
+                });
             } catch (Exception e) {
                 Log.e(TAG, "清理缓存失败", e);
             }
@@ -96,10 +116,12 @@ public class CacheManager {
         if (cache != null) {
             try {
                 cache.release();
+                System.gc(); // 提示垃圾收集器进行回收
             } catch (Exception e) {
                 Log.e(TAG, "释放缓存出错", e);
             }
             cache = null;
+            databaseProvider = null;
         }
     }
 

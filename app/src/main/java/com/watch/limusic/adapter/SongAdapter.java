@@ -11,11 +11,10 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
 import com.watch.limusic.R;
 import com.watch.limusic.model.Song;
 import com.watch.limusic.model.SongWithIndex;
-import com.watch.limusic.api.NavidromeApi;
+import com.watch.limusic.util.ImageLoader;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -104,13 +103,8 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
 
         if (showCoverArt) {
             holder.albumArt.setVisibility(View.VISIBLE);
-            String coverArtUrl = NavidromeApi.getInstance(context).getCoverArtUrl(song.getCoverArtUrl());
-            Glide.with(context)
-                    .load(coverArtUrl)
-                    .override(100, 100)
-                    .placeholder(R.drawable.default_album_art)
-                    .error(R.drawable.default_album_art)
-                    .into(holder.albumArt);
+            // 使用ImageLoader加载封面
+            ImageLoader.loadAlbumListCover(context, song.getCoverArtUrl(), holder.albumArt);
         } else {
             holder.albumArt.setVisibility(View.GONE);
         }

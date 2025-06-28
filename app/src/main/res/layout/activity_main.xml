@@ -93,24 +93,33 @@
                         android:scrollHorizontally="true"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp"
-                        android:textStyle="bold" />
+                        android:textStyle="bold"
+                        android:fadingEdge="horizontal"
+                        android:fadingEdgeLength="12dp"
+                        android:gravity="center_vertical" />
 
-                    <TextView
-                        android:id="@+id/song_artist"
+                    <!-- 使用FrameLayout包裹艺术家和时间显示，确保它们共用同一个位置 -->
+                    <FrameLayout
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:ellipsize="end"
-                        android:maxLines="1"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="10sp" />
+                        android:layout_height="wrap_content">
                         
-                    <TextView
-                        android:id="@+id/time_display"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:textColor="@color/accent"
-                        android:textSize="10sp"
-                        android:visibility="gone" />
+                        <TextView
+                            android:id="@+id/song_artist"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="10sp" />
+                            
+                        <TextView
+                            android:id="@+id/time_display"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/accent"
+                            android:textSize="10sp"
+                            android:visibility="gone" />
+                    </FrameLayout>
                 </LinearLayout>
 
                 <LinearLayout

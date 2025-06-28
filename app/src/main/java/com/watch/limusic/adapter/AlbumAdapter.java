@@ -12,10 +12,9 @@ import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
 import com.watch.limusic.R;
-import com.watch.limusic.api.NavidromeApi;
 import com.watch.limusic.model.Album;
+import com.watch.limusic.util.ImageLoader;
 
 import java.util.Objects;
 
@@ -66,14 +65,8 @@ public class AlbumAdapter extends ListAdapter<Album, AlbumAdapter.ViewHolder> {
         holder.albumInfo.setText(String.format("%d首歌曲 • %d年",
                 album.getSongCount(), album.getYear()));
 
-        // 加载专辑封面
-        String coverArtUrl = NavidromeApi.getInstance(context).getCoverArtUrl(album.getCoverArt());
-        Glide.with(context)
-                .load(coverArtUrl)
-                .override(120, 120) // 优化图片尺寸
-                .placeholder(R.drawable.default_album_art)
-                .error(R.drawable.default_album_art)
-                .into(holder.albumCover);
+        // 使用ImageLoader加载专辑封面
+        ImageLoader.loadAlbumListCover(context, album.getCoverArt(), holder.albumCover);
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {

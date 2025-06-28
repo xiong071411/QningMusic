@@ -32,6 +32,7 @@ import android.os.Build;
 import android.view.WindowManager;
 import android.view.Window;
 import android.widget.ProgressBar;
+import android.text.TextUtils;
 
 import com.bumptech.glide.Glide;
 import com.watch.limusic.adapter.SongAdapter;
@@ -42,6 +43,7 @@ import com.watch.limusic.api.SubsonicResponse;
 import com.watch.limusic.model.Album;
 import com.watch.limusic.adapter.AlbumAdapter;
 import com.watch.limusic.view.LetterIndexDialog;
+import com.watch.limusic.util.ImageLoader;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -115,14 +117,31 @@ public class MainActivity extends AppCompatActivity
                 // 更新播放/暂停按钮
                 playPauseButton.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
                 
-                // 更新歌曲信息
-                if (title != null) songTitle.setText(title);
-                if (artist != null) songArtist.setText(artist);
+                // 只在歌曲变化时更新歌曲信息，避免中断滚动
+                if (title != null && !title.equals(songTitle.getText().toString())) {
+                    songTitle.setText(title);
+                    // 重新激活滚动效果
+                    songTitle.setSelected(false);
+                    songTitle.setSelected(true);
+                }
+                
+                if (artist != null && !artist.equals(songArtist.getText().toString())) {
+                    songArtist.setText(artist);
+                }
+                
+                // 确保在非拖动状态下显示正确
+                if (!userIsSeeking) {
+                    timeDisplay.setVisibility(View.GONE);
+                    songArtist.setVisibility(View.VISIBLE);
+                }
                 
                 // 只有在用户不在拖动进度条时才更新进度
                 if (!userIsSeeking && duration > 0) {
                     seekBar.setMax((int) duration);
                     seekBar.setProgress((int) position);
+                    
+                    // 确保进度条可见并更新
+                    progressBar.setVisibility(View.VISIBLE);
                     progressBar.setMax((int) duration);
                     progressBar.setProgress((int) position);
                 }
@@ -130,16 +149,13 @@ public class MainActivity extends AppCompatActivity
                 // 更新播放模式按钮
                 updatePlaybackModeButton();
 
-                // 更新专辑封面（仅当albumId变化时）
-                if (albumId != null && !albumId.isEmpty() && !albumId.equals(lastAlbumId)) {
-                    lastAlbumId = albumId;
-                    String coverArtUrl = NavidromeApi.getInstance(context).getCoverArtUrl(albumId);
-                    Glide.with(context)
-                        .load(coverArtUrl)
-                        .override(150, 150)
-                        .placeholder(R.drawable.default_album_art)
-                        .error(R.drawable.default_album_art)
-                        .into(albumArt);
+                // 更新封面
+                if (albumId != null) {
+                    if (albumId != null && !albumId.isEmpty() && !albumId.equals(lastAlbumId)) {
+                        lastAlbumId = albumId;
+                        // 使用ImageLoader加载封面
+                        ImageLoader.loadPlayerCover(context, albumId, albumArt);
+                    }
                 }
             }
         }
@@ -216,6 +232,13 @@ public class MainActivity extends AppCompatActivity
         seekBar = findViewById(R.id.seek_bar);
         progressBar = findViewById(R.id.progress_bar);
         toolbar = findViewById(R.id.toolbar);
+        
+        // 设置歌曲标题滚动效果
+        songTitle.setSelected(true);  // 激活滚动效果
+        songTitle.setEllipsize(TextUtils.TruncateAt.MARQUEE);  // 设置省略模式为跑马灯
+        songTitle.setSingleLine(true);  // 确保单行显示
+        songTitle.setMarqueeRepeatLimit(-1);  // 无限循环
+        songTitle.setHorizontalFadingEdgeEnabled(true);  // 启用水平边缘淡化效果
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -259,6 +282,11 @@ public class MainActivity extends AppCompatActivity
         dividerItemDecoration.setDrawable(getResources().getDrawable(R.drawable.list_divider));
         recyclerView.addItemDecoration(dividerItemDecoration);
         
+        // 设置RecyclerView的缓存池，提高滚动性能，减少GC频率
+        recyclerView.setItemViewCacheSize(20);
+        recyclerView.setDrawingCacheEnabled(true);
+        recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+        
         // 初始化适配器
         albumAdapter = new AlbumAdapter(this);
         songAdapter = new SongAdapter(this, this);
@@ -266,7 +294,7 @@ public class MainActivity extends AppCompatActivity
         // 设置专辑点击事件
         albumAdapter.setOnAlbumClickListener(album -> loadAlbumSongs(album.getId()));
         
-        // 设置滚动监听
+        // 设置滚动监听来处理分页加载
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -284,6 +312,9 @@ public class MainActivity extends AppCompatActivity
             }
         });
         
+        // 添加滚动时暂停图片加载的监听器
+        ImageLoader.setupRecyclerViewScrollListener(recyclerView, this);
+        
         // 默认显示专辑列表
         recyclerView.setAdapter(albumAdapter);
     }
@@ -292,48 +323,44 @@ public class MainActivity extends AppCompatActivity
         // 为整个播放控制区域添加点击监听器，防止点击事件穿透到下面的列表
         View playerControls = findViewById(R.id.player_controls);
         playerControls.setOnClickListener(v -> {
-            // 点击播放控制区域时不做任何操作，只是消费点击事件
+            // 不做任何事情，仅防止点击穿透
         });
         
-        // 防止边缘滑动手势冲突
-        View seekBarContainer = findViewById(R.id.seek_bar_container);
-        seekBarContainer.setOnTouchListener((v, event) -> {
-            // 消费所有触摸事件，防止它们传递到系统
-            return true;
-        });
+        // 确保进度条可见
+        progressBar.setVisibility(View.VISIBLE);
         
-        // 设置播放/暂停按钮点击事件
-        playPauseButton.setOnClickListener(v -> {
-            v.setPressed(true);
-            togglePlayback();
-        });
+        // 播放/暂停按钮点击事件
+        playPauseButton.setOnClickListener(v -> togglePlayback());
         
+        // 循环模式按钮点击事件
         repeatModeButton.setOnClickListener(v -> {
-            v.setPressed(true);
             if (bound && playerService != null) {
                 playerService.togglePlaybackMode();
                 updatePlaybackModeButton();
             }
         });
-
-        // 设置歌曲标题滚动效果
-        songTitle.setSelected(true);
-        // 防止滚动被打断
-        songTitle.setHorizontalFadingEdgeEnabled(true);
-        songTitle.setMarqueeRepeatLimit(-1); // 无限循环
-
+        
+        // 进度条拖动事件
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                if (fromUser && bound && playerService != null) {
-                    playerService.seekTo(progress);
+                if (fromUser) {
+                    // 将当前进度时间显示在艺术家位置
+                    userIsSeeking = true;
+                    
+                    // 保存原始标题
+                    if (originalTitle.isEmpty()) {
+                        originalTitle = songArtist.getText().toString();
+                    }
+                    
+                    // 显示拖动时间而不是艺术家名称
+                    long duration = bound && playerService != null ? playerService.getDuration() : 0;
+                    songArtist.setVisibility(View.INVISIBLE); // 隐藏艺术家文本
+                    timeDisplay.setText(formatTime(progress) + " / " + formatTime(duration));
+                    timeDisplay.setVisibility(View.VISIBLE);
+                    
                     // 同步更新ProgressBar
                     progressBar.setProgress(progress);
-                    
-                    // 更新时间显示
-                    if (isSeeking) {
-                        updateTimeDisplay(progress, playerService.getDuration());
-                    }
                 }
             }
 
@@ -342,27 +369,22 @@ public class MainActivity extends AppCompatActivity
                 userIsSeeking = true;
                 isSeeking = true;
                 
-                // 隐藏艺术家名称
-                songArtist.setVisibility(View.GONE);
-                
-                // 显示时间文本
-                timeDisplay.setVisibility(View.VISIBLE);
-                
-                if (bound && playerService != null) {
-                    updateTimeDisplay(playerService.getCurrentPosition(), playerService.getDuration());
+                // 保存原始标题
+                if (originalTitle.isEmpty()) {
+                    originalTitle = songArtist.getText().toString();
                 }
+                
+                // 显示时间而不是艺术家名称
+                songArtist.setVisibility(View.INVISIBLE); // 隐藏艺术家文本
+                timeDisplay.setVisibility(View.VISIBLE);
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 userIsSeeking = false;
                 isSeeking = false;
-                
-                // 隐藏时间文本
                 timeDisplay.setVisibility(View.GONE);
-                
-                // 恢复显示艺术家名称
-                songArtist.setVisibility(View.VISIBLE);
+                songArtist.setVisibility(View.VISIBLE); // 恢复显示艺术家文本
                 
                 if (bound && playerService != null) {
                     int progress = seekBar.getProgress();
@@ -414,44 +436,21 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void updatePlaybackState() {
-        if (bound) {
+        if (bound && playerService != null) {
             boolean isPlaying = playerService.isPlaying();
             playPauseButton.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
             
             songTitle.setText(playerService.getCurrentTitle());
             songArtist.setText(playerService.getCurrentArtist());
             
-            // 更新专辑封面
-            if (playerService.getCurrentSong() != null) {
-                Song currentSong = playerService.getCurrentSong();
-                
-                // 更新专辑封面
-                String coverArtUrl = null;
-                
-                Log.d("MainActivity", "更新封面 - 歌曲: " + currentSong.getTitle());
-                Log.d("MainActivity", "更新封面 - 专辑ID: " + (currentSong.getAlbumId() != null ? currentSong.getAlbumId() : "null"));
-                Log.d("MainActivity", "更新封面 - 封面URL: " + (currentSong.getCoverArtUrl() != null ? currentSong.getCoverArtUrl() : "null"));
-                
-                // 优先使用专辑ID获取封面
-                if (currentSong.getAlbumId() != null && !currentSong.getAlbumId().isEmpty()) {
-                    coverArtUrl = NavidromeApi.getInstance(this).getCoverArtUrl(currentSong.getAlbumId());
-                    Log.d("MainActivity", "使用专辑ID获取封面: " + coverArtUrl);
-                } 
-                // 如果没有专辑ID但有封面URL，则使用封面URL
-                else if (currentSong.getCoverArtUrl() != null && !currentSong.getCoverArtUrl().isEmpty()) {
-                    coverArtUrl = currentSong.getCoverArtUrl();
-                    Log.d("MainActivity", "使用封面URL: " + coverArtUrl);
-                }
-                
-                // 加载封面
+            // 加载当前歌曲的专辑封面
+            Song currentSong = playerService.getCurrentSong();
+            if (currentSong != null && currentSong.getAlbumId() != null) {
+                String coverArtUrl = currentSong.getAlbumId();
                 if (coverArtUrl != null) {
                     Log.d("MainActivity", "加载封面: " + coverArtUrl);
-                    Glide.with(this)
-                        .load(coverArtUrl)
-                        .override(150, 150)
-                        .placeholder(R.drawable.default_album_art)
-                        .error(R.drawable.default_album_art)
-                        .into(albumArt);
+                    // 使用ImageLoader加载封面
+                    ImageLoader.loadPlayerCover(this, coverArtUrl, albumArt);
                 } else {
                     Log.d("MainActivity", "没有封面URL，使用默认封面");
                     albumArt.setImageResource(R.drawable.default_album_art);
@@ -492,13 +491,8 @@ public class MainActivity extends AppCompatActivity
                 
                 // 预先加载封面
                 if (song.getAlbumId() != null && !song.getAlbumId().isEmpty()) {
-                    String coverArtUrl = NavidromeApi.getInstance(this).getCoverArtUrl(song.getAlbumId());
-                    Glide.with(this)
-                        .load(coverArtUrl)
-                        .override(150, 150)
-                        .placeholder(R.drawable.default_album_art)
-                        .error(R.drawable.default_album_art)
-                        .into(albumArt);
+                    // 使用ImageLoader加载封面
+                    ImageLoader.loadPlayerCover(this, song.getAlbumId(), albumArt);
                 }
                 
                 // 设置整个播放列表，并从选中的歌曲开始播放
@@ -546,6 +540,12 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onNavigationItemSelected(MenuItem item) {
         int id = item.getItemId();
+        
+        // 确保播放控制栏可见
+        View playerControls = findViewById(R.id.player_controls);
+        if (playerControls != null && bound && playerService != null) {
+            playerControls.setVisibility(View.VISIBLE);
+        }
         
         if (id == R.id.nav_all_songs) {
             currentView = "songs";
@@ -595,15 +595,20 @@ public class MainActivity extends AppCompatActivity
 
         Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
 
+        // 减少首次加载数量，提高加载速度，减少内存占用
+        final int initialLoadSize = 30;  // 首次只加载30张专辑
+
         new Thread(() -> {
             try {
                 NavidromeApi api = NavidromeApi.getInstance(this);
-                SubsonicResponse<List<Album>> response = api.getAlbumList("newest", PAGE_SIZE, 0);
+                SubsonicResponse<List<Album>> response = api.getAlbumList("newest", initialLoadSize, 0);
                 
                 runOnUiThread(() -> {
                     isLoading = false;
                     if (response != null && response.isSuccess() && response.getData() != null) {
                         albumAdapter.submitList(response.getData());
+                        // 如果首次加载数量小于请求数量，说明没有更多数据
+                        hasMoreData = response.getData().size() >= initialLoadSize;
                     } else {
                         String error = response != null ? response.getError() : getString(R.string.error_server);
                         Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
@@ -620,7 +625,15 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void loadAlbumSongs(String albumId) {
+        // 显示加载提示和进度条
         Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
+        progressBar.setVisibility(View.VISIBLE);
+        
+        // 确保播放控制栏可见
+        View playerControls = findViewById(R.id.player_controls);
+        if (playerControls != null) {
+            playerControls.setVisibility(View.VISIBLE);
+        }
         
         new Thread(() -> {
             try {
@@ -628,20 +641,38 @@ public class MainActivity extends AppCompatActivity
                 List<Song> songs = api.getAlbumSongs(albumId);
                 
                 runOnUiThread(() -> {
+                    // 隐藏进度条
+                    progressBar.setVisibility(View.GONE);
+                    
                     if (songs != null && !songs.isEmpty()) {
+                        // 限制处理的歌曲数量，避免在长专辑中处理过多歌曲
+                        int maxSongsToProcess = Math.min(songs.size(), 200);
+                        List<Song> processedSongs = songs.subList(0, maxSongsToProcess);
+                        
                         currentView = "songs";
                         recyclerView.setAdapter(songAdapter);
                         songAdapter.setShowCoverArt(true);  // 显示封面
-                        songAdapter.processAndSubmitList(songs);
+                        songAdapter.processAndSubmitList(processedSongs);
+                        
+                        // 确保播放控制栏可见
+                        if (playerControls != null) {
+                            playerControls.setVisibility(View.VISIBLE);
+                        }
+                        
+                        // 如果有截断，提示用户
+                        if (songs.size() > maxSongsToProcess) {
+                            Toast.makeText(this, "已加载前" + maxSongsToProcess + "首歌曲", Toast.LENGTH_SHORT).show();
+                        }
                     } else {
                         Toast.makeText(this, R.string.error_no_songs, Toast.LENGTH_SHORT).show();
                     }
                 });
             } catch (IOException e) {
                 e.printStackTrace();
-                runOnUiThread(() -> 
-                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show()
-                );
+                runOnUiThread(() -> {
+                    progressBar.setVisibility(View.GONE);
+                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show();
+                });
             }
         }).start();
     }
@@ -688,6 +719,9 @@ public class MainActivity extends AppCompatActivity
                             List<Album> currentList = new ArrayList<>(albumAdapter.getCurrentList());
                             currentList.addAll(newAlbums);
                             albumAdapter.submitList(currentList);
+                            
+                            // 设置加载更多状态
+                            hasMoreData = newAlbums.size() >= PAGE_SIZE;
                         }
                     }
                 });
@@ -703,6 +737,12 @@ public class MainActivity extends AppCompatActivity
 
     private void loadAllSongs() {
         Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
+        
+        // 确保播放控制栏可见
+        View playerControls = findViewById(R.id.player_controls);
+        if (playerControls != null && bound && playerService != null) {
+            playerControls.setVisibility(View.VISIBLE);
+        }
         
         new Thread(() -> {
             try {
@@ -722,6 +762,11 @@ public class MainActivity extends AppCompatActivity
                         
                         // 更新菜单状态
                         invalidateOptionsMenu();
+                        
+                        // 再次确保播放控制栏可见
+                        if (playerControls != null) {
+                            playerControls.setVisibility(View.VISIBLE);
+                        }
                     } else {
                         Toast.makeText(this, R.string.error_no_songs, Toast.LENGTH_SHORT).show();
                     }
