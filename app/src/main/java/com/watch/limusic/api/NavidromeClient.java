@@ -17,6 +17,7 @@ public class NavidromeClient {
     private static final String PREF_SERVER = "server_url";
     private static final String PREF_USERNAME = "username";
     private static final String PREF_PASSWORD = "password";
+    private static final String USER_AGENT = "LiMusic";
 
     private static NavidromeClient instance;
     private final NavidromeService service;
@@ -68,7 +69,7 @@ public class NavidromeClient {
                 "?id=" + id +
                 "&u=" + username +
                 "&p=" + password +
-                "&c=LiMusic" +
+                "&c=" + USER_AGENT +
                 "&v=1.16.1" +
                 "&f=json";
     }
@@ -78,7 +79,7 @@ public class NavidromeClient {
                 "?id=" + id +
                 "&u=" + username +
                 "&p=" + password +
-                "&c=LiMusic" +
+                "&c=" + USER_AGENT +
                 "&v=1.16.1" +
                 "&f=json";
     }
@@ -96,6 +97,7 @@ public class NavidromeClient {
             Request request = chain.request();
             Request authenticatedRequest = request.newBuilder()
                     .header("Authorization", credentials)
+                    .header("User-Agent", USER_AGENT)
                     .build();
             return chain.proceed(authenticatedRequest);
         }

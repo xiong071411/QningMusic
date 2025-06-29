@@ -21,6 +21,7 @@ import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.Interceptor;
 import okhttp3.logging.HttpLoggingInterceptor;
 
 public class NavidromeApi {
@@ -48,12 +49,19 @@ public class NavidromeApi {
         this.context = context.getApplicationContext();
         this.gson = new Gson();
 
-        // 设置 OkHttpClient，添加日志拦截器
+        // 设置 OkHttpClient，添加日志拦截器和User-Agent拦截器
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
         logging.setLevel(HttpLoggingInterceptor.Level.BODY);
 
         client = new OkHttpClient.Builder()
                 .addInterceptor(logging)
+                .addInterceptor(chain -> {
+                    Request originalRequest = chain.request();
+                    Request requestWithUserAgent = originalRequest.newBuilder()
+                            .header("User-Agent", CLIENT_NAME)
+                            .build();
+                    return chain.proceed(requestWithUserAgent);
+                })
                 .build();
 
         loadCredentials();
