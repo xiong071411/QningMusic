@@ -38,6 +38,7 @@ public class DownloadManager {
     public static final String ACTION_DOWNLOAD_PROGRESS = "com.watch.limusic.DOWNLOAD_PROGRESS";
     public static final String ACTION_DOWNLOAD_COMPLETE = "com.watch.limusic.DOWNLOAD_COMPLETE";
     public static final String ACTION_DOWNLOAD_FAILED = "com.watch.limusic.DOWNLOAD_FAILED";
+    public static final String ACTION_DOWNLOAD_CANCELED = "com.watch.limusic.DOWNLOAD_CANCELED";
     
     // 广播额外数据键
     public static final String EXTRA_SONG_ID = "songId";
@@ -336,6 +337,9 @@ public class DownloadManager {
             downloadRepository.updateDownloadStatus(songId, DownloadStatus.NOT_DOWNLOADED);
         }
         
+        // 发送取消广播，便于UI立即刷新
+        sendDownloadCanceledBroadcast(songId);
+        
         Log.i(TAG, "取消下载: " + songId);
     }
 
@@ -424,6 +428,12 @@ public class DownloadManager {
         Intent intent = new Intent(ACTION_DOWNLOAD_FAILED);
         intent.putExtra(EXTRA_SONG_ID, songId);
         intent.putExtra(EXTRA_ERROR_MESSAGE, errorMessage);
+        LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
+    }
+
+    private void sendDownloadCanceledBroadcast(String songId) {
+        Intent intent = new Intent(ACTION_DOWNLOAD_CANCELED);
+        intent.putExtra(EXTRA_SONG_ID, songId);
         LocalBroadcastManager.getInstance(context).sendBroadcast(intent);
     }
 

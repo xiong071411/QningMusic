@@ -172,6 +172,9 @@ public class MainActivity extends AppCompatActivity
                 case DownloadManager.ACTION_DOWNLOAD_FAILED:
                     songAdapter.updateSongDownloadStatus(songId);
                     break;
+                case DownloadManager.ACTION_DOWNLOAD_CANCELED:
+                    songAdapter.updateSongDownloadStatus(songId);
+                    break;
             }
         }
     };
@@ -327,6 +330,7 @@ public class MainActivity extends AppCompatActivity
         lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_PROGRESS));
         lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_FAILED));
+        lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_CANCELED));
         
         // 启动时预加载数据
         preloadData();
@@ -1085,6 +1089,9 @@ public class MainActivity extends AppCompatActivity
                         // 显式设置RecyclerView的适配器为歌曲适配器
                         recyclerView.setAdapter(songAdapter);
                         
+                        // 专辑内歌曲列表不显示封面
+                        songAdapter.setShowCoverArt(false);
+
                         // 更新数据
                         songAdapter.processAndSubmitList(songs);
                         
@@ -1120,6 +1127,9 @@ public class MainActivity extends AppCompatActivity
                                     // 显式设置RecyclerView的适配器为歌曲适配器
                                     recyclerView.setAdapter(songAdapter);
                                     
+                                    // 专辑内歌曲列表不显示封面
+                                    songAdapter.setShowCoverArt(false);
+
                                     // 更新数据
                                     songAdapter.processAndSubmitList(apiSongs);
                                     
@@ -1204,7 +1214,7 @@ public class MainActivity extends AppCompatActivity
                 runOnUiThread(() -> {
                     if (finalSongs != null && !finalSongs.isEmpty()) {
                         recyclerView.setAdapter(songAdapter);
-                        songAdapter.setShowCoverArt(false);  // 不显示封面
+                        songAdapter.setShowCoverArt(false);  // 所有歌曲列表不显示封面
                         songAdapter.processAndSubmitList(finalSongs);
                         
                         // 设置Toolbar标题
