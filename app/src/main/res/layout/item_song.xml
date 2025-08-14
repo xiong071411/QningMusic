@@ -65,4 +65,63 @@
         android:textSize="12sp"
         tools:text="3:45" />
 
-</LinearLayout> 
+    <!-- 下载状态和控制区域 -->
+    <FrameLayout
+        android:id="@+id/download_container"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp">
+
+        <!-- 下载按钮 -->
+        <ImageButton
+            android:id="@+id/btn_download"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_download"
+            android:contentDescription="@string/download_song"
+            android:scaleType="centerInside"
+            android:visibility="visible" />
+
+        <!-- 下载进度指示器 -->
+        <ProgressBar
+            android:id="@+id/download_progress"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            style="?android:attr/progressBarStyleSmall" />
+
+        <!-- 百分比文本 -->
+        <TextView
+            android:id="@+id/download_percent"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center"
+            android:textColor="@color/text_primary"
+            android:textSize="10sp"
+            android:visibility="gone"
+            tools:text="57%" />
+
+        <!-- 已下载指示器 -->
+        <ImageView
+            android:id="@+id/download_complete"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_downloaded"
+            android:contentDescription="@string/song_downloaded"
+            android:scaleType="centerInside"
+            android:visibility="gone" />
+
+        <!-- 下载失败指示器 -->
+        <ImageView
+            android:id="@+id/download_failed"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_download_failed"
+            android:contentDescription="@string/download_failed"
+            android:scaleType="centerInside"
+            android:visibility="gone" />
+
+    </FrameLayout>
+
+</LinearLayout>

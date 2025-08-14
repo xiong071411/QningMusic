@@ -13,11 +13,14 @@ import retrofit2.Retrofit;
 import retrofit2.converter.gson.GsonConverterFactory;
 
 public class NavidromeClient {
+    // 公共常量，确保与NavidromeApi中的值一致
+    public static final String CLIENT_NAME = "LiMusic";
+    public static final String API_VERSION = "1.16.1";
+    
     private static final String PREF_NAME = "navidrome_prefs";
     private static final String PREF_SERVER = "server_url";
     private static final String PREF_USERNAME = "username";
     private static final String PREF_PASSWORD = "password";
-    private static final String USER_AGENT = "LiMusic";
 
     private static NavidromeClient instance;
     private final NavidromeService service;
@@ -34,6 +37,7 @@ public class NavidromeClient {
 
         OkHttpClient client = new OkHttpClient.Builder()
                 .addInterceptor(new AuthInterceptor(username, password))
+                .addInterceptor(new UserAgentInterceptor())
                 .build();
 
         Retrofit retrofit = new Retrofit.Builder()
@@ -69,8 +73,8 @@ public class NavidromeClient {
                 "?id=" + id +
                 "&u=" + username +
                 "&p=" + password +
-                "&c=" + USER_AGENT +
-                "&v=1.16.1" +
+                "&c=" + CLIENT_NAME +
+                "&v=" + API_VERSION +
                 "&f=json";
     }
 
@@ -79,8 +83,8 @@ public class NavidromeClient {
                 "?id=" + id +
                 "&u=" + username +
                 "&p=" + password +
-                "&c=" + USER_AGENT +
-                "&v=1.16.1" +
+                "&c=" + CLIENT_NAME +
+                "&v=" + API_VERSION +
                 "&f=json";
     }
 
@@ -97,9 +101,19 @@ public class NavidromeClient {
             Request request = chain.request();
             Request authenticatedRequest = request.newBuilder()
                     .header("Authorization", credentials)
-                    .header("User-Agent", USER_AGENT)
                     .build();
             return chain.proceed(authenticatedRequest);
+        }
+    }
+
+    private static class UserAgentInterceptor implements Interceptor {
+        @Override
+        public okhttp3.Response intercept(Chain chain) throws IOException {
+            Request originalRequest = chain.request();
+            Request requestWithUserAgent = originalRequest.newBuilder()
+                    .header("User-Agent", CLIENT_NAME)
+                    .build();
+            return chain.proceed(requestWithUserAgent);
         }
     }
 } 

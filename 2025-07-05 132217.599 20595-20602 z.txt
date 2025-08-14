@@ -1,0 +1,614 @@
+2025-07-05 18:17:26.547  1202-32620 AF.SDK.XmlReader        com.heytap.accessory                 E  No meta data found with key: InternalAccessoryServicesLocation in com.watch.limusic
+2025-07-05 18:17:26.549  1202-32620 AF.SDK.XmlReader        com.heytap.accessory                 E  No meta data found with key: AccessoryServicesLocation in com.watch.limusic
+---------------------------- PROCESS STARTED (32653) for package com.watch.limusic ----------------------------
+2025-07-05 18:17:27.055 32653-32653 NavidromeClient         com.watch.limusic                    D  从SharedPreferences加载配置 - PREF_NAME: navidrome_settings
+2025-07-05 18:17:27.055 32653-32653 NavidromeClient         com.watch.limusic                    D  从SharedPreferences加载配置 - serverUrl: http://101.42.18.46
+2025-07-05 18:17:27.055 32653-32653 NavidromeClient         com.watch.limusic                    D  从SharedPreferences加载配置 - username: xiong071411
+2025-07-05 18:17:27.055 32653-32653 NavidromeClient         com.watch.limusic                    D  从SharedPreferences加载配置 - server_port: 4533
+2025-07-05 18:17:27.056 32653-32653 NavidromeClient         com.watch.limusic                    D  最终baseUrl: http://101.42.18.46, serverPort: 4533
+2025-07-05 18:17:27.097 32653-32653 NetworkSecurityConfig   com.watch.limusic                    D  No Network Security Config specified, using platform default
+2025-07-05 18:17:27.103 32653-32653 NavidromeClient         com.watch.limusic                    D  OkHttpClient初始化完成，设置超时时间为30秒
+2025-07-05 18:17:27.103 32653-32653 NavidromeClient         com.watch.limusic                    D  Retrofit baseUrl: http://101.42.18.46/rest/
+2025-07-05 18:17:27.166 32653-32653 AppCompatDelegate       com.watch.limusic                    D  Checking for metadata for AppLocalesMetadataHolderService : Service not found
+2025-07-05 18:17:27.195 32653-32692 DatabaseInitializer     com.watch.limusic                    D  数据库已有数据，无需初始化
+2025-07-05 18:17:27.195 32653-32692 LiMusicApplication      com.watch.limusic                    D  数据库初始化成功
+2025-07-05 18:17:27.553 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:27.614 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:27.616 32653-32733 NavidromeApi            com.watch.limusic                    D  初始化OkHttpClient，设置超时时间
+2025-07-05 18:17:27.621 32653-32733 NavidromeApi            com.watch.limusic                    D  NavidromeApi初始化完成，服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:27.621 32653-32733 NavidromeApi            com.watch.limusic                    D  执行getAlbumList请求, type=newest, size=100, offset=0
+2025-07-05 18:17:27.643 32653-32733 NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:27.645 32653-32733 NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:27.651 32653-32733 NavidromeApi            com.watch.limusic                    D  getAlbumList请求URL: http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=c2f1b9417e32ffbf7dbd32b1ac746805&s=805084244&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:27.652 32653-32733 NavidromeApi            com.watch.limusic                    D  开始执行getAlbumList网络请求...
+2025-07-05 18:17:27.656 32653-32733 okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=c2f1b9417e32ffbf7dbd32b1ac746805&s=805084244&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:27.656 32653-32733 okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:27.658 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:27.659 32653-32734 NavidromeApi            com.watch.limusic                    D  执行getAlbumList请求, type=newest, size=100, offset=0
+2025-07-05 18:17:27.675 32653-32734 NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:27.677 32653-32734 NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:27.680 32653-32734 NavidromeApi            com.watch.limusic                    D  getAlbumList请求URL: http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=d029da4a2a4dbc0c3275e490d315c4f1&s=274094146&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:27.680 32653-32734 NavidromeApi            com.watch.limusic                    D  开始执行getAlbumList网络请求...
+2025-07-05 18:17:27.681 32653-32734 okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=d029da4a2a4dbc0c3275e490d315c4f1&s=274094146&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:27.682 32653-32734 okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:27.695 32653-32735 OpenGLRenderer          com.watch.limusic                    D  HWUI GL Pipeline
+2025-07-05 18:17:27.765 32653-32653 ExoPlayerImpl           com.watch.limusic                    I  Init 2bde3f0 [ExoPlayerLib/2.18.7] [OW20W2, OW20W2, QUALCOMM, 27]
+2025-07-05 18:17:27.818 32653-32653 PlayerService           com.watch.limusic                    D  初始化播放器 - 设置默认模式为列表循环
+2025-07-05 18:17:27.820 32653-32653 MediaSessionCompat      com.watch.limusic                    W  Couldn't find a unique registered media button receiver in the given context.
+2025-07-05 18:17:27.907 32653-32735 Adreno                  com.watch.limusic                    I  QUALCOMM build                   : 6b98e38, Ia11ce2d146
+                                                                                                    Build Date                       : 02/28/21
+                                                                                                    OpenGL ES Shader Compiler Version: EV031.22.00.01_06_07
+                                                                                                    Local Branch                     : 
+                                                                                                    Remote Branch                    : 
+                                                                                                    Remote Branch                    : 
+                                                                                                    Reconstruct Branch               : 
+2025-07-05 18:17:27.915 32653-32735 Adreno                  com.watch.limusic                    I  PFP: 0x005ff087, ME: 0x005ff063
+2025-07-05 18:17:27.924 32653-32735 zygote                  com.watch.limusic                    I  android::hardware::configstore::V1_0::ISurfaceFlingerConfigs::hasWideColorDisplay retrieved: 0
+2025-07-05 18:17:27.927 32653-32735 OpenGLRenderer          com.watch.limusic                    I  Initialized EGL, version 1.4
+2025-07-05 18:17:27.928 32653-32735 OpenGLRenderer          com.watch.limusic                    D  Swap behavior 2
+2025-07-05 18:17:32.827 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:32.828 32653-32764 NavidromeApi            com.watch.limusic                    D  执行getAlbumList请求, type=newest, size=100, offset=0
+2025-07-05 18:17:32.848 32653-32764 NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:32.850 32653-32764 NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:32.853 32653-32764 NavidromeApi            com.watch.limusic                    D  getAlbumList请求URL: http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=0035365b70a7bf09459d099c1458d683&s=960982501&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:32.853 32653-32764 NavidromeApi            com.watch.limusic                    D  开始执行getAlbumList网络请求...
+2025-07-05 18:17:32.854 32653-32764 okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=0035365b70a7bf09459d099c1458d683&s=960982501&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:32.855 32653-32764 okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:34.148 32653-32662 zygote                  com.watch.limusic                    I  Do partial code cache collection, code=27KB, data=29KB
+2025-07-05 18:17:34.149 32653-32662 zygote                  com.watch.limusic                    I  After code cache collection, code=27KB, data=29KB
+2025-07-05 18:17:34.149 32653-32662 zygote                  com.watch.limusic                    I  Increasing code cache capacity to 128KB
+2025-07-05 18:17:39.310 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:39.324 32653-378   NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:39.327 32653-378   NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:39.330 32653-378   okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getRandomSongs?u=xiong071411&t=cca187015c6b4e75b17deaa2941148c8&s=312995734&v=1.16.1&c=LiMusic&f=json&size=500
+2025-07-05 18:17:39.330 32653-378   okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:40.731 32653-32662 zygote                  com.watch.limusic                    I  Do partial code cache collection, code=56KB, data=61KB
+2025-07-05 18:17:40.732 32653-32662 zygote                  com.watch.limusic                    I  After code cache collection, code=56KB, data=61KB
+2025-07-05 18:17:40.732 32653-32662 zygote                  com.watch.limusic                    I  Increasing code cache capacity to 256KB
+2025-07-05 18:17:41.856 32653-32664 zygote                  com.watch.limusic                    I  Debugger is no longer active
+2025-07-05 18:17:42.499 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:42.500 32653-405   NavidromeApi            com.watch.limusic                    D  执行getAlbumList请求, type=newest, size=100, offset=0
+2025-07-05 18:17:42.514 32653-405   NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:42.516 32653-405   NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:42.519 32653-405   NavidromeApi            com.watch.limusic                    D  getAlbumList请求URL: http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=12d211b790293921cd49aaf5b48d3e76&s=443538462&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:42.519 32653-405   NavidromeApi            com.watch.limusic                    D  开始执行getAlbumList网络请求...
+2025-07-05 18:17:42.520 32653-405   okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=12d211b790293921cd49aaf5b48d3e76&s=443538462&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:42.520 32653-405   okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:44.636 32653-32662 zygote                  com.watch.limusic                    I  Do full code cache collection, code=126KB, data=114KB
+2025-07-05 18:17:44.642 32653-32662 zygote                  com.watch.limusic                    I  After code cache collection, code=121KB, data=84KB
+2025-07-05 18:17:45.983 32653-32662 zygote                  com.watch.limusic                    I  Do partial code cache collection, code=123KB, data=95KB
+2025-07-05 18:17:45.985 32653-32662 zygote                  com.watch.limusic                    I  After code cache collection, code=123KB, data=95KB
+2025-07-05 18:17:45.985 32653-32662 zygote                  com.watch.limusic                    I  Increasing code cache capacity to 512KB
+2025-07-05 18:17:46.173 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:46.188 32653-430   NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:46.189 32653-430   NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:46.193 32653-430   okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getRandomSongs?u=xiong071411&t=8f5a161ae874577ef06ced3db5a17845&s=293172387&v=1.16.1&c=LiMusic&f=json&size=500
+2025-07-05 18:17:46.194 32653-430   okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:48.477 32653-32653 MainActivity            com.watch.limusic                    D  网络可用，进入在线模式
+2025-07-05 18:17:48.478 32653-436   NavidromeApi            com.watch.limusic                    D  执行getAlbumList请求, type=newest, size=100, offset=0
+2025-07-05 18:17:48.493 32653-436   NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:48.495 32653-436   NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:48.498 32653-436   NavidromeApi            com.watch.limusic                    D  getAlbumList请求URL: http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=efed3937b1731a4558cea68a8d9c5a84&s=801217657&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:48.498 32653-436   NavidromeApi            com.watch.limusic                    D  开始执行getAlbumList网络请求...
+2025-07-05 18:17:48.499 32653-436   okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/getAlbumList2?u=xiong071411&t=efed3937b1731a4558cea68a8d9c5a84&s=801217657&v=1.16.1&c=LiMusic&f=json&type=newest&size=100&offset=0
+2025-07-05 18:17:48.500 32653-436   okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:51.714 32653-32662 zygote                  com.watch.limusic                    I  Do full code cache collection, code=252KB, data=205KB
+2025-07-05 18:17:51.716 32653-32662 zygote                  com.watch.limusic                    I  After code cache collection, code=252KB, data=170KB
+2025-07-05 18:17:51.803 32653-32662 zygote                  com.watch.limusic                    I  Do partial code cache collection, code=252KB, data=176KB
+2025-07-05 18:17:51.804 32653-32662 zygote                  com.watch.limusic                    I  After code cache collection, code=252KB, data=176KB
+2025-07-05 18:17:51.804 32653-32662 zygote                  com.watch.limusic                    I  Increasing code cache capacity to 1024KB
+2025-07-05 18:17:55.859 32653-32653 NavidromeSettings       com.watch.limusic                    D  测试连接 - serverUrl: http://101.42.18.46, serverPort: 4533
+2025-07-05 18:17:55.860 32653-32653 NavidromeSettings       com.watch.limusic                    D  保存设置到SharedPreferences: {password=071411aaa, server_port=4533, server_url=http://101.42.18.46, username=xiong071411}
+2025-07-05 18:17:55.861 32653-486   NavidromeSettings       com.watch.limusic                    D  开始测试网络连通性...
+2025-07-05 18:17:55.862 32653-486   NavidromeSettings       com.watch.limusic                    D  尝试连接到主机: 101.42.18.46, 端口: 4533
+2025-07-05 18:17:55.993 32653-487   NavidromeSettings       com.watch.limusic                    D  开始执行API ping测试...
+2025-07-05 18:17:55.993 32653-487   NavidromeApi            com.watch.limusic                    D  执行ping请求...
+2025-07-05 18:17:56.009 32653-487   NavidromeApi            com.watch.limusic                    D  原始服务器URL: http://101.42.18.46, 端口: 4533
+2025-07-05 18:17:56.011 32653-487   NavidromeApi            com.watch.limusic                    D  构建的基础URL: http://101.42.18.46:4533/rest
+2025-07-05 18:17:56.013 32653-487   NavidromeApi            com.watch.limusic                    D  构建的完整请求URL: http://101.42.18.46:4533/rest/ping?u=xiong071411&t=a9f08d6c06f3a112f22dff3cd4574bf8&s=200706998&v=1.16.1&c=LiMusic&f=json
+2025-07-05 18:17:56.015 32653-487   okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://101.42.18.46:4533/rest/ping?u=xiong071411&t=a9f08d6c06f3a112f22dff3cd4574bf8&s=200706998&v=1.16.1&c=LiMusic&f=json
+2025-07-05 18:17:56.016 32653-487   okhttp.OkHttpClient     com.watch.limusic                    I  --> END GET
+2025-07-05 18:17:57.703 32653-32733 okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53484) after 30000ms
+2025-07-05 18:17:57.714 32653-32733 NavidromeApi            com.watch.limusic                    E  getAlbumList请求异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53484) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+                                                                                                    	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+                                                                                                    	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:17:57.715 32653-32733 System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53484) after 30000ms
+2025-07-05 18:17:57.715 32653-32733 System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:17:57.715 32653-32733 System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:17:57.717 32653-32733 System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:17:57.718 32653-32733 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:17:57.719 32653-32733 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:17:57.719 32653-32733 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:17:57.720 32653-32733 System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:17:57.721 32653-32733 System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:17:57.721 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:17:57.721 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:17:57.721 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.722 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:17:57.724 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.724 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:17:57.725 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.725 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:17:57.725 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.725 32653-32733 System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:17:57.725 32653-32734 okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53486) after 30000ms
+2025-07-05 18:17:57.726 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.726 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:17:57.726 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.726 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:17:57.726 32653-32733 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:17:57.727 32653-32733 System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+2025-07-05 18:17:57.727 32653-32733 System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+2025-07-05 18:17:57.727 32653-32733 System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+2025-07-05 18:17:57.727 32653-32733 System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:17:57.736 32653-32734 NavidromeApi            com.watch.limusic                    E  getAlbumList请求异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53486) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+                                                                                                    	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+                                                                                                    	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53486) after 30000ms
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:17:57.737 32653-32734 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:17:57.738 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:17:57.739 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.739 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:17:57.739 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.739 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:17:57.739 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.740 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:17:57.740 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.740 32653-32734 System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:17:57.740 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.740 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:17:57.740 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:17:57.741 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:17:57.741 32653-32734 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:17:57.741 32653-32734 System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+2025-07-05 18:17:57.741 32653-32734 System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+2025-07-05 18:17:57.741 32653-32734 System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+2025-07-05 18:17:57.741 32653-32734 System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:00.874 32653-486   NavidromeSettings       com.watch.limusic                    E  网络连通性测试异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53500) after 5000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at com.watch.limusic.NavidromeSettingsActivity.lambda$testNetworkConnectivity$5(NavidromeSettingsActivity.java:142)
+                                                                                                    	at com.watch.limusic.NavidromeSettingsActivity$$ExternalSyntheticLambda3.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:02.899 32653-32764 okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53490) after 30000ms
+2025-07-05 18:18:02.906 32653-32764 NavidromeApi            com.watch.limusic                    E  getAlbumList请求异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53490) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+                                                                                                    	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+                                                                                                    	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:02.907 32653-32764 System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53490) after 30000ms
+2025-07-05 18:18:02.907 32653-32764 System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:18:02.907 32653-32764 System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:18:02.907 32653-32764 System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:18:02.908 32653-32764 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:18:02.908 32653-32764 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:18:02.908 32653-32764 System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:18:02.908 32653-32764 System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:18:02.910 32653-32764 System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:18:02.910 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:18:02.911 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:18:02.911 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:18:02.911 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:18:02.911 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:18:02.913 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:18:02.914 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:18:02.914 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:18:02.914 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:02.914 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:18:02.914 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:02.914 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:18:02.915 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:02.915 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:18:02.915 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:02.915 32653-32764 System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:18:02.915 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:02.916 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:18:02.916 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:02.916 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:18:02.916 32653-32764 System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:18:02.916 32653-32764 System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+2025-07-05 18:18:02.917 32653-32764 System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+2025-07-05 18:18:02.917 32653-32764 System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+2025-07-05 18:18:02.917 32653-32764 System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:09.369 32653-378   okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53492) after 30000ms
+2025-07-05 18:18:09.370 32653-378   System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53492) after 30000ms
+2025-07-05 18:18:09.371 32653-378   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:18:09.371 32653-378   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:18:09.372 32653-378   System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:18:09.372 32653-378   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:18:09.372 32653-378   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:18:09.373 32653-378   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:18:09.374 32653-378   System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:18:09.374 32653-378   System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:18:09.374 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:18:09.374 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:18:09.374 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:18:09.375 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:18:09.375 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:18:09.375 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:18:09.375 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:18:09.376 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:18:09.376 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:09.378 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:18:09.378 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:09.379 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:18:09.379 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:09.379 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:18:09.381 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:09.381 32653-378   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:18:09.381 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:09.381 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAllSongs(NavidromeApi.java:329)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAllSongsFromApi$16$com-watch-limusic-MainActivity(MainActivity.java:944)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+2025-07-05 18:18:09.382 32653-378   System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:12.559 32653-405   okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53494) after 30000ms
+2025-07-05 18:18:12.570 32653-405   NavidromeApi            com.watch.limusic                    E  getAlbumList请求异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53494) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+                                                                                                    	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+                                                                                                    	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:12.570 32653-405   System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53494) after 30000ms
+2025-07-05 18:18:12.570 32653-405   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:18:12.571 32653-405   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:18:12.571 32653-405   System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:18:12.571 32653-405   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:18:12.571 32653-405   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:18:12.571 32653-405   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:18:12.572 32653-405   System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:18:12.572 32653-405   System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:18:12.572 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:18:12.572 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:18:12.572 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:18:12.572 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:18:12.573 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:18:12.573 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:18:12.573 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:18:12.573 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:18:12.573 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:12.574 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:18:12.574 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:12.574 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:18:12.574 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:12.574 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:18:12.574 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:12.575 32653-405   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:18:12.575 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:12.575 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:18:12.575 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:12.575 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:18:12.576 32653-405   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:18:12.577 32653-405   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+2025-07-05 18:18:12.577 32653-405   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+2025-07-05 18:18:12.577 32653-405   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+2025-07-05 18:18:12.577 32653-405   System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:16.215 32653-430   okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53496) after 30000ms
+2025-07-05 18:18:16.216 32653-430   System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53496) after 30000ms
+2025-07-05 18:18:16.217 32653-430   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:18:16.217 32653-430   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:18:16.217 32653-430   System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:18:16.217 32653-430   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:18:16.218 32653-430   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:18:16.218 32653-430   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:18:16.218 32653-430   System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:18:16.218 32653-430   System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:18:16.218 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:18:16.219 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:18:16.219 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:18:16.219 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:18:16.219 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:18:16.219 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:18:16.220 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:18:16.220 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:18:16.220 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:16.220 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:18:16.220 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:16.220 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:18:16.221 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:16.221 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:18:16.221 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:16.221 32653-430   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:18:16.221 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:16.222 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:18:16.222 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:16.222 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:18:16.222 32653-430   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:18:16.222 32653-430   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAllSongs(NavidromeApi.java:329)
+2025-07-05 18:18:16.222 32653-430   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAllSongsFromApi$16$com-watch-limusic-MainActivity(MainActivity.java:944)
+2025-07-05 18:18:16.223 32653-430   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
+2025-07-05 18:18:16.223 32653-430   System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:18.540 32653-436   okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53498) after 30000ms
+2025-07-05 18:18:18.545 32653-436   NavidromeApi            com.watch.limusic                    E  getAlbumList请求异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53498) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+                                                                                                    	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+                                                                                                    	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:18.545 32653-436   System.err              com.watch.limusic                    W  java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53498) after 30000ms
+2025-07-05 18:18:18.545 32653-436   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+2025-07-05 18:18:18.546 32653-436   System.err              com.watch.limusic                    W  	at libcore.io.IoBridge.connect(IoBridge.java:130)
+2025-07-05 18:18:18.546 32653-436   System.err              com.watch.limusic                    W  	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+2025-07-05 18:18:18.546 32653-436   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+2025-07-05 18:18:18.546 32653-436   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+2025-07-05 18:18:18.546 32653-436   System.err              com.watch.limusic                    W  	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+2025-07-05 18:18:18.547 32653-436   System.err              com.watch.limusic                    W  	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+2025-07-05 18:18:18.547 32653-436   System.err              com.watch.limusic                    W  	at java.net.Socket.connect(Socket.java:616)
+2025-07-05 18:18:18.547 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+2025-07-05 18:18:18.547 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+2025-07-05 18:18:18.547 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+2025-07-05 18:18:18.547 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+2025-07-05 18:18:18.548 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+2025-07-05 18:18:18.548 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+2025-07-05 18:18:18.548 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+2025-07-05 18:18:18.548 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+2025-07-05 18:18:18.548 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:18.549 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+2025-07-05 18:18:18.549 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:18.549 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+2025-07-05 18:18:18.550 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:18.552 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+2025-07-05 18:18:18.553 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:18.553 32653-436   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+2025-07-05 18:18:18.553 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:18.554 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+2025-07-05 18:18:18.554 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+2025-07-05 18:18:18.554 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+2025-07-05 18:18:18.554 32653-436   System.err              com.watch.limusic                    W  	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+2025-07-05 18:18:18.554 32653-436   System.err              com.watch.limusic                    W  	at com.watch.limusic.api.NavidromeApi.getAlbumList(NavidromeApi.java:210)
+2025-07-05 18:18:18.555 32653-436   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity.lambda$loadAlbumsFromApi$10$com-watch-limusic-MainActivity(MainActivity.java:704)
+2025-07-05 18:18:18.555 32653-436   System.err              com.watch.limusic                    W  	at com.watch.limusic.MainActivity$$ExternalSyntheticLambda8.run(D8$$SyntheticClass:0)
+2025-07-05 18:18:18.555 32653-436   System.err              com.watch.limusic                    W  	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:26.037 32653-487   okhttp.OkHttpClient     com.watch.limusic                    I  <-- HTTP FAILED: java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53502) after 30000ms
+2025-07-05 18:18:26.043 32653-487   NavidromeApi            com.watch.limusic                    E  ping请求异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53502) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.ping(NavidromeApi.java:174)
+                                                                                                    	at com.watch.limusic.NavidromeSettingsActivity.lambda$testConnection$4$com-watch-limusic-NavidromeSettingsActivity(NavidromeSettingsActivity.java:109)
+                                                                                                    	at com.watch.limusic.NavidromeSettingsActivity$$ExternalSyntheticLambda2.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)
+2025-07-05 18:18:26.052 32653-487   NavidromeSettings       com.watch.limusic                    E  API ping测试异常 (Ask Gemini)
+                                                                                                    java.net.SocketTimeoutException: failed to connect to /101.42.18.46 (port 4533) from /10.26.94.33 (port 53502) after 30000ms
+                                                                                                    	at libcore.io.IoBridge.connectErrno(IoBridge.java:185)
+                                                                                                    	at libcore.io.IoBridge.connect(IoBridge.java:130)
+                                                                                                    	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+                                                                                                    	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+                                                                                                    	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:357)
+                                                                                                    	at java.net.Socket.connect(Socket.java:616)
+                                                                                                    	at okhttp3.internal.platform.AndroidPlatform.connectSocket(AndroidPlatform.kt:63)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connectSocket(RealConnection.kt:295)
+                                                                                                    	at okhttp3.internal.connection.RealConnection.connect(RealConnection.kt:207)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findConnection(ExchangeFinder.kt:226)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.findHealthyConnection(ExchangeFinder.kt:106)
+                                                                                                    	at okhttp3.internal.connection.ExchangeFinder.find(ExchangeFinder.kt:74)
+                                                                                                    	at okhttp3.internal.connection.RealCall.initExchange$okhttp(RealCall.kt:255)
+                                                                                                    	at okhttp3.internal.connection.ConnectInterceptor.intercept(ConnectInterceptor.kt:32)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.cache.CacheInterceptor.intercept(CacheInterceptor.kt:95)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.BridgeInterceptor.intercept(BridgeInterceptor.kt:83)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.http.RetryAndFollowUpInterceptor.intercept(RetryAndFollowUpInterceptor.kt:76)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi$UserAgentInterceptor.intercept(NavidromeApi.java:77)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.logging.HttpLoggingInterceptor.intercept(HttpLoggingInterceptor.kt:221)
+                                                                                                    	at okhttp3.internal.http.RealInterceptorChain.proceed(RealInterceptorChain.kt:109)
+                                                                                                    	at okhttp3.internal.connection.RealCall.getResponseWithInterceptorChain$okhttp(RealCall.kt:201)
+                                                                                                    	at okhttp3.internal.connection.RealCall.execute(RealCall.kt:154)
+                                                                                                    	at com.watch.limusic.api.NavidromeApi.ping(NavidromeApi.java:174)
+                                                                                                    	at com.watch.limusic.NavidromeSettingsActivity.lambda$testConnection$4$com-watch-limusic-NavidromeSettingsActivity(NavidromeSettingsActivity.java:109)
+                                                                                                    	at com.watch.limusic.NavidromeSettingsActivity$$ExternalSyntheticLambda2.run(D8$$SyntheticClass:0)
+                                                                                                    	at java.lang.Thread.run(Thread.java:764)

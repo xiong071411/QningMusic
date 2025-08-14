@@ -77,5 +77,21 @@
     <string name="letter_special_symbol">#</string>
     <string name="play_all">播放全部</string>
     
-    <!-- 新增字符串 -->
+    <!-- 下载相关字符串 -->
+    <string name="download_song">下载歌曲</string>
+    <string name="song_downloaded">歌曲已下载</string>
+    <string name="download_failed">下载失败</string>
+    <string name="downloading">下载中</string>
+    <string name="download_complete">下载完成</string>
+    <string name="download_cancelled">下载已取消</string>
+    <string name="delete_download">删除下载</string>
+    <string name="download_management">下载管理</string>
+    <string name="downloaded_songs">已下载歌曲</string>
+    <string name="download_settings">下载设置</string>
+    <string name="download_quality">下载质量</string>
+    <string name="download_location">下载位置</string>
+    <string name="storage_usage">存储使用</string>
+    <string name="clear_downloads">清理下载</string>
+    <string name="download_all_album">下载整张专辑</string>
+
 </resources>

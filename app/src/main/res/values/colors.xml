@@ -21,6 +21,8 @@
     <color name="text_primary">#FFFFFF</color>
     <color name="text_secondary">#B3FFFFFF</color> <!-- 70% 白色 -->
     <color name="text_hint">#80FFFFFF</color> <!-- 50% 白色 -->
+    <color name="textPrimary">#FFFFFF</color> <!-- 用于SongAdapter -->
+    <color name="textDisabled">#80FFFFFF</color> <!-- 用于未缓存歌曲 -->
     
     <!-- 控件颜色 -->
     <color name="toolbar_background">#1E1E1E</color>
@@ -37,6 +39,16 @@
     <color name="playing_indicator">#4285F4</color>
     <color name="ripple">#33FFFFFF</color> <!-- 20% 白色 -->
     <color name="icons">#FFFFFF</color>
+    
+    <!-- 缓存状态颜色 -->
+    <color name="cached_indicator">#4CAF50</color> <!-- 缓存状态指示器 -->
+    <color name="caching_indicator">#FFC107</color> <!-- 缓存中状态指示器 -->
+    <color name="not_cached_indicator">#80FFFFFF</color> <!-- 未缓存状态指示器 -->
+
+    <!-- 下载状态颜色 -->
+    <color name="download_complete">#4CAF50</color> <!-- 下载完成 -->
+    <color name="download_failed">#F44336</color> <!-- 下载失败 -->
+    <color name="download_progress">#2196F3</color> <!-- 下载中 -->
     
     <!-- 系统默认颜色（兼容性） -->
     <color name="purple_200">#FFBB86FC</color>

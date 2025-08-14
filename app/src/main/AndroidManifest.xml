@@ -7,6 +7,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+    <!-- 存储权限（用于下载功能） -->
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     
     <!-- 音频权限 -->
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
@@ -57,6 +61,12 @@
             android:label="@string/cache_settings"
             android:exported="false"
             android:parentActivityName=".SettingsActivity" />
+
+        <activity
+            android:name=".DownloadSettingsActivity"
+            android:label="@string/download_management"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
         
         <meta-data
             android:name="com.google.android.wearable.standalone"

@@ -2,10 +2,12 @@ package com.watch.limusic.cache;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.util.Log;
 
 import com.google.android.exoplayer2.database.DatabaseProvider;
 import com.google.android.exoplayer2.database.StandaloneDatabaseProvider;
+import com.google.android.exoplayer2.upstream.cache.Cache;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSink;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.cache.LeastRecentlyUsedCacheEvictor;
@@ -14,9 +16,6 @@ import com.google.android.exoplayer2.upstream.DefaultDataSource;
 import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 
 import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.Executors;
 
 public class CacheManager {
     private static final String TAG = "CacheManager";
@@ -26,10 +25,35 @@ public class CacheManager {
 
     private static SimpleCache cache;
     private static DatabaseProvider databaseProvider;
+    private static volatile CacheManager INSTANCE;
+    private final Context context;
 
-    public static synchronized SimpleCache getCache(Context context) {
+    // 私有构造函数，确保单例模式
+    private CacheManager(Context context) {
+        this.context = context.getApplicationContext();
+    }
+
+    // 获取单例实例
+    public static synchronized CacheManager getInstance(Context context) {
+        if (INSTANCE == null) {
+            synchronized (CacheManager.class) {
+                if (INSTANCE == null) {
+                    INSTANCE = new CacheManager(context.getApplicationContext());
+                }
+            }
+        }
+        return INSTANCE;
+    }
+
+    // 获取Context
+    public Context getContext() {
+        return context;
+    }
+    
+    // 获取缓存实例
+    public SimpleCache getCache() {
         if (cache == null) {
-            long maxBytes = getMaxCacheBytes(context);
+            long maxBytes = getMaxCacheBytes();
             LeastRecentlyUsedCacheEvictor evictor = new LeastRecentlyUsedCacheEvictor(maxBytes);
             databaseProvider = new StandaloneDatabaseProvider(context);
             File dir = new File(context.getCacheDir(), "media");
@@ -38,7 +62,8 @@ public class CacheManager {
         return cache;
     }
 
-    public static synchronized CacheDataSource.Factory buildCacheDataSourceFactory(Context context) {
+    // 构建缓存数据源工厂
+    public CacheDataSource.Factory buildCacheDataSourceFactory() {
         // 创建默认的网络数据源作为上游；如果缓存中没有命中，就从网络拉取并写入缓存
         DefaultDataSource.Factory upstreamFactory = new DefaultDataSource.Factory(
                 context,
@@ -47,50 +72,66 @@ public class CacheManager {
         );
 
         return new CacheDataSource.Factory()
-                .setCache(getCache(context))
+                .setCache(getCache())
                 .setUpstreamDataSourceFactory(upstreamFactory)
-                .setCacheWriteDataSinkFactory(new CacheDataSink.Factory().setCache(getCache(context)))
+                .setCacheWriteDataSinkFactory(new CacheDataSink.Factory().setCache(getCache()))
                 .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
     }
 
-    public static long getMaxCacheBytes(Context context) {
+    // 检查URL是否已缓存
+    public boolean isCached(String url) {
+        if (url == null || url.isEmpty()) {
+            return false;
+        }
+
+        try {
+            Cache cache = getCache();
+            String key = buildCacheKey(url);
+            
+            // 检查缓存中是否有此key
+            boolean hasKey = cache.getKeys().contains(key);
+            
+            if (hasKey) {
+                // 检查是否有缓存数据
+                boolean hasCachedSpans = cache.getCachedSpans(key).size() > 0;
+                return hasCachedSpans;
+            }
+            return false;
+        } catch (Exception e) {
+            Log.e(TAG, "检查缓存状态失败: " + url, e);
+            return false;
+        }
+    }
+    
+    // 构建缓存键
+    private String buildCacheKey(String url) {
+        return url;
+    }
+
+    // 获取最大缓存大小
+    public long getMaxCacheBytes() {
         SharedPreferences sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
         long mb = sp.getLong(KEY_MAX_MB, 70);
         return mb * 1024 * 1024;
     }
 
-    public static void setMaxCacheMb(Context context, long mb) {
+    // 设置最大缓存大小
+    public void setMaxCacheMb(long mb) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                 .edit().putLong(KEY_MAX_MB, mb).apply();
         // Need to recreate cache with new size next time.
         release();
     }
 
-    public static void clearCache(Context context) {
+    // 清理缓存
+    public void clearCache() {
         if (cache != null) {
             try {
-                // 使用线程池执行清理操作，避免阻塞主线程
-                Executors.newSingleThreadExecutor().execute(() -> {
+                for (String key : cache.getKeys()) {
                     try {
-                        Log.d(TAG, "开始清理缓存...");
-                        long startTime = System.currentTimeMillis();
-                        
-                        // 获取所有键并进行清理
-                        Set<String> keys = new HashSet<>(cache.getKeys());
-                        for (String key : keys) {
-                            try {
-                                cache.removeResource(key);
-                            } catch (Exception e) {
-                                Log.w(TAG, "清理单个缓存项失败: " + key, e);
-                            }
-                        }
-                        
-                        long duration = System.currentTimeMillis() - startTime;
-                        Log.d(TAG, "缓存清理完成, 耗时: " + duration + "ms");
-                    } catch (Exception e) {
-                        Log.e(TAG, "清理缓存过程中出错", e);
-                    }
-                });
+                        cache.removeResource(key);
+                    } catch (Exception ignore) {}
+                }
             } catch (Exception e) {
                 Log.e(TAG, "清理缓存失败", e);
             }
@@ -101,7 +142,7 @@ public class CacheManager {
         }
     }
 
-    private static void deleteDir(File dir) {
+    private void deleteDir(File dir) {
         if (dir == null || !dir.exists()) return;
         File[] files = dir.listFiles();
         if (files != null) {
@@ -112,24 +153,49 @@ public class CacheManager {
         dir.delete();
     }
 
-    public static void release() {
+    // 释放缓存资源
+    public void release() {
         if (cache != null) {
             try {
                 cache.release();
-                System.gc(); // 提示垃圾收集器进行回收
             } catch (Exception e) {
                 Log.e(TAG, "释放缓存出错", e);
             }
             cache = null;
-            databaseProvider = null;
         }
     }
 
-    public static long getCacheUsageBytes(Context context) {
+    // 获取缓存使用量
+    public long getCacheUsageBytes() {
         try {
-            return getCache(context).getCacheSpace();
+            return getCache().getCacheSpace();
         } catch (Exception e) {
             return 0;
         }
+    }
+    
+    // 兼容静态方法调用
+    public static SimpleCache getCache(Context context) {
+        return getInstance(context).getCache();
+    }
+    
+    public static CacheDataSource.Factory buildCacheDataSourceFactory(Context context) {
+        return getInstance(context).buildCacheDataSourceFactory();
+    }
+    
+    public static long getMaxCacheBytes(Context context) {
+        return getInstance(context).getMaxCacheBytes();
+    }
+    
+    public static void setMaxCacheMb(Context context, long mb) {
+        getInstance(context).setMaxCacheMb(mb);
+    }
+    
+    public static void clearCache(Context context) {
+        getInstance(context).clearCache();
+    }
+    
+    public static long getCacheUsageBytes(Context context) {
+        return getInstance(context).getCacheUsageBytes();
     }
 } 

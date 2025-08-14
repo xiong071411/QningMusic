@@ -26,8 +26,8 @@ import okhttp3.logging.HttpLoggingInterceptor;
 
 public class NavidromeApi {
     private static final String TAG = "NavidromeApi";
-    private static final String API_VERSION = "1.16.1";
-    private static final String CLIENT_NAME = "LiMusic";
+    private static final String API_VERSION = NavidromeClient.API_VERSION;
+    private static final String CLIENT_NAME = NavidromeClient.CLIENT_NAME;
     private static NavidromeApi instance;
 
     private final Context context;
@@ -55,16 +55,22 @@ public class NavidromeApi {
 
         client = new OkHttpClient.Builder()
                 .addInterceptor(logging)
-                .addInterceptor(chain -> {
-                    Request originalRequest = chain.request();
-                    Request requestWithUserAgent = originalRequest.newBuilder()
-                            .header("User-Agent", CLIENT_NAME)
-                            .build();
-                    return chain.proceed(requestWithUserAgent);
-                })
+                .addInterceptor(new UserAgentInterceptor())
                 .build();
 
         loadCredentials();
+    }
+
+    // 将用户代理拦截器分离成独立的类，提高可维护性
+    private static class UserAgentInterceptor implements Interceptor {
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Request originalRequest = chain.request();
+            Request requestWithUserAgent = originalRequest.newBuilder()
+                    .header("User-Agent", CLIENT_NAME)
+                    .build();
+            return chain.proceed(requestWithUserAgent);
+        }
     }
 
     private void loadCredentials() {

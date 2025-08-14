@@ -37,12 +37,12 @@ import com.watch.limusic.R;
 import com.watch.limusic.api.NavidromeApi;
 import com.watch.limusic.model.Song;
 import com.watch.limusic.cache.CacheManager;
+import com.watch.limusic.download.LocalFileDetector;
+import com.watch.limusic.util.NetworkUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import com.google.android.exoplayer2.DefaultLoadControl;
 
 public class PlayerService extends Service {
     private static final String TAG = "PlayerService";
@@ -51,6 +51,7 @@ public class PlayerService extends Service {
     public static final int PLAYBACK_MODE_REPEAT_ALL = 0;
     public static final int PLAYBACK_MODE_REPEAT_ONE = 1;
     public static final int PLAYBACK_MODE_SHUFFLE = 2;
+    public static final String ACTION_PLAYBACK_STATE_CHANGED = "com.watch.limusic.PLAYBACK_STATE_CHANGED";
 
     private final IBinder binder = new LocalBinder();
     private ExoPlayer player;
@@ -69,6 +70,7 @@ public class PlayerService extends Service {
     private List<MediaItem> mediaItems = new ArrayList<>();
     private int currentIndex = -1;
     private NavidromeApi navidromeApi;
+    private LocalFileDetector localFileDetector;
 
     public class LocalBinder extends Binder {
         public PlayerService getService() {
@@ -82,6 +84,9 @@ public class PlayerService extends Service {
         
         // 初始化Navidrome API
         navidromeApi = NavidromeApi.getInstance(this);
+
+        // 初始化本地文件检测器
+        localFileDetector = new LocalFileDetector(this);
         
         // 初始化播放器
         initializePlayer();
@@ -107,29 +112,11 @@ public class PlayerService extends Service {
         
         // 创建轨道选择器
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(context);
-        // 设置轨道选择器参数，减少内存使用
-        trackSelector.setParameters(
-            trackSelector.buildUponParameters()
-                .setForceHighestSupportedBitrate(false)  // 不强制使用最高比特率
-                .setExceedRendererCapabilitiesIfNecessary(false) // 不超过渲染器能力
-        );
-        
-        // 设置自定义加载控制，优化内存和缓冲
-        DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                DefaultLoadControl.DEFAULT_MIN_BUFFER_MS,
-                DefaultLoadControl.DEFAULT_MAX_BUFFER_MS,
-                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_MS,
-                DefaultLoadControl.DEFAULT_BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS)
-            .setPrioritizeTimeOverSizeThresholds(true)
-            .setBackBuffer(5000, false)  // 5秒后备缓冲，不保留
-            .build();
         
         // 构建播放器
         player = new ExoPlayer.Builder(context)
                 .setMediaSourceFactory(mediaSourceFactory)
                 .setTrackSelector(trackSelector)
-                .setLoadControl(loadControl)
                 .setAudioAttributes(
                     new com.google.android.exoplayer2.audio.AudioAttributes.Builder()
                         .setContentType(C.CONTENT_TYPE_MUSIC)
@@ -211,7 +198,7 @@ public class PlayerService extends Service {
                 }
                 updateNotification();
                 // 立即广播，确保UI更新标题/作者
-                sendSongChangedBroadcast();
+                sendPlaybackStateBroadcast();
             }
         });
     }
@@ -339,41 +326,16 @@ public class PlayerService extends Service {
     private void sendPlaybackStateBroadcast() {
         if (player == null) return;
         
-        Intent intent = new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED");
+        Intent intent = new Intent(ACTION_PLAYBACK_STATE_CHANGED);
         intent.putExtra("isPlaying", player.isPlaying());
         intent.putExtra("position", player.getCurrentPosition());
         intent.putExtra("duration", player.getDuration());
         intent.putExtra("playbackMode", playbackMode);
-        
-        // 只在歌曲切换或特定事件时才发送标题和艺术家信息
         if (currentSong != null) {
-            // 使用额外的标志来标记是否需要更新标题
-            boolean isSongChanged = intent.getBooleanExtra("songChanged", false);
-            
-            if (isSongChanged) {
-                intent.putExtra("title", currentSong.getTitle());
-                intent.putExtra("artist", currentSong.getArtist());
-                intent.putExtra("albumId", currentSong.getAlbumId());
-            }
+            intent.putExtra("title", currentSong.getTitle());
+            intent.putExtra("artist", currentSong.getArtist());
+            intent.putExtra("albumId", currentSong.getAlbumId());
         }
-        
-        sendBroadcast(intent);
-    }
-    
-    // 在歌曲变化时调用此方法
-    private void sendSongChangedBroadcast() {
-        if (player == null || currentSong == null) return;
-        
-        Intent intent = new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED");
-        intent.putExtra("isPlaying", player.isPlaying());
-        intent.putExtra("position", player.getCurrentPosition());
-        intent.putExtra("duration", player.getDuration());
-        intent.putExtra("playbackMode", playbackMode);
-        intent.putExtra("songChanged", true);
-        intent.putExtra("title", currentSong.getTitle());
-        intent.putExtra("artist", currentSong.getArtist());
-        intent.putExtra("albumId", currentSong.getAlbumId());
-        
         sendBroadcast(intent);
     }
     
@@ -384,8 +346,7 @@ public class PlayerService extends Service {
             // 只要UI可见就发送广播，不管是否播放
             if (isUiVisible && player != null) {
                 sendPlaybackStateBroadcast();
-                // 从1秒改为2秒更新一次，减少系统开销
-                handler.postDelayed(this, 2000);
+                handler.postDelayed(this, 1000);
             }
         }
     };
@@ -490,7 +451,7 @@ public class PlayerService extends Service {
         
         player.seekTo(currentIndex, 0);
         Log.d(TAG, "播放下一首: 索引 " + currentIndex);
-        sendSongChangedBroadcast();
+        sendPlaybackStateBroadcast();
     }
 
     public void previous() {
@@ -516,7 +477,7 @@ public class PlayerService extends Service {
         
         player.seekTo(currentIndex, 0);
         Log.d(TAG, "播放上一首: 索引 " + currentIndex);
-        sendSongChangedBroadcast();
+        sendPlaybackStateBroadcast();
     }
 
     public boolean isPlaying() {
@@ -526,28 +487,44 @@ public class PlayerService extends Service {
     public void playSong(String streamUrl, Song song) {
         // 单曲播放模式
         currentSong = song;
-        
+
         // 更新播放列表，只包含当前一首歌
         playlist.clear();
         playlist.add(song);
         currentIndex = 0;
-        
+
+        // 优先使用下载的文件
+        String playUrl = getOptimalPlayUrl(song, streamUrl);
+
         // 创建媒体项
-        MediaItem mediaItem = MediaItem.fromUri(streamUrl);
+        MediaItem mediaItem = MediaItem.fromUri(playUrl);
         player.clearMediaItems();
         player.setMediaItem(mediaItem);
         player.prepare();
-        
+
         // 应用当前播放模式
         applyPlaybackMode();
-        
+
         // 开始播放
         play();
-        
-        // 发送歌曲变化广播
-        sendSongChangedBroadcast();
-        
-        Log.d(TAG, "播放单曲: " + song.getTitle() + ", URL: " + streamUrl);
+
+        Log.d(TAG, "播放单曲: " + song.getTitle() + ", URL: " + playUrl);
+    }
+
+    /**
+     * 获取最优播放URL - 优先使用下载文件，然后是流媒体
+     */
+    private String getOptimalPlayUrl(Song song, String streamUrl) {
+        // 首先检查是否有下载的文件
+        String downloadedPath = localFileDetector.getDownloadedSongPath(song.getId());
+        if (downloadedPath != null) {
+            Log.d(TAG, "使用下载文件播放: " + song.getTitle() + " -> " + downloadedPath);
+            return "file://" + downloadedPath;
+        }
+
+        // 如果没有下载文件，使用流媒体URL
+        Log.d(TAG, "使用流媒体播放: " + song.getTitle() + " -> " + streamUrl);
+        return streamUrl;
     }
     
     // 设置并播放整个列表，startIndex为开始播放的索引
@@ -559,17 +536,66 @@ public class PlayerService extends Service {
         Log.d(TAG, "准备设置播放列表: " + songs.size() + " 首歌曲, 请求索引: " + startIndex + ", 当前播放模式: " + 
               (playbackMode == PLAYBACK_MODE_REPEAT_ALL ? "列表循环" : "单曲循环"));
         
-        // 限制加载的歌曲数量，避免内存溢出
-        List<Song> limitedSongs = songs;
-        if (songs.size() > 200) {
-            Log.w(TAG, "歌曲列表过大，限制为200首");
-            limitedSongs = songs.subList(0, 200);
+        // 记录用户点击的歌曲
+        Song clickedSong = null;
+        if (startIndex >= 0 && startIndex < songs.size()) {
+            clickedSong = songs.get(startIndex);
         }
         
-        // 保存播放列表
+        // 检查网络状态
+        boolean isNetworkAvailable = NetworkUtils.isNetworkAvailable(this);
+        
+        // 保存播放列表，如果是离线模式，只保留已缓存的歌曲
         playlist.clear();
-        playlist.addAll(limitedSongs);
-        currentIndex = Math.min(Math.max(startIndex, 0), limitedSongs.size() - 1);
+        
+        if (!isNetworkAvailable) {
+            // 离线模式：优先使用已下载的歌曲，然后是已缓存的歌曲
+            List<Song> availableSongs = new ArrayList<>();
+            for (Song song : songs) {
+                // 首先检查是否已下载
+                if (localFileDetector.isSongDownloaded(song)) {
+                    availableSongs.add(song);
+                    Log.d(TAG, "离线模式：添加已下载歌曲到播放列表: " + song.getTitle());
+                } else if (CacheManager.getInstance(this).isCached(NavidromeApi.getInstance(this).getStreamUrl(song.getId()))) {
+                    // 如果没有下载，检查是否已缓存
+                    availableSongs.add(song);
+                    Log.d(TAG, "离线模式：添加已缓存歌曲到播放列表: " + song.getTitle());
+                }
+            }
+
+            if (availableSongs.isEmpty()) {
+                Log.w(TAG, "离线模式下没有找到可播放的歌曲（已下载或已缓存），无法设置播放列表");
+                return;
+            }
+
+            // 在过滤后的列表中定位用户点击的歌曲
+            int filteredIndex = 0;
+            if (clickedSong != null) {
+                filteredIndex = -1;
+                for (int i = 0; i < availableSongs.size(); i++) {
+                    if (availableSongs.get(i).getId().equals(clickedSong.getId())) {
+                        filteredIndex = i;
+                        break;
+                    }
+                }
+                if (filteredIndex == -1) {
+                    // 用户点击的歌曲不在可用列表中，提示并返回
+                    Log.w(TAG, "离线模式下，所选歌曲不可用（未下载/未缓存）");
+                    return;
+                }
+            }
+
+            playlist.addAll(availableSongs);
+            Log.d(TAG, "离线模式：过滤后的播放列表包含 " + playlist.size() + " 首可播放歌曲");
+
+            // 使用过滤后的索引开始播放
+            startIndex = filteredIndex;
+        } else {
+            // 在线模式：使用完整列表
+            playlist.addAll(songs);
+        }
+        
+        currentIndex = Math.min(Math.max(startIndex, 0), playlist.size() - 1);
         currentSong = playlist.get(currentIndex);
         
         Log.d(TAG, "设置当前索引为: " + currentIndex + ", 歌曲: " + currentSong.getTitle());
@@ -577,8 +603,9 @@ public class PlayerService extends Service {
         // 构建媒体项列表
         List<MediaItem> items = new ArrayList<>();
         for (Song song : playlist) {
-            String url = NavidromeApi.getInstance(this).getStreamUrl(song.getId());
-            items.add(MediaItem.fromUri(url));
+            String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(song.getId());
+            String optimalUrl = getOptimalPlayUrl(song, streamUrl);
+            items.add(MediaItem.fromUri(optimalUrl));
         }
         
         // 清除之前的播放列表，添加整个新列表
@@ -603,9 +630,6 @@ public class PlayerService extends Service {
         
         // 开始播放
         play();
-        
-        // 发送歌曲变化广播
-        sendSongChangedBroadcast();
         
         Log.d(TAG, "设置播放列表: " + playlist.size() + " 首歌曲, 从索引 " + currentIndex + " 开始播放");
     }

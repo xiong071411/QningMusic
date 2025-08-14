@@ -11,7 +11,6 @@ import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.appcompat.widget.Toolbar;
 import androidx.annotation.NonNull;
 import android.view.Menu;
@@ -21,7 +20,7 @@ import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.app.AlertDialog;
+import androidx.appcompat.app.AlertDialog;
 import android.content.SharedPreferences;
 import android.view.Gravity;
 import androidx.core.view.GravityCompat;
@@ -32,7 +31,6 @@ import android.os.Build;
 import android.view.WindowManager;
 import android.view.Window;
 import android.widget.ProgressBar;
-import android.text.TextUtils;
 
 import com.bumptech.glide.Glide;
 import com.watch.limusic.adapter.SongAdapter;
@@ -43,7 +41,13 @@ import com.watch.limusic.api.SubsonicResponse;
 import com.watch.limusic.model.Album;
 import com.watch.limusic.adapter.AlbumAdapter;
 import com.watch.limusic.view.LetterIndexDialog;
-import com.watch.limusic.util.ImageLoader;
+import com.watch.limusic.database.MusicRepository;
+import com.watch.limusic.download.DownloadManager;
+import com.watch.limusic.download.LocalFileDetector;
+import com.watch.limusic.migration.DownloadSystemMigration;
+import com.watch.limusic.util.NetworkUtils;
+import androidx.localbroadcastmanager.content.LocalBroadcastManager;
+import com.watch.limusic.cache.CacheManager;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -54,14 +58,20 @@ import android.view.View;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import androidx.recyclerview.widget.DividerItemDecoration;
+import androidx.core.content.ContextCompat;
+import com.watch.limusic.model.SongWithIndex;
 
-public class MainActivity extends AppCompatActivity 
+public class MainActivity extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener,
-        SongAdapter.OnSongClickListener {
+        SongAdapter.OnSongClickListener,
+        SongAdapter.OnDownloadClickListener {
     
+    private static final String TAG = "MainActivity";
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
     private RecyclerView recyclerView;
+    private LinearLayoutManager layoutManager;
     private ImageView albumArt;
     private TextView songTitle;
     private TextView songArtist;
@@ -84,6 +94,87 @@ public class MainActivity extends AppCompatActivity
     private String originalTitle = "";
     private boolean isSeeking = false;
     private String lastAlbumId = "";
+    private MusicRepository musicRepository; // 音乐数据存储库
+    private boolean isNetworkAvailable = true; // 网络是否可用
+    private DownloadManager downloadManager; // 下载管理器
+    private LocalFileDetector localFileDetector; // 本地文件检测器
+    
+    // 检测缓存状态的广播接收器
+    private BroadcastReceiver cacheStatusReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("com.watch.limusic.CACHE_STATUS_CHANGED")) {
+                String songId = intent.getStringExtra("songId");
+                boolean isCached = intent.getBooleanExtra("isCached", false);
+                
+                // 更新适配器中的缓存状态
+                if (songAdapter != null && songId != null) {
+                    songAdapter.updateSongCacheStatus(songId, isCached);
+                }
+            }
+        }
+    };
+    
+    // 检测网络状态变化的广播接收器
+    private BroadcastReceiver networkStatusReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.getAction().equals("android.net.conn.CONNECTIVITY_CHANGE")) {
+                // 检查网络状态变化
+                boolean newNetworkStatus = NetworkUtils.isNetworkAvailable(MainActivity.this);
+                
+                // 只有当状态发生变化时才进行处理
+                if (isNetworkAvailable != newNetworkStatus) {
+                    isNetworkAvailable = newNetworkStatus;
+                    
+                    // 更新Repository中的网络状态
+                    musicRepository.setNetworkAvailable(isNetworkAvailable);
+                    
+                    // 显示网络状态变化提示
+                    String message = isNetworkAvailable ? 
+                            "网络已连接，将使用在线数据" : 
+                            "网络已断开，将使用离线数据";
+                    Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
+                    
+                    // 如果切换到了在线模式，可以刷新数据
+                    if (isNetworkAvailable && "albums".equals(currentView)) {
+                        currentOffset = 0;
+                        loadAlbums();
+                    }
+                }
+            }
+        }
+    };
+
+    private BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (action == null) return;
+            String songId = intent.getStringExtra(DownloadManager.EXTRA_SONG_ID);
+            if (songId == null || songAdapter == null) return;
+
+            switch (action) {
+                case DownloadManager.ACTION_DOWNLOAD_PROGRESS:
+                    // 仅刷新该条目以更新进度UI（若需要）
+                    int progress = intent.getIntExtra(DownloadManager.EXTRA_PROGRESS, 0);
+                    songAdapter.updateSongDownloadProgress(songId, progress);
+                    break;
+                case DownloadManager.ACTION_DOWNLOAD_COMPLETE:
+                    // 刷新该条目：按钮应切换为“已下载”图标
+                    songAdapter.updateSongDownloadStatus(songId);
+                    // 同时广播缓存状态已变化（供其他组件使用）
+                    Intent cacheIntent = new Intent("com.watch.limusic.CACHE_STATUS_CHANGED");
+                    cacheIntent.putExtra("songId", songId);
+                    cacheIntent.putExtra("isCached", true);
+                    sendBroadcast(cacheIntent);
+                    break;
+                case DownloadManager.ACTION_DOWNLOAD_FAILED:
+                    songAdapter.updateSongDownloadStatus(songId);
+                    break;
+            }
+        }
+    };
 
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
@@ -103,6 +194,10 @@ public class MainActivity extends AppCompatActivity
     };
 
     private BroadcastReceiver playbackStateReceiver = new BroadcastReceiver() {
+        // 添加一个变量来控制进度条更新频率
+        private long lastProgressUpdateTime = 0;
+        private static final long PROGRESS_UPDATE_INTERVAL = 500; // 毫秒
+
         @Override
         public void onReceive(Context context, Intent intent) {
             if (intent.getAction().equals("com.watch.limusic.PLAYBACK_STATE_CHANGED")) {
@@ -117,45 +212,57 @@ public class MainActivity extends AppCompatActivity
                 // 更新播放/暂停按钮
                 playPauseButton.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
                 
-                // 只在歌曲变化时更新歌曲信息，避免中断滚动
+                // 更新歌曲信息（只有当标题真正变化时才更新，避免重置滚动）
                 if (title != null && !title.equals(songTitle.getText().toString())) {
                     songTitle.setText(title);
-                    // 重新激活滚动效果
-                    songTitle.setSelected(false);
+                    // 重新设置滚动属性
                     songTitle.setSelected(true);
                 }
+                if (artist != null) songArtist.setText(artist);
                 
-                if (artist != null && !artist.equals(songArtist.getText().toString())) {
-                    songArtist.setText(artist);
-                }
-                
-                // 确保在非拖动状态下显示正确
-                if (!userIsSeeking) {
-                    timeDisplay.setVisibility(View.GONE);
-                    songArtist.setVisibility(View.VISIBLE);
-                }
-                
-                // 只有在用户不在拖动进度条时才更新进度
-                if (!userIsSeeking && duration > 0) {
+                // 优化进度条更新：只有在不拖动且满足更新间隔时才更新进度条
+                long currentTime = System.currentTimeMillis();
+                if (duration > 0) {
+                    // 始终更新最大值，确保进度条比例正确
                     seekBar.setMax((int) duration);
-                    seekBar.setProgress((int) position);
-                    
-                    // 确保进度条可见并更新
-                    progressBar.setVisibility(View.VISIBLE);
                     progressBar.setMax((int) duration);
+                    
+                    if (!userIsSeeking && (currentTime - lastProgressUpdateTime > PROGRESS_UPDATE_INTERVAL || position == 0)) {
+                        // 只在不拖动时更新进度
+                        seekBar.setProgress((int) position);
                     progressBar.setProgress((int) position);
+                        
+                        // 确保进度条始终可见
+                        progressBar.setVisibility(View.VISIBLE);
+                        
+                        progressBar.invalidate();
+                        lastProgressUpdateTime = currentTime;
+                    }
                 }
                 
                 // 更新播放模式按钮
                 updatePlaybackModeButton();
 
-                // 更新封面
-                if (albumId != null) {
-                    if (albumId != null && !albumId.isEmpty() && !albumId.equals(lastAlbumId)) {
-                        lastAlbumId = albumId;
-                        // 使用ImageLoader加载封面
-                        ImageLoader.loadPlayerCover(context, albumId, albumArt);
+                // 更新专辑封面（仅当albumId变化时）
+                if (albumId != null && !albumId.isEmpty() && !albumId.equals(lastAlbumId)) {
+                    lastAlbumId = albumId;
+                    String coverArtUrl = null;
+                    boolean offline = !NetworkUtils.isNetworkAvailable(context);
+                    if (offline) {
+                        String localCover = new LocalFileDetector(context).getDownloadedAlbumCoverPath(albumId);
+                        if (localCover != null) {
+                            coverArtUrl = "file://" + localCover;
+                        }
                     }
+                    if (coverArtUrl == null) {
+                        coverArtUrl = NavidromeApi.getInstance(context).getCoverArtUrl(albumId);
+                    }
+                    Glide.with(context)
+                        .load(coverArtUrl)
+                        .override(150, 150)
+                        .placeholder(R.drawable.default_album_art)
+                        .error(R.drawable.default_album_art)
+                        .into(albumArt);
                 }
             }
         }
@@ -178,6 +285,20 @@ public class MainActivity extends AppCompatActivity
         
         setContentView(R.layout.activity_main);
 
+        // 初始化Repository
+        musicRepository = MusicRepository.getInstance(this);
+
+        // 初始化下载管理器
+        downloadManager = DownloadManager.getInstance(this);
+        localFileDetector = new LocalFileDetector(this);
+
+        // 执行下载系统迁移（如果需要）
+        performDownloadSystemMigration();
+
+        // 检查网络状态
+        isNetworkAvailable = NetworkUtils.isNetworkAvailable(this);
+        musicRepository.setNetworkAvailable(isNetworkAvailable);
+
         // 初始化视图
         initViews();
         
@@ -190,65 +311,176 @@ public class MainActivity extends AppCompatActivity
         // 设置播放控制
         setupPlaybackControls();
         
-        // 注册广播接收器
-        registerReceiver(playbackStateReceiver, new IntentFilter("com.watch.limusic.PLAYBACK_STATE_CHANGED"));
+        // 检查配置，加载数据
+        checkConfiguration();
+        
+        // 注册缓存状态变化广播接收器
+        IntentFilter cacheFilter = new IntentFilter("com.watch.limusic.CACHE_STATUS_CHANGED");
+        registerReceiver(cacheStatusReceiver, cacheFilter);
+        
+        // 注册网络状态变化广播接收器
+        IntentFilter networkFilter = new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE");
+        registerReceiver(networkStatusReceiver, networkFilter);
+        
+        // 注册下载相关的本地广播
+        LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
+        lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_PROGRESS));
+        lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_FAILED));
+        
+        // 启动时预加载数据
+        preloadData();
+    }
+    
+    /**
+     * 预加载应用数据，确保离线时有数据可用
+     */
+    private void preloadData() {
+        if (isNetworkAvailable) {
+            new Thread(() -> {
+                try {
+                    // 获取数据库中的歌曲数量
+                    int songCount = musicRepository.getSongCount();
+                    Log.d(TAG, "启动时预加载 - 数据库中的歌曲数量: " + songCount);
+                    
+                    // 如果数据库中的歌曲数量太少，预加载一些歌曲
+                    if (songCount < 50) {
+                        Log.d(TAG, "启动时预加载 - 数据库中歌曲数量不足，开始预加载");
+                        
+                        // 加载所有歌曲
+                        List<Song> songs = NavidromeApi.getInstance(this).getAllSongs();
+                        if (songs != null && !songs.isEmpty()) {
+                            musicRepository.saveSongsToDatabase(songs);
+                            Log.d(TAG, "启动时预加载 - 保存了 " + songs.size() + " 首歌曲到数据库");
+                        }
+                        
+                        // 加载专辑
+                        List<Album> albums = musicRepository.getAlbums("newest", 20, 0);
+                        if (albums != null && !albums.isEmpty()) {
+                            Log.d(TAG, "启动时预加载 - 获取了 " + albums.size() + " 张专辑");
+                            
+                            // 对于每个专辑，预加载并保存其歌曲到数据库
+                            for (Album album : albums) {
+                                try {
+                                    List<Song> albumSongs = NavidromeApi.getInstance(this).getAlbumSongs(album.getId());
+                                    if (albumSongs != null && !albumSongs.isEmpty()) {
+                                        musicRepository.saveSongsToDatabase(albumSongs);
+                                        Log.d(TAG, "启动时预加载 - 保存专辑 " + album.getName() + " 的 " + albumSongs.size() + " 首歌曲");
+                                    }
+                                } catch (Exception e) {
+                                    Log.e(TAG, "启动时预加载 - 加载专辑 " + album.getName() + " 的歌曲失败", e);
+                                }
+                            }
+                        }
+                    } else {
+                        Log.d(TAG, "启动时预加载 - 数据库中已有足够歌曲，跳过预加载");
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "启动时预加载数据失败", e);
+                }
+            }).start();
+        } else {
+            Log.d(TAG, "启动时预加载 - 网络不可用，跳过预加载");
+        }
     }
 
     @Override
     protected void onStart() {
         super.onStart();
+        
         // 绑定服务
         bindService();
-        // 检查是否已配置
-        checkConfiguration();
+        
+        // 注册播放状态接收器
+        IntentFilter filter = new IntentFilter("com.watch.limusic.PLAYBACK_STATE_CHANGED");
+        registerReceiver(playbackStateReceiver, filter);
+        
+        // 设置UI可见性标志
         if (bound && playerService != null) {
             playerService.setUiVisible(true);
         }
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        
+        // 刷新歌曲缓存状态
+        if (songAdapter != null && "songs".equals(currentView)) {
+            songAdapter.refreshCacheStatus();
+        }
+        
+        // 检查网络状态并更新
+        boolean newNetworkStatus = NetworkUtils.isNetworkAvailable(this);
+        if (isNetworkAvailable != newNetworkStatus) {
+            isNetworkAvailable = newNetworkStatus;
+            musicRepository.setNetworkAvailable(isNetworkAvailable);
+        }
+        
+        // 确保数据库中有足够的歌曲数据
+        new Thread(() -> {
+            try {
+                // 获取数据库中的歌曲数量
+                int songCount = musicRepository.getSongCount();
+                Log.d(TAG, "数据库中的歌曲数量: " + songCount);
+                
+                // 如果数据库中的歌曲数量太少，并且有网络连接，则预加载一些歌曲
+                if (songCount < 10 && isNetworkAvailable) {
+                    Log.d(TAG, "数据库中歌曲数量不足，预加载歌曲");
+                    List<Song> songs = NavidromeApi.getInstance(this).getAllSongs();
+                    if (songs != null && !songs.isEmpty()) {
+                        musicRepository.saveSongsToDatabase(songs);
+                        Log.d(TAG, "预加载了 " + songs.size() + " 首歌曲到数据库");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "预加载歌曲失败", e);
+            }
+        }).start();
+    }
+
+    @Override
     protected void onStop() {
         super.onStop();
+        
+        // 取消注册播放状态接收器
+        try {
+            unregisterReceiver(playbackStateReceiver);
+        } catch (IllegalArgumentException e) {
+            // 接收器可能未注册，忽略
+        }
+        
+        // 设置UI不可见标志
         if (bound && playerService != null) {
             playerService.setUiVisible(false);
-        }
-        // 解绑服务
-        if (bound) {
-            unbindService(connection);
-            bound = false;
         }
     }
 
     private void initViews() {
+        // 初始化视图
         drawerLayout = findViewById(R.id.drawer_layout);
         navigationView = findViewById(R.id.nav_view);
         recyclerView = findViewById(R.id.recycler_view);
         albumArt = findViewById(R.id.album_art);
         songTitle = findViewById(R.id.song_title);
         songArtist = findViewById(R.id.song_artist);
-        timeDisplay = findViewById(R.id.time_display);
         playPauseButton = findViewById(R.id.btn_play_pause);
         repeatModeButton = findViewById(R.id.btn_repeat_mode);
         seekBar = findViewById(R.id.seek_bar);
         progressBar = findViewById(R.id.progress_bar);
         toolbar = findViewById(R.id.toolbar);
-        
-        // 设置歌曲标题滚动效果
-        songTitle.setSelected(true);  // 激活滚动效果
-        songTitle.setEllipsize(TextUtils.TruncateAt.MARQUEE);  // 设置省略模式为跑马灯
-        songTitle.setSingleLine(true);  // 确保单行显示
-        songTitle.setMarqueeRepeatLimit(-1);  // 无限循环
-        songTitle.setHorizontalFadingEdgeEnabled(true);  // 启用水平边缘淡化效果
+        timeDisplay = findViewById(R.id.time_display);
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-            getSupportActionBar().setHomeButtonEnabled(true);
-            // 设置更简洁的标题
-            getSupportActionBar().setTitle("LiMusic");
-            // 隐藏副标题
-            getSupportActionBar().setSubtitle(null);
+            getSupportActionBar().setTitle("专辑");
         }
+        
+        // 设置导航视图监听器
+        navigationView.setNavigationItemSelectedListener(this);
+        
+        // 设置标题滚动效果
+        setupTitleScrolling();
     }
 
     private void setupDrawer() {
@@ -273,28 +505,43 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void setupRecyclerView() {
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        // 初始化布局为线性布局，用于专辑视图
+        layoutManager = new LinearLayoutManager(this);
         recyclerView.setLayoutManager(layoutManager);
         
-        // 添加分隔线
-        DividerItemDecoration dividerItemDecoration = new DividerItemDecoration(
-                recyclerView.getContext(), layoutManager.getOrientation());
-        dividerItemDecoration.setDrawable(getResources().getDrawable(R.drawable.list_divider));
-        recyclerView.addItemDecoration(dividerItemDecoration);
-        
-        // 设置RecyclerView的缓存池，提高滚动性能，减少GC频率
+        // 优化RecyclerView性能
+        recyclerView.setHasFixedSize(true);
         recyclerView.setItemViewCacheSize(20);
         recyclerView.setDrawingCacheEnabled(true);
         recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
         
+        // 添加分割线
+        DividerItemDecoration divider = new DividerItemDecoration(this, layoutManager.getOrientation());
+        divider.setDrawable(ContextCompat.getDrawable(this, R.drawable.list_divider));
+        recyclerView.addItemDecoration(divider);
+        
         // 初始化适配器
         albumAdapter = new AlbumAdapter(this);
         songAdapter = new SongAdapter(this, this);
+
+        // 设置下载监听器
+        songAdapter.setOnDownloadClickListener(this);
         
         // 设置专辑点击事件
-        albumAdapter.setOnAlbumClickListener(album -> loadAlbumSongs(album.getId()));
+        albumAdapter.setOnAlbumClickListener(album -> {
+            Log.d(TAG, "专辑点击监听器触发: " + album.getName() + ", ID: " + album.getId());
+            
+            // 确保专辑ID不为空
+            if (album.getId() == null || album.getId().isEmpty()) {
+                Toast.makeText(this, "专辑ID无效，无法加载歌曲", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            
+            // 加载专辑歌曲
+            loadAlbumSongs(album.getId());
+        });
         
-        // 设置滚动监听来处理分页加载
+        // 设置滚动监听
         recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(@NonNull RecyclerView recyclerView, int dx, int dy) {
@@ -312,9 +559,6 @@ public class MainActivity extends AppCompatActivity
             }
         });
         
-        // 添加滚动时暂停图片加载的监听器
-        ImageLoader.setupRecyclerViewScrollListener(recyclerView, this);
-        
         // 默认显示专辑列表
         recyclerView.setAdapter(albumAdapter);
     }
@@ -323,44 +567,51 @@ public class MainActivity extends AppCompatActivity
         // 为整个播放控制区域添加点击监听器，防止点击事件穿透到下面的列表
         View playerControls = findViewById(R.id.player_controls);
         playerControls.setOnClickListener(v -> {
-            // 不做任何事情，仅防止点击穿透
+            // 点击播放控制区域时不做任何操作，只是消费点击事件
         });
         
-        // 确保进度条可见
+        // 防止边缘滑动手势冲突
+        View seekBarContainer = findViewById(R.id.seek_bar_container);
+        seekBarContainer.setOnTouchListener((v, event) -> {
+            // 消费所有触摸事件，防止它们传递到系统
+            return true;
+        });
+        
+        // 确保进度条可见，并明确设置为0进度
         progressBar.setVisibility(View.VISIBLE);
+        progressBar.setProgress(0);
+        progressBar.invalidate();
         
-        // 播放/暂停按钮点击事件
-        playPauseButton.setOnClickListener(v -> togglePlayback());
+        // 设置播放/暂停按钮点击事件
+        playPauseButton.setOnClickListener(v -> {
+            v.setPressed(true);
+            togglePlayback();
+        });
         
-        // 循环模式按钮点击事件
         repeatModeButton.setOnClickListener(v -> {
+            v.setPressed(true);
             if (bound && playerService != null) {
                 playerService.togglePlaybackMode();
                 updatePlaybackModeButton();
             }
         });
-        
-        // 进度条拖动事件
+
+        // 增强歌曲标题滚动效果
+        setupTitleScrolling();
+
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            private boolean shouldUpdatePlayer = true;
+            
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
                 if (fromUser) {
-                    // 将当前进度时间显示在艺术家位置
-                    userIsSeeking = true;
-                    
-                    // 保存原始标题
-                    if (originalTitle.isEmpty()) {
-                        originalTitle = songArtist.getText().toString();
-                    }
-                    
-                    // 显示拖动时间而不是艺术家名称
-                    long duration = bound && playerService != null ? playerService.getDuration() : 0;
-                    songArtist.setVisibility(View.INVISIBLE); // 隐藏艺术家文本
-                    timeDisplay.setText(formatTime(progress) + " / " + formatTime(duration));
-                    timeDisplay.setVisibility(View.VISIBLE);
-                    
-                    // 同步更新ProgressBar
+                    // 只更新UI进度条，不立即更新播放器进度
                     progressBar.setProgress(progress);
+                    
+                    // 更新时间显示
+                    if (isSeeking && bound && playerService != null) {
+                        updateTimeDisplay(progress, playerService.getDuration());
+                    }
                 }
             }
 
@@ -368,29 +619,40 @@ public class MainActivity extends AppCompatActivity
             public void onStartTrackingTouch(SeekBar seekBar) {
                 userIsSeeking = true;
                 isSeeking = true;
+                shouldUpdatePlayer = true;
                 
-                // 保存原始标题
-                if (originalTitle.isEmpty()) {
-                    originalTitle = songArtist.getText().toString();
-                }
+                // 隐藏艺术家名称
+                songArtist.setVisibility(View.GONE);
                 
-                // 显示时间而不是艺术家名称
-                songArtist.setVisibility(View.INVISIBLE); // 隐藏艺术家文本
+                // 显示时间文本
                 timeDisplay.setVisibility(View.VISIBLE);
+                timeDisplay.setText("00:00 / 00:00");
+                
+                if (bound && playerService != null) {
+                    updateTimeDisplay(playerService.getCurrentPosition(), playerService.getDuration());
+                }
             }
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
                 userIsSeeking = false;
                 isSeeking = false;
-                timeDisplay.setVisibility(View.GONE);
-                songArtist.setVisibility(View.VISIBLE); // 恢复显示艺术家文本
                 
+                // 隐藏时间文本
+                timeDisplay.setVisibility(View.GONE);
+                
+                // 恢复显示艺术家名称
+                songArtist.setVisibility(View.VISIBLE);
+                
+                // 仅在拖动结束时更新播放器进度，提高滑动流畅性
                 if (bound && playerService != null) {
                     int progress = seekBar.getProgress();
                     playerService.seekTo(progress);
-                    // 同步更新ProgressBar
+                    
+                    // 更新进度条，确保始终可见
                     progressBar.setProgress(progress);
+                    progressBar.setVisibility(View.VISIBLE);
+                    progressBar.invalidate();
                 }
             }
         });
@@ -436,21 +698,44 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void updatePlaybackState() {
-        if (bound && playerService != null) {
+        if (bound) {
             boolean isPlaying = playerService.isPlaying();
             playPauseButton.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
             
             songTitle.setText(playerService.getCurrentTitle());
             songArtist.setText(playerService.getCurrentArtist());
             
-            // 加载当前歌曲的专辑封面
-            Song currentSong = playerService.getCurrentSong();
-            if (currentSong != null && currentSong.getAlbumId() != null) {
-                String coverArtUrl = currentSong.getAlbumId();
+            // 更新专辑封面
+            if (playerService.getCurrentSong() != null) {
+                Song currentSong = playerService.getCurrentSong();
+                
+                // 更新专辑封面
+                String coverArtUrl = null;
+                
+                Log.d("MainActivity", "更新封面 - 歌曲: " + currentSong.getTitle());
+                Log.d("MainActivity", "更新封面 - 专辑ID: " + (currentSong.getAlbumId() != null ? currentSong.getAlbumId() : "null"));
+                Log.d("MainActivity", "更新封面 - 封面URL: " + (currentSong.getCoverArtUrl() != null ? currentSong.getCoverArtUrl() : "null"));
+                
+                // 优先使用专辑ID获取封面
+                if (currentSong.getAlbumId() != null && !currentSong.getAlbumId().isEmpty()) {
+                    coverArtUrl = NavidromeApi.getInstance(this).getCoverArtUrl(currentSong.getAlbumId());
+                    Log.d("MainActivity", "使用专辑ID获取封面: " + coverArtUrl);
+                } 
+                // 如果没有专辑ID但有封面URL，则使用封面URL
+                else if (currentSong.getCoverArtUrl() != null && !currentSong.getCoverArtUrl().isEmpty()) {
+                    coverArtUrl = currentSong.getCoverArtUrl();
+                    Log.d("MainActivity", "使用封面URL: " + coverArtUrl);
+                }
+                
+                // 加载封面
                 if (coverArtUrl != null) {
                     Log.d("MainActivity", "加载封面: " + coverArtUrl);
-                    // 使用ImageLoader加载封面
-                    ImageLoader.loadPlayerCover(this, coverArtUrl, albumArt);
+                    Glide.with(this)
+                        .load(coverArtUrl)
+                        .override(150, 150)
+                        .placeholder(R.drawable.default_album_art)
+                        .error(R.drawable.default_album_art)
+                        .into(albumArt);
                 } else {
                     Log.d("MainActivity", "没有封面URL，使用默认封面");
                     albumArt.setImageResource(R.drawable.default_album_art);
@@ -474,6 +759,18 @@ public class MainActivity extends AppCompatActivity
                     return;
                 }
                 
+                // 在离线模式下，检查歌曲是否已离线可用（已下载优先，其次缓存）
+                if (!isNetworkAvailable) {
+                    boolean isDownloaded = localFileDetector.isSongDownloaded(song);
+                    boolean isCached = CacheManager.getInstance(this).isCached(NavidromeApi.getInstance(this).getStreamUrl(song.getId()));
+                    if (!(isDownloaded || isCached)) {
+                        Toast.makeText(this, "离线模式下只能播放已缓存的歌曲", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "离线模式下尝试播放未缓存的歌曲: " + song.getTitle());
+                        return;
+                    }
+                    Log.d(TAG, "离线模式下播放可用歌曲(下载/缓存): " + song.getTitle());
+                }
+                
                 // 显示加载提示
                 Toast.makeText(this, "正在加载: " + song.getTitle(), Toast.LENGTH_SHORT).show();
                 
@@ -491,8 +788,22 @@ public class MainActivity extends AppCompatActivity
                 
                 // 预先加载封面
                 if (song.getAlbumId() != null && !song.getAlbumId().isEmpty()) {
-                    // 使用ImageLoader加载封面
-                    ImageLoader.loadPlayerCover(this, song.getAlbumId(), albumArt);
+                    String coverArtUrl = null;
+                    if (!isNetworkAvailable) {
+                        String localCover = new LocalFileDetector(this).getDownloadedAlbumCoverPath(song.getAlbumId());
+                        if (localCover != null) {
+                            coverArtUrl = "file://" + localCover;
+                        }
+                    }
+                    if (coverArtUrl == null) {
+                        coverArtUrl = NavidromeApi.getInstance(this).getCoverArtUrl(song.getAlbumId());
+                    }
+                    Glide.with(this)
+                        .load(coverArtUrl)
+                        .override(150, 150)
+                        .placeholder(R.drawable.default_album_art)
+                        .error(R.drawable.default_album_art)
+                        .into(albumArt);
                 }
                 
                 // 设置整个播放列表，并从选中的歌曲开始播放
@@ -541,12 +852,6 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         int id = item.getItemId();
         
-        // 确保播放控制栏可见
-        View playerControls = findViewById(R.id.player_controls);
-        if (playerControls != null && bound && playerService != null) {
-            playerControls.setVisibility(View.VISIBLE);
-        }
-        
         if (id == R.id.nav_all_songs) {
             currentView = "songs";
             loadAllSongs();
@@ -570,6 +875,10 @@ public class MainActivity extends AppCompatActivity
             loadAlbums();
             // 通知系统更新菜单
             invalidateOptionsMenu();
+            // 确保播放进度条可见
+            ensureProgressBarVisible();
+        } else if (id == R.id.nav_downloads) {
+            startActivity(new Intent(this, DownloadSettingsActivity.class));
         } else if (id == R.id.nav_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
         } else if (id == R.id.nav_about) {
@@ -581,97 +890,268 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void loadAlbums() {
-        currentOffset = 0;
+        if (isLoading) return;
+        
+        // 重置状态和列表
         hasMoreData = true;
+        currentOffset = 0;
+        
+        // 显示加载中
+        progressBar.setVisibility(View.VISIBLE);
         isLoading = true;
-
-        SharedPreferences prefs = getSharedPreferences("navidrome_settings", MODE_PRIVATE);
-        String serverUrl = prefs.getString("server_url", "");
-        if (serverUrl.isEmpty()) {
-            Toast.makeText(this, R.string.error_no_server, Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, SettingsActivity.class));
-            return;
-        }
-
-        Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
-
-        // 减少首次加载数量，提高加载速度，减少内存占用
-        final int initialLoadSize = 30;  // 首次只加载30张专辑
-
+        
+        // 使用Repository加载专辑
         new Thread(() -> {
             try {
-                NavidromeApi api = NavidromeApi.getInstance(this);
-                SubsonicResponse<List<Album>> response = api.getAlbumList("newest", initialLoadSize, 0);
+                final List<Album> albums = musicRepository.getAlbums("newest", PAGE_SIZE, currentOffset);
+                
+                // 确保专辑数据被保存到数据库
+                if (isNetworkAvailable && albums != null && !albums.isEmpty()) {
+                    // 对于每个专辑，预先加载并保存其歌曲到数据库
+                    for (Album album : albums) {
+                        try {
+                            List<Song> songs = NavidromeApi.getInstance(this).getAlbumSongs(album.getId());
+                            if (songs != null && !songs.isEmpty()) {
+                                musicRepository.saveSongsToDatabase(songs);
+                                Log.d(TAG, "预加载并保存专辑 " + album.getName() + " 的歌曲: " + songs.size() + " 首");
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "预加载专辑 " + album.getName() + " 的歌曲失败", e);
+                        }
+                    }
+                }
                 
                 runOnUiThread(() -> {
-                    isLoading = false;
-                    if (response != null && response.isSuccess() && response.getData() != null) {
-                        albumAdapter.submitList(response.getData());
-                        // 如果首次加载数量小于请求数量，说明没有更多数据
-                        hasMoreData = response.getData().size() >= initialLoadSize;
+                    if (albums != null && !albums.isEmpty()) {
+                        // 更新UI
+                        currentView = "albums";
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("专辑");
+        }
+        
+                        // 设置适配器
+                        if (albumAdapter == null) {
+                            albumAdapter = new AlbumAdapter(MainActivity.this);
+                            albumAdapter.setOnAlbumClickListener(album -> {
+                                Log.d(TAG, "专辑点击监听器触发: " + album.getName() + ", ID: " + album.getId());
+                                
+                                // 确保专辑ID不为空
+                                if (album.getId() == null || album.getId().isEmpty()) {
+                                    Toast.makeText(this, "专辑ID无效，无法加载歌曲", Toast.LENGTH_SHORT).show();
+                                    return;
+                                }
+                                
+                                // 加载专辑歌曲
+                                loadAlbumSongs(album.getId());
+                            });
+                        recyclerView.setAdapter(albumAdapter);
+                        }
+                        
+                        // 更新数据
+                        albumAdapter.setAlbums(albums);
+                        
+                        // 在线时预取专辑封面，供离线显示
+                        if (isNetworkAvailable) {
+                            new Thread(() -> prefetchAlbumCovers(albums)).start();
+                        }
+                        
+                        // 更新加载状态
+                        currentOffset += albums.size();
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                        
+                        // 检查是否还有更多数据
+                        hasMoreData = albums.size() >= PAGE_SIZE;
                     } else {
-                        String error = response != null ? response.getError() : getString(R.string.error_server);
-                        Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
+                        // 没有数据或发生错误
+                        Toast.makeText(MainActivity.this, "没有专辑或加载失败", Toast.LENGTH_SHORT).show();
+                        isLoading = false;
+                        progressBar.setVisibility(View.GONE);
+                    }
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "加载专辑失败", e);
+                
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "加载专辑失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                    isLoading = false;
+                    progressBar.setVisibility(View.GONE);
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
+                });
+            }
+        }).start();
+    }
+    
+    // 在后台预加载更多数据，不阻塞UI
+    private void loadMoreAlbumsInBackground() {
+        new Thread(() -> {
+            try {
+                Thread.sleep(1000); // 稍微延迟，让UI先响应
+                
+                SubsonicResponse<List<Album>> response = NavidromeApi.getInstance(MainActivity.this)
+                        .getAlbumList("newest", PAGE_SIZE - 20, currentOffset);
+                
+                runOnUiThread(() -> {
+                    if (response != null && response.getData() != null && !response.getData().isEmpty()) {
+                        albumAdapter.addAlbums(response.getData());
+                        currentOffset += response.getData().size();
+                        hasMoreData = response.getData().size() >= (PAGE_SIZE - 20);
                     }
                 });
-            } catch (IOException e) {
+            } catch (Exception e) {
                 e.printStackTrace();
+            }
+        }).start();
+    }
+    
+    // 滚动时加载更多专辑
+    private void loadMoreAlbums() {
+        if (isLoading || !hasMoreData) return;
+        
+        // 显示加载中
+        progressBar.setVisibility(View.VISIBLE);
+        isLoading = true;
+        
+        // 使用Repository加载更多专辑
+        new Thread(() -> {
+            try {
+                final List<Album> moreAlbums = musicRepository.getAlbums("newest", PAGE_SIZE, currentOffset);
+                
                 runOnUiThread(() -> {
+                    if (moreAlbums != null && !moreAlbums.isEmpty()) {
+                        // 添加到现有专辑列表
+                        albumAdapter.addAlbums(moreAlbums);
+                        if (isNetworkAvailable) {
+                            new Thread(() -> prefetchAlbumCovers(moreAlbums)).start();
+                        }
+                        
+                        // 更新加载状态
+                        currentOffset += moreAlbums.size();
+                        hasMoreData = moreAlbums.size() >= PAGE_SIZE;
+                    } else {
+                        // 没有更多数据
+                        hasMoreData = false;
+                    }
+                    
+                    // 重置加载状态
                     isLoading = false;
-                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show();
+                    progressBar.setVisibility(View.GONE);
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
+                });
+            } catch (Exception e) {
+                Log.e(TAG, "加载更多专辑失败", e);
+                
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "加载更多专辑失败", Toast.LENGTH_SHORT).show();
+                    isLoading = false;
+                    progressBar.setVisibility(View.GONE);
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
                 });
             }
         }).start();
     }
 
     private void loadAlbumSongs(String albumId) {
-        // 显示加载提示和进度条
-        Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
+        // 显示加载中
         progressBar.setVisibility(View.VISIBLE);
         
-        // 确保播放控制栏可见
-        View playerControls = findViewById(R.id.player_controls);
-        if (playerControls != null) {
-            playerControls.setVisibility(View.VISIBLE);
-        }
-        
+        // 使用Repository加载专辑歌曲
         new Thread(() -> {
             try {
-                NavidromeApi api = NavidromeApi.getInstance(this);
-                List<Song> songs = api.getAlbumSongs(albumId);
+                final List<Song> songs = musicRepository.getAlbumSongs(albumId);
                 
                 runOnUiThread(() -> {
-                    // 隐藏进度条
+                    if (songs != null && !songs.isEmpty()) {
+                        // 更新UI
+                        currentView = "album_songs";  // 使用特定标识，区分普通歌曲列表
+                        if (getSupportActionBar() != null) {
+                            getSupportActionBar().setTitle(songs.get(0).getAlbum());
+                        }
+                        
+                        // 设置适配器
+                        if (songAdapter == null) {
+                            songAdapter = new SongAdapter(MainActivity.this, this);
+                        }
+                        
+                        // 显式设置RecyclerView的适配器为歌曲适配器
+                        recyclerView.setAdapter(songAdapter);
+                        
+                        // 更新数据
+                        songAdapter.processAndSubmitList(songs);
+                        
+                        // 通知系统更新菜单
+                        invalidateOptionsMenu();
+                        
+                        // 记录日志
+                        Log.d(TAG, "专辑歌曲加载成功: " + songs.size() + " 首歌曲, 专辑ID: " + albumId);
+                    } else {
+                        Toast.makeText(MainActivity.this, "没有找到歌曲或加载失败", Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "专辑歌曲加载失败: 没有找到歌曲, 专辑ID: " + albumId);
+                        
+                        // 如果有网络，尝试直接从API加载
+                        if (isNetworkAvailable) {
+                            Log.d(TAG, "尝试直接从API加载专辑歌曲: " + albumId);
+                            try {
+                                List<Song> apiSongs = NavidromeApi.getInstance(MainActivity.this).getAlbumSongs(albumId);
+                                if (apiSongs != null && !apiSongs.isEmpty()) {
+                                    // 保存到数据库
+                                    musicRepository.saveSongsToDatabase(apiSongs);
+                                    
+                                    // 更新UI
+                                    currentView = "album_songs";
+                                    if (getSupportActionBar() != null) {
+                                        getSupportActionBar().setTitle(apiSongs.get(0).getAlbum());
+                                    }
+                                    
+                                    // 设置适配器
+                                    if (songAdapter == null) {
+                                        songAdapter = new SongAdapter(MainActivity.this, MainActivity.this);
+                                    }
+                                    
+                                    // 显式设置RecyclerView的适配器为歌曲适配器
+                                    recyclerView.setAdapter(songAdapter);
+                                    
+                                    // 更新数据
+                                    songAdapter.processAndSubmitList(apiSongs);
+                                    
+                                    // 通知系统更新菜单
+                                    invalidateOptionsMenu();
+                                    
+                                    Log.d(TAG, "直接从API加载专辑歌曲成功: " + apiSongs.size() + " 首");
+                                    Toast.makeText(MainActivity.this, "加载成功: " + apiSongs.size() + " 首歌曲", Toast.LENGTH_SHORT).show();
+                                } else {
+                                    Log.d(TAG, "直接从API加载专辑歌曲失败: 没有找到歌曲");
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "直接从API加载专辑歌曲失败", e);
+                            }
+                        }
+                    }
+                    
+                    // 隐藏加载中
                     progressBar.setVisibility(View.GONE);
                     
-                    if (songs != null && !songs.isEmpty()) {
-                        // 限制处理的歌曲数量，避免在长专辑中处理过多歌曲
-                        int maxSongsToProcess = Math.min(songs.size(), 200);
-                        List<Song> processedSongs = songs.subList(0, maxSongsToProcess);
-                        
-                        currentView = "songs";
-                        recyclerView.setAdapter(songAdapter);
-                        songAdapter.setShowCoverArt(true);  // 显示封面
-                        songAdapter.processAndSubmitList(processedSongs);
-                        
-                        // 确保播放控制栏可见
-                        if (playerControls != null) {
-                            playerControls.setVisibility(View.VISIBLE);
-                        }
-                        
-                        // 如果有截断，提示用户
-                        if (songs.size() > maxSongsToProcess) {
-                            Toast.makeText(this, "已加载前" + maxSongsToProcess + "首歌曲", Toast.LENGTH_SHORT).show();
-                        }
-                    } else {
-                        Toast.makeText(this, R.string.error_no_songs, Toast.LENGTH_SHORT).show();
-                    }
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
                 });
-            } catch (IOException e) {
-                e.printStackTrace();
+            } catch (Exception e) {
+                Log.e(TAG, "加载专辑歌曲失败", e);
+                
                 runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "加载歌曲失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
                     progressBar.setVisibility(View.GONE);
-                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show();
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
                 });
             }
         }).start();
@@ -697,63 +1177,35 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void loadMoreAlbums() {
-        if (isLoading || !hasMoreData) return;
-        
-        isLoading = true;
-        currentOffset += PAGE_SIZE;
-        
-        new Thread(() -> {
-            try {
-                NavidromeApi api = NavidromeApi.getInstance(this);
-                SubsonicResponse<List<Album>> response = api.getAlbumList("newest", PAGE_SIZE, currentOffset);
-                
-                runOnUiThread(() -> {
-                    isLoading = false;
-                    if (response != null && response.isSuccess() && response.getData() != null) {
-                        List<Album> newAlbums = response.getData();
-                        if (newAlbums.isEmpty()) {
-                            hasMoreData = false;
-                        } else {
-                            // 创建一个包含旧数据和新数据的新列表
-                            List<Album> currentList = new ArrayList<>(albumAdapter.getCurrentList());
-                            currentList.addAll(newAlbums);
-                            albumAdapter.submitList(currentList);
-                            
-                            // 设置加载更多状态
-                            hasMoreData = newAlbums.size() >= PAGE_SIZE;
-                        }
-                    }
-                });
-            } catch (IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() -> {
-                    isLoading = false;
-                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show();
-                });
-            }
-        }).start();
-    }
-
     private void loadAllSongs() {
         Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
         
-        // 确保播放控制栏可见
-        View playerControls = findViewById(R.id.player_controls);
-        if (playerControls != null && bound && playerService != null) {
-            playerControls.setVisibility(View.VISIBLE);
-        }
-        
         new Thread(() -> {
             try {
-                NavidromeApi api = NavidromeApi.getInstance(this);
-                List<Song> songs = api.getAllSongs();
+                List<Song> songs;
                 
-                runOnUiThread(() -> {
+                if (isNetworkAvailable) {
+                    // 有网络时从API获取
+                NavidromeApi api = NavidromeApi.getInstance(this);
+                    songs = api.getAllSongs();
+                
+                    // 确保歌曲数据被保存到数据库
                     if (songs != null && !songs.isEmpty()) {
+                        musicRepository.saveSongsToDatabase(songs);
+                        Log.d(TAG, "成功保存 " + songs.size() + " 首歌曲到数据库");
+                    }
+                } else {
+                    // 无网络时从数据库获取
+                    songs = musicRepository.getAllSongsFromDatabase();
+                    Log.d(TAG, "从数据库加载歌曲: " + (songs != null ? songs.size() : 0) + " 首");
+                }
+                
+                final List<Song> finalSongs = songs;
+                runOnUiThread(() -> {
+                    if (finalSongs != null && !finalSongs.isEmpty()) {
                         recyclerView.setAdapter(songAdapter);
                         songAdapter.setShowCoverArt(false);  // 不显示封面
-                        songAdapter.processAndSubmitList(songs);
+                        songAdapter.processAndSubmitList(finalSongs);
                         
                         // 设置Toolbar标题
                         if (getSupportActionBar() != null) {
@@ -763,19 +1215,23 @@ public class MainActivity extends AppCompatActivity
                         // 更新菜单状态
                         invalidateOptionsMenu();
                         
-                        // 再次确保播放控制栏可见
-                        if (playerControls != null) {
-                            playerControls.setVisibility(View.VISIBLE);
-                        }
+                        Log.d(TAG, "显示所有歌曲: " + finalSongs.size() + " 首");
                     } else {
                         Toast.makeText(this, R.string.error_no_songs, Toast.LENGTH_SHORT).show();
+                        Log.d(TAG, "没有找到歌曲");
                     }
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
                 });
-            } catch (IOException e) {
-                e.printStackTrace();
-                runOnUiThread(() -> 
-                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show()
-                );
+            } catch (Exception e) {
+                Log.e(TAG, "加载歌曲失败", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show();
+                    
+                    // 确保播放进度条可见
+                    ensureProgressBarVisible();
+                });
             }
         }).start();
     }
@@ -792,8 +1248,39 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        // 注销广播接收器
-        unregisterReceiver(playbackStateReceiver);
+        
+        // 取消绑定服务
+        if (bound) {
+            unbindService(connection);
+            bound = false;
+        }
+        
+        // 取消注册缓存状态接收器
+        try {
+            unregisterReceiver(cacheStatusReceiver);
+        } catch (IllegalArgumentException e) {
+            // 接收器可能未注册，忽略
+        }
+        
+        // 取消注册网络状态接收器
+        try {
+            unregisterReceiver(networkStatusReceiver);
+        } catch (IllegalArgumentException e) {
+            // 接收器可能未注册，忽略
+        }
+        // 取消注册下载相关的本地广播
+        try {
+            LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
+            lbm.unregisterReceiver(downloadReceiver);
+        } catch (Exception ignore) {}
+    }
+
+    // 确保播放进度条可见的方法
+    private void ensureProgressBarVisible() {
+        if (progressBar != null) {
+            progressBar.setVisibility(View.VISIBLE);
+            progressBar.invalidate();
+        }
     }
 
     // 更新时间显示
@@ -847,4 +1334,124 @@ public class MainActivity extends AppCompatActivity
         });
         dialog.show();
     }
-} 
+
+    // 增强歌曲标题滚动效果的专用方法
+    private void setupTitleScrolling() {
+        // 开启无限滚动
+        songTitle.setSelected(true);
+        songTitle.setEllipsize(android.text.TextUtils.TruncateAt.MARQUEE);
+        songTitle.setSingleLine(true);
+        songTitle.setMarqueeRepeatLimit(-1); // 无限循环滚动
+        songTitle.setHorizontalFadingEdgeEnabled(true); // 启用淡入淡出边缘效果
+
+        // 增加滚动的稳定性
+        songTitle.setFreezesText(true);
+    }
+
+    // 实现下载监听器接口
+    @Override
+    public void onDownloadClick(Song song) {
+        Log.d(TAG, "开始下载歌曲: " + song.getTitle());
+        downloadManager.downloadSong(song);
+        Toast.makeText(this, "开始下载: " + song.getTitle(), Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onDeleteDownloadClick(Song song) {
+        new AlertDialog.Builder(this)
+                .setTitle("删除下载")
+                .setMessage("确定要删除已下载的歌曲 \"" + song.getTitle() + "\" 吗？")
+                .setPositiveButton("确定", (dialog, which) -> {
+                    boolean deleted = downloadManager.deleteDownload(song.getId());
+                    if (deleted) {
+                        Toast.makeText(this, "已删除: " + song.getTitle(), Toast.LENGTH_SHORT).show();
+                        // 更新UI显示
+                        if (songAdapter != null) {
+                            songAdapter.updateSongDownloadStatus(song.getId());
+                        }
+                    } else {
+                        Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .setNegativeButton("取消", null)
+                .show();
+    }
+
+    /**
+     * 执行下载系统迁移
+     */
+    private void performDownloadSystemMigration() {
+        new Thread(() -> {
+            try {
+                DownloadSystemMigration migration = new DownloadSystemMigration(this);
+
+                if (migration.needsMigration()) {
+                    Log.i(TAG, "检测到需要执行下载系统迁移");
+
+                    DownloadSystemMigration.MigrationResult result = migration.performMigration();
+
+                    runOnUiThread(() -> {
+                        if (result.overallSuccess) {
+                            Log.i(TAG, "下载系统迁移成功完成");
+                            // 可以选择显示成功消息给用户
+                        } else {
+                            Log.w(TAG, "下载系统迁移失败: " + result);
+                            // 可以选择显示警告消息给用户
+                        }
+                    });
+                } else {
+                    Log.d(TAG, "下载系统迁移已完成，无需重复执行");
+                }
+
+                // 检查兼容性状态
+                DownloadSystemMigration.CompatibilityStatus status = migration.getCompatibilityStatus();
+                Log.d(TAG, "下载系统兼容性状态: " + status);
+
+            } catch (Exception e) {
+                Log.e(TAG, "执行下载系统迁移时发生错误", e);
+            }
+        }).start();
+    }
+
+    // 预取并保存专辑封面
+    private void prefetchAlbumCovers(List<Album> albums) {
+        try {
+            LocalFileDetector detector = new LocalFileDetector(this);
+            for (Album album : albums) {
+                String albumId = album.getId();
+                if (albumId == null || albumId.isEmpty()) continue;
+                // 已存在跳过
+                if (detector.getDownloadedAlbumCoverPath(albumId) != null) continue;
+                try {
+                    // 复用 DownloadManager 的封面下载逻辑，通过HTTP保存
+                    String coverUrl = NavidromeApi.getInstance(this).getCoverArtUrl(
+                            album.getCoverArt() != null && !album.getCoverArt().isEmpty() ? album.getCoverArt() : albumId
+                    );
+                    if (coverUrl == null || coverUrl.isEmpty()) continue;
+                    java.net.URL url = new java.net.URL(coverUrl);
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                    conn.setConnectTimeout(10000);
+                    conn.setReadTimeout(30000);
+                    conn.connect();
+                    if (conn.getResponseCode() != java.net.HttpURLConnection.HTTP_OK) {
+                        conn.disconnect();
+                        continue;
+                    }
+                    java.io.File coversDir = new java.io.File(getExternalFilesDir(null), "downloads/covers");
+                    if (!coversDir.exists()) coversDir.mkdirs();
+                    java.io.File outFile = new java.io.File(coversDir, albumId + ".jpg");
+                    try (java.io.InputStream in = conn.getInputStream();
+                         java.io.FileOutputStream out = new java.io.FileOutputStream(outFile)) {
+                        byte[] buf = new byte[8192];
+                        int len;
+                        while ((len = in.read(buf)) != -1) {
+                            out.write(buf, 0, len);
+                        }
+                    } finally {
+                        conn.disconnect();
+                    }
+                } catch (Exception ignore) {}
+            }
+        } catch (Exception ignoreOuter) {}
+    }
+}

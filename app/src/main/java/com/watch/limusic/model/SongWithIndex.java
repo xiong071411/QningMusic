@@ -12,10 +12,16 @@ public class SongWithIndex implements Comparable<SongWithIndex> {
     private int position; // 排序后的位置
     private final String sortLetter; // 排序用的首字母
     private String displayNumber; // 显示的编号，如 "01"
+    private boolean isCached; // 是否已缓存
     
     public SongWithIndex(Song song, int position) {
+        this(song, position, false);
+    }
+    
+    public SongWithIndex(Song song, int position, boolean isCached) {
         this.song = song;
         this.position = position;
+        this.isCached = isCached;
         
         // 提取标题的首字母用于排序
         if (song != null && song.getTitle() != null) {
@@ -53,6 +59,14 @@ public class SongWithIndex implements Comparable<SongWithIndex> {
         return displayNumber;
     }
     
+    public boolean isCached() {
+        return isCached;
+    }
+    
+    public void setCached(boolean cached) {
+        isCached = cached;
+    }
+    
     private void updateDisplayNumber() {
         // 生成适合显示的编号（前导零）
         this.displayNumber = String.format("%02d", position + 1);
@@ -64,13 +78,14 @@ public class SongWithIndex implements Comparable<SongWithIndex> {
         if (o == null || getClass() != o.getClass()) return false;
         SongWithIndex that = (SongWithIndex) o;
         return position == that.position &&
+               isCached == that.isCached &&
                Objects.equals(song, that.song) &&
                Objects.equals(sortLetter, that.sortLetter);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(song, position, sortLetter);
+        return Objects.hash(song, position, sortLetter, isCached);
     }
 
     @Override
