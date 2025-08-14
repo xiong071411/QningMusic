@@ -103,6 +103,18 @@ public class CacheManager {
         }
     }
     
+    // 直接通过自定义缓存键（如 songId）检查是否已缓存
+    public boolean isCachedByKey(String cacheKey) {
+        if (cacheKey == null || cacheKey.isEmpty()) return false;
+        try {
+            Cache c = getCache();
+            return c.getCachedSpans(cacheKey).size() > 0;
+        } catch (Exception e) {
+            Log.e(TAG, "按key检查缓存失败: " + cacheKey, e);
+            return false;
+        }
+    }
+    
     // 构建缓存键
     private String buildCacheKey(String url) {
         return url;
