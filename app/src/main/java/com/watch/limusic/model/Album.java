@@ -1,6 +1,7 @@
 package com.watch.limusic.model;
 
 import com.google.gson.annotations.SerializedName;
+import com.google.gson.annotations.JsonAdapter;
 import java.util.List;
 
 public class Album {
@@ -16,6 +17,7 @@ public class Album {
     private int year;
     private String played;
     private int userRating;
+    @JsonAdapter(GenresAdapter.class)
     private List<String> genres;
     private String musicBrainzId;
     private boolean isCompilation;
@@ -71,5 +73,9 @@ public class Album {
 
     public int getYear() {
         return year;
+    }
+
+    public List<String> getGenres() {
+        return genres;
     }
 } 
