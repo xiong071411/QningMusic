@@ -17,6 +17,8 @@ import android.widget.FrameLayout;
 import android.graphics.Color;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.signature.ObjectKey;
 import com.watch.limusic.R;
 import com.watch.limusic.database.CacheDetector;
 import com.watch.limusic.model.Song;
@@ -39,6 +41,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import android.util.Log;
+import java.util.LinkedHashMap;
 
 public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHolder> {
     private static final String TAG = "SongAdapter";
@@ -149,24 +152,30 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
 
         if (showCoverArt) {
             holder.albumArt.setVisibility(View.VISIBLE);
-            String coverArtUrl = null;
-            boolean isOfflineMode = !NetworkUtils.isNetworkAvailable(context);
-            if (isOfflineMode && song.getAlbumId() != null && !song.getAlbumId().isEmpty()) {
-                String localCover = localFileDetector.getDownloadedAlbumCoverPath(song.getAlbumId());
-                if (localCover != null) {
-                    coverArtUrl = "file://" + localCover;
-                }
-            }
-            if (coverArtUrl == null) {
-                String key = song.getAlbumId() != null && !song.getAlbumId().isEmpty() ? song.getAlbumId() : song.getCoverArtUrl();
-                coverArtUrl = NavidromeApi.getInstance(context).getCoverArtUrl(key);
-            }
+            String albumId = song.getAlbumId();
+            String key = (albumId != null && !albumId.isEmpty()) ? albumId : song.getCoverArtUrl();
+            String localCover = (albumId != null && !albumId.isEmpty()) ? localFileDetector.getDownloadedAlbumCoverPath(albumId) : null;
+            String coverArtUrl = (localCover != null) ? ("file://" + localCover) : NavidromeApi.getInstance(context).getCoverArtUrl(key);
+            boolean isLocal = coverArtUrl != null && coverArtUrl.startsWith("file://");
+
+            if (isLocal) {
+                Glide.with(context)
+                        .load(coverArtUrl)
+                        .override(100, 100)
+                        .placeholder(R.drawable.default_album_art)
+                        .error(R.drawable.default_album_art)
+                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .into(holder.albumArt);
+            } else {
             Glide.with(context)
                     .load(coverArtUrl)
                     .override(100, 100)
                     .placeholder(R.drawable.default_album_art)
                     .error(R.drawable.default_album_art)
+                        .signature(new ObjectKey(key != null ? key : ""))
+                        .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                     .into(holder.albumArt);
+            }
         } else {
             holder.albumArt.setVisibility(View.GONE);
         }
@@ -319,6 +328,13 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
             }
         }
     }
+
+    private static String buildSongDedupKey(Song s) {
+        String t = s.getTitle() != null ? s.getTitle().trim().toLowerCase(Locale.getDefault()) : "";
+        String r = s.getArtist() != null ? s.getArtist().trim().toLowerCase(Locale.getDefault()) : "";
+        String a = s.getAlbum() != null ? s.getAlbum().trim().toLowerCase(Locale.getDefault()) : "";
+        return t + "|" + r + "|" + a;
+    }
     
     /**
      * 更新歌曲的缓存状态
@@ -365,10 +381,38 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
     public void processAndSubmitList(List<Song> songs) {
         // 在后台线程处理数据转换和排序
         new Thread(() -> {
+            List<Song> source = songs != null ? songs : Collections.emptyList();
+
+            // 离线模式下先做一次基于“歌曲键”的去重，并优先保留可离线播放的项
+            boolean offline = !NetworkUtils.isNetworkAvailable(context);
+            List<Song> deduped;
+            if (offline) {
+                // key: title|artist|album（全部小写去空格）；按插入顺序保留
+                Map<String, Song> map = new LinkedHashMap<>();
+                for (Song s : source) {
+                    if (s == null) continue;
+                    String key = buildSongDedupKey(s);
+
+                    boolean playable = localFileDetector.isSongDownloaded(s) || cacheDetector.isSongCached(s.getId());
+                    if (!map.containsKey(key)) {
+                        // 首次放入
+                        map.put(key, s);
+                    } else if (playable) {
+                        // 如果已有同键且当前项可离线播放，则用当前项覆盖，优先展示可用版本
+                        map.put(key, s);
+                    }
+                }
+                // 仅在离线模式下：如果你希望列表只显示“可离线播放”的歌曲，可以在这里再过滤一遍
+                // 但为了不改变既有“灰显不可用歌曲”的体验，这里保留全部去重后的歌曲
+                deduped = new ArrayList<>(map.values());
+            } else {
+                deduped = new ArrayList<>(source);
+            }
+
             // 1. 转换并排序
             ArrayList<SongWithIndex> songItems = new ArrayList<>();
-            for (int i = 0; i < songs.size(); i++) {
-                Song song = songs.get(i);
+            for (int i = 0; i < deduped.size(); i++) {
+                Song song = deduped.get(i);
                 // 检查每首歌曲是否可离线播放：已下载 或 已缓存
                 boolean isPlayableOffline = localFileDetector.isSongDownloaded(song) || cacheDetector.isSongCached(song.getId());
                 songItems.add(new SongWithIndex(song, i, isPlayableOffline));

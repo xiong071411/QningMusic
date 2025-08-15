@@ -22,6 +22,7 @@ public class Album {
     private String musicBrainzId;
     private boolean isCompilation;
     private String sortName;
+    @JsonAdapter(DiscTitlesAdapter.class)
     private List<String> discTitles;
     private List<Artist> artists;
     private String displayArtist;
@@ -77,5 +78,9 @@ public class Album {
 
     public List<String> getGenres() {
         return genres;
+    }
+
+    public List<String> getDiscTitles() {
+        return discTitles;
     }
 } 

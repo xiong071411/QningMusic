@@ -24,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import android.content.SharedPreferences;
+import java.util.Locale;
 
 /**
  * 下载管理器 - 处理歌曲的手动下载
@@ -142,14 +144,24 @@ public class DownloadManager {
         String songId = downloadInfo.getSongId();
         
         try {
-            // 获取下载URL
-            String streamUrl = NavidromeApi.getInstance(context).getStreamUrl(songId);
+            // 获取下载URL，根据“下载强制转码”设置决定是否转码
+            SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
+            boolean forceDownloadTranscode = sp.getBoolean("force_transcode_download_non_mp3", false);
+            String streamUrl;
+            if (forceDownloadTranscode) {
+                streamUrl = NavidromeApi.getInstance(context).getTranscodedStreamUrl(songId, "mp3", 320);
+            } else {
+                streamUrl = NavidromeApi.getInstance(context).getStreamUrl(songId);
+            }
             if (streamUrl == null || streamUrl.isEmpty()) {
                 throw new IOException("无法获取歌曲流URL");
             }
             
-            // 使用.part临时文件进行下载，完成后重命名为.mp3
-            File partialFile = new File(songsDir, songId + ".mp3.part");
+            // 选择保存扩展名：若强制转码=mp3，否则保留原始容器（默认mp3兜底）
+            String targetExt = forceDownloadTranscode ? "mp3" : "mp3";
+            // TODO: 后续可通过HEAD获取Content-Type来动态选择更准确扩展名
+            // 使用.part临时文件进行下载，完成后按扩展名重命名
+            File partialFile = new File(songsDir, songId + "." + targetExt + ".part");
             downloadInfo.setFilePath(partialFile.getAbsolutePath());
             
             // 开始下载
@@ -166,7 +178,7 @@ public class DownloadManager {
             downloadInfo.setDownloadTimestamp(System.currentTimeMillis());
             
             // 重命名为最终文件
-            File finalFile = new File(songsDir, songId + ".mp3");
+            File finalFile = new File(songsDir, songId + "." + targetExt);
             if (finalFile.exists()) {
                 // 防御性删除旧文件
                 finalFile.delete();
@@ -311,8 +323,13 @@ public class DownloadManager {
      * 检查歌曲是否已下载
      */
     public boolean isDownloaded(String songId) {
-        File songFile = new File(songsDir, songId + ".mp3");
-        return songFile.exists() && songFile.length() > 0;
+        // 支持多扩展名检测
+        String[] exts = new String[]{"mp3","flac","ogg","opus","aac","m4a","wav"};
+        for (String ext : exts) {
+            File f = new File(songsDir, songId + "." + ext);
+            if (f.exists() && f.length() > 0) return true;
+        }
+        return false;
     }
 
     /**
@@ -379,11 +396,13 @@ public class DownloadManager {
      * 删除已下载的歌曲
      */
     public boolean deleteDownload(String songId) {
-        File songFile = new File(songsDir, songId + ".mp3");
         boolean deleted = false;
-        
-        if (songFile.exists()) {
-            deleted = songFile.delete();
+        String[] exts = new String[]{"mp3","flac","ogg","opus","aac","m4a","wav"};
+        for (String ext : exts) {
+            File f = new File(songsDir, songId + "." + ext);
+            if (f.exists()) {
+                deleted = f.delete() || deleted;
+            }
         }
         
         if (deleted) {
@@ -406,8 +425,12 @@ public class DownloadManager {
      * 获取下载文件路径
      */
     public String getDownloadFilePath(String songId) {
-        File songFile = new File(songsDir, songId + ".mp3");
-        return songFile.exists() ? songFile.getAbsolutePath() : null;
+        String[] exts = new String[]{"mp3","flac","ogg","opus","aac","m4a","wav"};
+        for (String ext : exts) {
+            File f = new File(songsDir, songId + "." + ext);
+            if (f.exists() && f.length() > 0) return f.getAbsolutePath();
+        }
+        return null;
     }
 
     // 广播发送方法

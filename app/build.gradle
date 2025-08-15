@@ -11,8 +11,8 @@ android {
         applicationId "com.watch.limusic"
         minSdk 27
         targetSdk 33
-        versionCode 6
-        versionName "2.0"
+        versionCode 7
+        versionName "2.0.1"
     }
 
     buildTypes {
@@ -59,5 +59,5 @@ dependencies {
     annotationProcessor "androidx.room:room-compiler:$room_version"
     
     // 拼音库，用于中文首字母排序
-    implementation 'com.belerweb:pinyin4j:2.5.1'
+    implementation 'com.belerweb:pinyin4j:2.5.1'\
 }

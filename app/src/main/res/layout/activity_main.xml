@@ -30,6 +30,76 @@
 
         </com.google.android.material.appbar.AppBarLayout>
 
+        <!-- 占位容器：Skeleton/空态/错误态 -->
+        <FrameLayout
+            android:id="@+id/placeholder_container"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior">
+
+            <!-- 骨架屏：简单的卡片占位（3行） -->
+            <LinearLayout
+                android:id="@+id/skeleton_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="vertical"
+                android:padding="12dp"
+                android:visibility="gone">
+
+                <include layout="@layout/item_album_skeleton"/>
+                <include layout="@layout/item_album_skeleton"/>
+                <include layout="@layout/item_album_skeleton"/>
+            </LinearLayout>
+
+            <!-- 空态视图 -->
+            <LinearLayout
+                android:id="@+id/empty_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+                <TextView
+                    android:id="@+id/empty_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="暂无专辑"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="14sp"/>
+                <Button
+                    android:id="@+id/btn_retry_empty"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="重试"/>
+            </LinearLayout>
+
+            <!-- 错误视图 -->
+            <LinearLayout
+                android:id="@+id/error_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:gravity="center"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:visibility="gone">
+                <TextView
+                    android:id="@+id/error_message"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="加载失败"
+                    android:textColor="@color/accent"
+                    android:textSize="14sp"/>
+                <Button
+                    android:id="@+id/btn_retry_error"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="重试"/>
+            </LinearLayout>
+        </FrameLayout>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recycler_view"
             android:layout_width="match_parent"

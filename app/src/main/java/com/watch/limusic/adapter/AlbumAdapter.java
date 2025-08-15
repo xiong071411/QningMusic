@@ -12,11 +12,11 @@ import androidx.annotation.NonNull;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.signature.ObjectKey;
 import com.watch.limusic.R;
 import com.watch.limusic.model.Album;
 import com.watch.limusic.api.NavidromeApi;
 import com.watch.limusic.download.LocalFileDetector;
-import com.watch.limusic.util.NetworkUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,28 +134,34 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
             }
             albumInfoView.setText(infoText);
             
-            // 使用Glide加载图片，并加强缓存策略
-            NavidromeApi api = NavidromeApi.getInstance(context);
-            String coverArtUrl = null;
-            boolean offline = !NetworkUtils.isNetworkAvailable(context);
-            if (offline && album.getId() != null && !album.getId().isEmpty()) {
-                String localCover = new LocalFileDetector(context).getDownloadedAlbumCoverPath(album.getId());
-                if (localCover != null) {
-                    coverArtUrl = "file://" + localCover;
-                }
+            // 使用Glide加载图片：优先本地封面，其次网络URL（为网络URL添加稳定签名）
+            String albumId = album.getId();
+            String key = (album.getCoverArt() != null && !album.getCoverArt().isEmpty()) ? album.getCoverArt() : albumId;
+            String localCover = null;
+            if (albumId != null && !albumId.isEmpty()) {
+                localCover = new LocalFileDetector(context).getDownloadedAlbumCoverPath(albumId);
             }
-            if (coverArtUrl == null) {
-                String key = album.getCoverArt() != null && !album.getCoverArt().isEmpty() ? album.getCoverArt() : album.getId();
-                coverArtUrl = api.getCoverArtUrl(key);
-            }
-            
+            String coverArtUrl = (localCover != null) ? ("file://" + localCover) : NavidromeApi.getInstance(context).getCoverArtUrl(key);
+            boolean isLocal = coverArtUrl != null && coverArtUrl.startsWith("file://");
+
+            if (isLocal) {
+                Glide.with(context)
+                    .load(coverArtUrl)
+                    .placeholder(R.drawable.default_album_art)
+                    .error(R.drawable.default_album_art)
+                    .diskCacheStrategy(DiskCacheStrategy.NONE)
+                    .override(100, 100)
+                    .into(albumCoverView);
+            } else {
             Glide.with(context)
                 .load(coverArtUrl)
                 .placeholder(R.drawable.default_album_art)
                 .error(R.drawable.default_album_art)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)  // 缓存原始图片和转换后的图片
-                .override(100, 100)  // 使用更适合的尺寸
+                    .signature(new ObjectKey(key != null ? key : ""))
+                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                    .override(100, 100)
                 .into(albumCoverView);
+            }
         }
     }
 } 

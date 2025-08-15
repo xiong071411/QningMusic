@@ -245,6 +245,25 @@ public class NavidromeApi {
                 .toString();
     }
 
+    // 构造带转码参数的流地址（用于在设备不支持某些编解码时回退）
+    public String getTranscodedStreamUrl(String songId, String format, int maxBitRateKbps) {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+
+        return getBaseUrlBuilder()
+                .addPathSegment("stream")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("id", songId)
+                .addQueryParameter("format", format)
+                .addQueryParameter("maxBitRate", String.valueOf(maxBitRateKbps))
+                .build()
+                .toString();
+    }
+
     public List<Song> getAllSongs() throws IOException {
         String salt = generateSalt();
         String token = generateToken(password, salt);

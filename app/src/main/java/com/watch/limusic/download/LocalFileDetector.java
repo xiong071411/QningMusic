@@ -7,7 +7,10 @@ import com.watch.limusic.model.Song;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 本地文件检测器 - 可靠地检测已下载的歌曲
@@ -19,6 +22,10 @@ public class LocalFileDetector {
     private final Context context;
     private final File songsDir;
     private final File coversDir;
+    
+    private static final Set<String> SUPPORTED_EXTS = new HashSet<>(Arrays.asList(
+        "mp3", "flac", "ogg", "opus", "aac", "m4a", "wav"
+    ));
 
     public LocalFileDetector(Context context) {
         this.context = context.getApplicationContext();
@@ -35,13 +42,15 @@ public class LocalFileDetector {
         if (songId == null || songId.isEmpty()) {
             return false;
         }
-        
-        File songFile = new File(songsDir, songId + ".mp3");
-        boolean exists = songFile.exists() && songFile.length() > 0;
-        
-        // 为避免UI频繁绑定导致的日志洪流，不在此处打印详细日志
-        
-        return exists;
+        return findExistingSongFile(songId) != null;
+    }
+    
+    private File findExistingSongFile(String songId) {
+        for (String ext : SUPPORTED_EXTS) {
+            File f = new File(songsDir, songId + "." + ext);
+            if (f.exists() && f.length() > 0) return f;
+        }
+        return null;
     }
 
     /**
@@ -55,20 +64,16 @@ public class LocalFileDetector {
      * 获取已下载歌曲的文件路径
      */
     public String getDownloadedSongPath(String songId) {
-        if (!isSongDownloaded(songId)) {
-            return null;
-        }
-        
-        File songFile = new File(songsDir, songId + ".mp3");
-        return songFile.getAbsolutePath();
+        File f = findExistingSongFile(songId);
+        return f != null ? f.getAbsolutePath() : null;
     }
 
     /**
      * 获取已下载歌曲的文件大小
      */
     public long getDownloadedSongSize(String songId) {
-        File songFile = new File(songsDir, songId + ".mp3");
-        return songFile.exists() ? songFile.length() : 0;
+        File f = findExistingSongFile(songId);
+        return f != null ? f.length() : 0;
     }
 
     /**
@@ -81,13 +86,21 @@ public class LocalFileDetector {
             return downloadedIds;
         }
         
-        File[] files = songsDir.listFiles((dir, name) -> name.endsWith(".mp3"));
+        File[] files = songsDir.listFiles((dir, name) -> {
+            int dot = name.lastIndexOf('.');
+            if (dot <= 0) return false;
+            String ext = name.substring(dot + 1).toLowerCase();
+            return SUPPORTED_EXTS.contains(ext);
+        });
         if (files != null) {
             for (File file : files) {
                 if (file.length() > 0) {
                     String fileName = file.getName();
-                    String songId = fileName.substring(0, fileName.lastIndexOf(".mp3"));
+                    int dot = fileName.lastIndexOf('.');
+                    if (dot > 0) {
+                        String songId = fileName.substring(0, dot);
                     downloadedIds.add(songId);
+                    }
                 }
             }
         }
@@ -216,16 +229,23 @@ public class LocalFileDetector {
             return cleanedCount;
         }
         
-        File[] files = songsDir.listFiles((dir, name) -> name.endsWith(".mp3"));
+        File[] files = songsDir.listFiles((dir, name) -> {
+            int dot = name.lastIndexOf('.');
+            if (dot <= 0) return false;
+            String ext = name.substring(dot + 1).toLowerCase();
+            return SUPPORTED_EXTS.contains(ext);
+        });
         if (files != null) {
             for (File file : files) {
                 String fileName = file.getName();
-                String songId = fileName.substring(0, fileName.lastIndexOf(".mp3"));
-                
+                int dot = fileName.lastIndexOf('.');
+                if (dot > 0) {
+                    String songId = fileName.substring(0, dot);
                 if (!validateDownloadedFile(songId)) {
                     if (file.delete()) {
                         cleanedCount++;
                         Log.i(TAG, "清理损坏的下载文件: " + songId);
+                        }
                     }
                 }
             }
