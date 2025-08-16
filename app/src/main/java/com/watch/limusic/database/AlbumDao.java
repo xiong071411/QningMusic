@@ -19,6 +19,10 @@ public interface AlbumDao {
     
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertAllAlbums(List<AlbumEntity> albums);
+
+    // 新增：仅在不存在时插入（避免覆盖已有完整专辑信息）
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    void insertAlbumsIfAbsent(List<AlbumEntity> albums);
     
     @Update
     void updateAlbum(AlbumEntity album);

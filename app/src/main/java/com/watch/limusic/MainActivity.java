@@ -114,6 +114,9 @@ public class MainActivity extends AppCompatActivity
     private long lastBackPressedTime = 0L;
     private static final long BACK_EXIT_INTERVAL = 2000L; // 毫秒
     
+    // 最近一次字母跳转的目标字母（用于数据库更新后纠正定位）
+    private String pendingJumpLetter = null;
+    
     // 检测缓存状态的广播接收器
     private BroadcastReceiver cacheStatusReceiver = new BroadcastReceiver() {
         @Override
@@ -122,8 +125,12 @@ public class MainActivity extends AppCompatActivity
                 String songId = intent.getStringExtra("songId");
                 boolean isCached = intent.getBooleanExtra("isCached", false);
                 
-                // 更新适配器中的缓存状态
-                if (songAdapter != null && songId != null) {
+                if (songId == null) return;
+                // 更新适配器中的缓存状态（根据当前适配器类型分发）
+                RecyclerView.Adapter<?> adapter = recyclerView != null ? recyclerView.getAdapter() : null;
+                if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                    ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).updateSongCacheStatus(songId, isCached);
+                } else if (songAdapter != null) {
                     songAdapter.updateSongCacheStatus(songId, isCached);
                 }
             }
@@ -170,26 +177,78 @@ public class MainActivity extends AppCompatActivity
             if (songId == null || songAdapter == null) return;
 
             switch (action) {
-                case DownloadManager.ACTION_DOWNLOAD_PROGRESS:
-                    // 仅刷新该条目以更新进度UI（若需要）
+                case DownloadManager.ACTION_DOWNLOAD_PROGRESS: {
                     int progress = intent.getIntExtra(DownloadManager.EXTRA_PROGRESS, 0);
-                    songAdapter.updateSongDownloadProgress(songId, progress);
-                    break;
-                case DownloadManager.ACTION_DOWNLOAD_COMPLETE:
-                    // 刷新该条目：按钮应切换为“已下载”图标
-                    songAdapter.updateSongDownloadStatus(songId);
-                    // 同时广播缓存状态已变化（供其他组件使用）
+                    RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                    if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                        ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).updateSongDownloadProgress(songId, progress);
+                    } else if (songAdapter != null) {
+                        songAdapter.updateSongDownloadProgress(songId, progress);
+                    }
+                    break; }
+                case DownloadManager.ACTION_DOWNLOAD_COMPLETE: {
+                    RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                    if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                        ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).updateSongDownloadStatus(songId);
+                    } else if (songAdapter != null) {
+                        songAdapter.updateSongDownloadStatus(songId);
+                    }
                     Intent cacheIntent = new Intent("com.watch.limusic.CACHE_STATUS_CHANGED");
                     cacheIntent.putExtra("songId", songId);
                     cacheIntent.putExtra("isCached", true);
                     sendBroadcast(cacheIntent);
-                    break;
-                case DownloadManager.ACTION_DOWNLOAD_FAILED:
-                    songAdapter.updateSongDownloadStatus(songId);
-                    break;
-                case DownloadManager.ACTION_DOWNLOAD_CANCELED:
-                    songAdapter.updateSongDownloadStatus(songId);
-                    break;
+                    break; }
+                case DownloadManager.ACTION_DOWNLOAD_FAILED: {
+                    RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                    if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                        ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).updateSongDownloadStatus(songId);
+                    } else if (songAdapter != null) {
+                        songAdapter.updateSongDownloadStatus(songId);
+                    }
+                    break; }
+                case DownloadManager.ACTION_DOWNLOAD_CANCELED: {
+                    RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                    if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                        ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).updateSongDownloadStatus(songId);
+                    } else if (songAdapter != null) {
+                        songAdapter.updateSongDownloadStatus(songId);
+                    }
+                    break; }
+            }
+        }
+    };
+
+    // 数据库歌曲更新广播：刷新“所有歌曲”范围适配器的总数和字母映射
+    private final BroadcastReceiver dbSongsUpdatedReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!"com.watch.limusic.DB_SONGS_UPDATED".equals(intent.getAction())) return;
+            if (!"songs".equals(currentView)) return;
+            try {
+                RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                    int total = musicRepository.getSongCount();
+                    java.util.Map<String, Integer> letterOffsets = musicRepository.getLetterOffsetMap();
+                    com.watch.limusic.adapter.AllSongsRangeAdapter range = (com.watch.limusic.adapter.AllSongsRangeAdapter) adapter;
+                    range.clearCache();
+                    range.setTotalCount(total);
+                    range.setLetterOffsetMap(letterOffsets);
+                    // 若存在待跳转的字母，入库完成后立即纠正到该字母首项并预取三页
+                    if ("songs".equals(currentView) && pendingJumpLetter != null) {
+                        Integer pos = letterOffsets.get(pendingJumpLetter);
+                        if (pos != null && pos >= 0 && pos < total) {
+                            if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                                ((androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(pos, 0);
+                            } else {
+                                recyclerView.scrollToPosition(pos);
+                            }
+                            range.prefetchAround(pos);
+                        }
+                        pendingJumpLetter = null;
+                    }
+                }
+            } catch (Exception e) {
+                Log.w(TAG, "刷新所有歌曲范围适配器失败: " + e.getMessage());
             }
         }
     };
@@ -442,6 +501,9 @@ public class MainActivity extends AppCompatActivity
         IntentFilter filter = new IntentFilter("com.watch.limusic.PLAYBACK_STATE_CHANGED");
         registerReceiver(playbackStateReceiver, filter);
         
+        // 监听数据库更新
+        try { registerReceiver(dbSongsUpdatedReceiver, new IntentFilter("com.watch.limusic.DB_SONGS_UPDATED")); } catch (Exception ignore) {}
+        
         // 设置UI可见性标志
         if (bound && playerService != null) {
             playerService.setUiVisible(true);
@@ -496,6 +558,9 @@ public class MainActivity extends AppCompatActivity
         } catch (IllegalArgumentException e) {
             // 接收器可能未注册，忽略
         }
+        
+        // 取消注册 DB 更新接收器
+        try { unregisterReceiver(dbSongsUpdatedReceiver); } catch (Exception ignore) {}
         
         // 设置UI不可见标志
         if (bound && playerService != null) {
@@ -794,7 +859,21 @@ public class MainActivity extends AppCompatActivity
         if (bound && playerService != null) {
             try {
                 // 获取当前显示的整个歌曲列表作为播放列表
-                List<Song> currentList = songAdapter.getSongList();
+                List<Song> currentList = null;
+                RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                    // 按需加载模式：为了点击即播，动态构造“当前位置±N”窗口作为播放列表
+                    currentList = new java.util.ArrayList<>();
+                    int start = Math.max(0, position - 50);
+                    int end = Math.min(adapter.getItemCount() - 1, position + 200); // 向后多取，保证顺播
+                    // 直接从数据库按排序范围取数据
+                    List<Song> range = musicRepository.getSongsRange(end - start + 1, start);
+                    currentList.addAll(range);
+                    // 重新定位点击项在当前窗口中的索引
+                    position = Math.min(Math.max(0, position - start), currentList.size() - 1);
+                } else if (songAdapter != null) {
+                    currentList = songAdapter.getSongList();
+                }
                 if (currentList == null || currentList.isEmpty()) {
                     Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
                     return;
@@ -1314,91 +1393,50 @@ public class MainActivity extends AppCompatActivity
 
     private void loadAllSongs() {
         Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
-        
         new Thread(() -> {
             try {
-                List<Song> songs;
-                
+                // 在线时尝试刷新一次数据库（不阻塞 UI 首屏）
                 if (isNetworkAvailable) {
-                    // 有网络时从API获取
-                NavidromeApi api = NavidromeApi.getInstance(this);
-                    songs = api.getAllSongs();
-                
-                    // 确保歌曲数据被保存到数据库
-                    if (songs != null && !songs.isEmpty()) {
-                        musicRepository.saveSongsToDatabase(songs);
-                        Log.d(TAG, "成功保存 " + songs.size() + " 首歌曲到数据库");
-                    }
-                } else {
-                    // 无网络时从数据库获取
-                    songs = musicRepository.getAllSongsFromDatabase();
-                    Log.d(TAG, "从数据库加载歌曲: " + (songs != null ? songs.size() : 0) + " 首");
-                }
-                
-                final List<Song> finalSongs = songs;
-                runOnUiThread(() -> {
-                    if (finalSongs != null && !finalSongs.isEmpty()) {
-                        recyclerView.setAdapter(songAdapter);
-                        songAdapter.setShowCoverArt(false);  // 所有歌曲列表不显示封面
-
-                        // 离线模式下对“所有歌曲”做一次去重：按 标题|艺人 合并，优先保留可离线播放（已下载/已缓存）的条目
-                        java.util.List<Song> toShow = finalSongs;
-                        if (!isNetworkAvailable) {
-                            try {
-                                java.util.Map<String, Song> map = new java.util.LinkedHashMap<>();
-                                java.util.Map<String, java.lang.Boolean> playableMap = new java.util.HashMap<>();
-                                for (Song s : finalSongs) {
-                                    if (s == null) continue;
-                                    String t = s.getTitle() != null ? s.getTitle().trim().toLowerCase(java.util.Locale.getDefault()) : "";
-                                    String r = s.getArtist() != null ? s.getArtist().trim().toLowerCase(java.util.Locale.getDefault()) : "";
-                                    String key = t + "|" + r;
-                                    boolean playable = localFileDetector.isSongDownloaded(s) || com.watch.limusic.cache.CacheManager.getInstance(this).isCached(com.watch.limusic.api.NavidromeApi.getInstance(this).getStreamUrl(s.getId()));
-                                    if (!map.containsKey(key)) {
-                                        map.put(key, s);
-                                        playableMap.put(key, playable);
-                                    } else {
-                                        boolean oldPlayable = java.lang.Boolean.TRUE.equals(playableMap.get(key));
-                                        if (playable && !oldPlayable) {
-                                            map.put(key, s);
-                                            playableMap.put(key, true);
-                                        }
-                                    }
-                                }
-                                toShow = new java.util.ArrayList<>(map.values());
-                            } catch (Exception ignore) {}
+                    try {
+                        List<Song> online = NavidromeApi.getInstance(this).getAllSongs();
+                        if (online != null && !online.isEmpty()) {
+                            musicRepository.saveSongsToDatabase(online);
                         }
-
-                        songAdapter.processAndSubmitList(toShow);
- 
-                         // 设置Toolbar标题
-                         if (getSupportActionBar() != null) {
-                             getSupportActionBar().setTitle(R.string.all_songs);
-                         }
-                        
-                        // 标记为根视图并切换为汉堡菜单
-                        currentView = "songs";
-                        enterRootNavigationMode();
-                        
-                        // 更新菜单状态
-                        invalidateOptionsMenu();
-                        
-                        Log.d(TAG, "显示所有歌曲: " + finalSongs.size() + " 首");
-                    } else {
-                        Toast.makeText(this, R.string.error_no_songs, Toast.LENGTH_SHORT).show();
-                        Log.d(TAG, "没有找到歌曲");
+                    } catch (Exception ignore) {
+                        // 忽略网络异常，走本地数据
                     }
-                    
-                    // 确保播放进度条可见
-                    ensureProgressBarVisible();
+                }
+                // 获取总数与字母偏移映射
+                int total = musicRepository.getSongCount();
+                java.util.Map<String, Integer> letterOffsets = musicRepository.getLetterOffsetMap();
+
+                runOnUiThread(() -> {
+                    // 初始化按需加载适配器
+                    com.watch.limusic.adapter.AllSongsRangeAdapter rangeAdapter = new com.watch.limusic.adapter.AllSongsRangeAdapter(this, musicRepository, this);
+                    rangeAdapter.setOnDownloadClickListener(this);
+                    rangeAdapter.setShowCoverArt(false);
+                    rangeAdapter.setShowDownloadStatus(true);
+                    rangeAdapter.clearCache();
+                    rangeAdapter.setTotalCount(total);
+                    rangeAdapter.setLetterOffsetMap(letterOffsets);
+
+                    recyclerView.setAdapter(rangeAdapter);
+
+                    if (getSupportActionBar() != null) {
+                        getSupportActionBar().setTitle(R.string.all_songs);
+                    }
+                    currentView = "songs";
+                    enterRootNavigationMode();
+                    invalidateOptionsMenu();
+
+                    // 首屏预取
+                    rangeAdapter.prefetch(0);
                 });
             } catch (Exception e) {
                 Log.e(TAG, "加载歌曲失败", e);
-                runOnUiThread(() -> {
-                    Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show();
-                    
-                    // 确保播放进度条可见
-                    ensureProgressBarVisible();
-                });
+                runOnUiThread(() -> Toast.makeText(this, R.string.error_network, Toast.LENGTH_SHORT).show());
+            } finally {
+                runOnUiThread(this::ensureProgressBarVisible);
             }
         }).start();
     }
@@ -1497,25 +1535,43 @@ public class MainActivity extends AppCompatActivity
      * 显示字母索引对话框
      */
     private void showLetterIndexDialog() {
-        if (songAdapter == null || songAdapter.getItemCount() == 0) {
+        if (recyclerView.getAdapter() == null || recyclerView.getAdapter().getItemCount() == 0) {
             Toast.makeText(this, R.string.error_no_songs, Toast.LENGTH_SHORT).show();
             return;
         }
-        
-        // 获取所有可用的字母索引
-        List<String> availableLetters = songAdapter.getAvailableIndexLetters();
-        if (availableLetters.isEmpty()) {
+        if (!(recyclerView.getAdapter() instanceof com.watch.limusic.adapter.AllSongsRangeAdapter)) {
+            // 兼容专辑内歌曲时的旧路径
+            if (songAdapter == null || songAdapter.getItemCount() == 0) return;
+            List<String> availableLetters = songAdapter.getAvailableIndexLetters();
+            if (availableLetters.isEmpty()) return;
+            LetterIndexDialog dialog = new LetterIndexDialog(this, availableLetters);
+            dialog.setOnLetterSelectedListener(letter -> {
+                int position = songAdapter.getPositionForLetter(letter);
+                if (position >= 0 && position < songAdapter.getItemCount()) {
+                    recyclerView.scrollToPosition(position);
+                }
+            });
+            dialog.show();
             return;
         }
-        
-        // 创建并显示字母索引对话框
-        LetterIndexDialog dialog = new LetterIndexDialog(this, availableLetters);
+        com.watch.limusic.adapter.AllSongsRangeAdapter rangeAdapter = (com.watch.limusic.adapter.AllSongsRangeAdapter) recyclerView.getAdapter();
+        List<String> letters = rangeAdapter.getAvailableIndexLetters();
+        if (letters == null || letters.isEmpty()) return;
+        LetterIndexDialog dialog = new LetterIndexDialog(this, letters);
         dialog.setOnLetterSelectedListener(letter -> {
-            // 获取选定字母的位置
-            int position = songAdapter.getPositionForLetter(letter);
-            // 滚动到指定位置
-            if (position >= 0 && position < songAdapter.getItemCount()) {
-                recyclerView.scrollToPosition(position);
+            // 记录待跳转字母，以便数据库刚刷新时纠正
+            pendingJumpLetter = letter;
+            int position = rangeAdapter.getPositionForLetter(letter);
+            if (position >= 0 && position < rangeAdapter.getItemCount()) {
+                // 使用带偏移的滚动，定位在分组首项顶端
+                if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                    androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                    lm.scrollToPositionWithOffset(position, 0);
+                } else {
+                    recyclerView.scrollToPosition(position);
+                }
+                // 预取该页及相邻页，避免仅显示序号
+                rangeAdapter.prefetchAround(position);
             }
         });
         dialog.show();
@@ -1551,10 +1607,18 @@ public class MainActivity extends AppCompatActivity
                     boolean deleted = downloadManager.deleteDownload(song.getId());
                     if (deleted) {
                         Toast.makeText(this, "已删除: " + song.getTitle(), Toast.LENGTH_SHORT).show();
-                        // 更新UI显示
-                        if (songAdapter != null) {
+                        // 更新UI显示（根据当前适配器类型刷新）
+                        RecyclerView.Adapter<?> adapter = recyclerView != null ? recyclerView.getAdapter() : null;
+                        if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                            ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).updateSongDownloadStatus(song.getId());
+                        } else if (songAdapter != null) {
                             songAdapter.updateSongDownloadStatus(song.getId());
                         }
+                        // 广播缓存状态已变为未缓存
+                        Intent cacheIntent = new Intent("com.watch.limusic.CACHE_STATUS_CHANGED");
+                        cacheIntent.putExtra("songId", song.getId());
+                        cacheIntent.putExtra("isCached", false);
+                        sendBroadcast(cacheIntent);
                     } else {
                         Toast.makeText(this, "删除失败", Toast.LENGTH_SHORT).show();
                     }

@@ -11,7 +11,7 @@ import androidx.room.PrimaryKey;
  */
 @Entity(
     tableName = "songs",
-    indices = {@Index("albumId")},
+    indices = {@Index("albumId"), @Index("initial"), @Index(value = {"initial", "title"})},
     foreignKeys = @ForeignKey(
         entity = AlbumEntity.class,
         parentColumns = "id",
@@ -34,6 +34,7 @@ public class SongEntity {
     private boolean isCached; // 标记歌曲是否已缓存
     private long lastUpdated; // 上次从服务器更新的时间戳
     private long cacheTimestamp; // 歌曲缓存的时间戳
+    private String initial; // 标题首字母（与 UI 排序/索引一致）
 
     public SongEntity(@NonNull String id, String title, String artist, String album,
                      String coverArt, String streamUrl, int duration, String albumId) {
@@ -49,6 +50,7 @@ public class SongEntity {
         this.isCached = false;
         this.lastUpdated = System.currentTimeMillis();
         this.cacheTimestamp = 0;
+        this.initial = "#"; // 默认占位，入库时由转换器或仓库填写
     }
 
     @NonNull
@@ -149,5 +151,13 @@ public class SongEntity {
     
     public void setCacheTimestamp(long cacheTimestamp) {
         this.cacheTimestamp = cacheTimestamp;
+    }
+
+    public String getInitial() {
+        return initial;
+    }
+
+    public void setInitial(String initial) {
+        this.initial = initial;
     }
 } 

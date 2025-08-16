@@ -25,12 +25,13 @@
         android:layout_height="36dp"
         android:scaleType="centerCrop"
         android:contentDescription="@string/album_art_description"
+        android:visibility="gone"
         tools:src="@drawable/default_album_art" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginStart="8dp"
+        android:layout_marginStart="2dp"
         android:layout_weight="1"
         android:orientation="vertical">
 

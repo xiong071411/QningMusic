@@ -117,6 +117,15 @@ public class EntityConverter {
         // 设置缓存状态
         entity.setCached(false);
         
+        // 设置首字母 initial（与 UI 排序逻辑保持一致）
+        try {
+            String t = song.getTitle();
+            String first = com.watch.limusic.util.PinyinUtil.getFirstLetter(t);
+            entity.setInitial(first != null ? first : "#");
+        } catch (Exception ignore) {
+            entity.setInitial("#");
+        }
+        
         return entity;
     }
 

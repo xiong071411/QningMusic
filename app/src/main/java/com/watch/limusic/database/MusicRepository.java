@@ -2,6 +2,7 @@ package com.watch.limusic.database;
 
 import android.content.Context;
 import android.util.Log;
+import android.content.Intent;
 
 import com.watch.limusic.api.NavidromeApi;
 import com.watch.limusic.api.SubsonicResponse;
@@ -10,7 +11,9 @@ import com.watch.limusic.model.Song;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -214,15 +217,55 @@ public class MusicRepository {
         executorService.execute(() -> {
             try {
                 List<SongEntity> entities = EntityConverter.toSongEntities(songs);
+
+                // 先补齐缺失的专辑占位，避免外键约束失败
+                try {
+                    List<AlbumEntity> placeholders = new ArrayList<>();
+                    for (Song s : songs) {
+                        String albumId = s.getAlbumId();
+                        if (albumId == null || albumId.isEmpty()) continue;
+                        // 若专辑不存在则构造一个轻量占位，不覆盖已有专辑
+                        AlbumEntity exist = database.albumDao().getAlbumById(albumId);
+                        if (exist == null) {
+                            String name = s.getAlbum() != null ? s.getAlbum() : "";
+                            String artist = s.getArtist() != null ? s.getArtist() : "";
+                            String cover = s.getCoverArtUrl();
+                            placeholders.add(new AlbumEntity(albumId, name, artist, "", cover, 0, 0, 0));
+                        }
+                    }
+                    if (!placeholders.isEmpty()) {
+                        database.albumDao().insertAlbumsIfAbsent(placeholders);
+                    }
+                } catch (Exception eIgnore) {
+                    Log.w(TAG, "插入专辑占位失败(忽略继续): " + eIgnore.getMessage());
+                }
                 
-                // 更新缓存状态
+                // 更新缓存状态与 initial
                 for (SongEntity entity : entities) {
                     boolean isCached = cacheDetector.isSongCached(entity.getId());
                     entity.setCached(isCached);
+                    if (entity.getInitial() == null || entity.getInitial().isEmpty()) {
+                        try {
+                            String first = com.watch.limusic.util.PinyinUtil.getFirstLetter(entity.getTitle());
+                            entity.setInitial(first != null ? first : "#");
+                        } catch (Exception ignore) {
+                            entity.setInitial("#");
+                        }
+                    }
                 }
                 
                 database.songDao().insertAllSongs(entities);
                 Log.d(TAG, "成功保存 " + songs.size() + " 首歌曲到数据库");
+
+                // 通知UI数据已更新（总数与字母偏移可据此刷新）
+                try {
+                    int total = database.songDao().getSongCount();
+                    Intent intent = new Intent("com.watch.limusic.DB_SONGS_UPDATED");
+                    intent.putExtra("totalCount", total);
+                    context.sendBroadcast(intent);
+                } catch (Exception e) {
+                    Log.w(TAG, "发送DB_SONGS_UPDATED广播失败: " + e.getMessage());
+                }
             } catch (Exception e) {
                 Log.e(TAG, "保存歌曲到数据库失败", e);
             }
@@ -352,6 +395,63 @@ public class MusicRepository {
             Log.e(TAG, "从数据库获取所有歌曲失败", e);
             return new ArrayList<>();
         }
+    }
+
+    // 轻量方案新增：范围加载（返回 UI 需要的模型）
+    public List<Song> getSongsRange(int limit, int offset) {
+        try {
+            List<SongEntity> entities = database.songDao().getSongsRange(limit, offset);
+            return EntityConverter.toSongs(entities);
+        } catch (Exception e) {
+            Log.e(TAG, "范围加载歌曲失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    // 轻量方案新增：构建字母锚点到全局偏移的映射
+    public Map<String, Integer> getLetterOffsetMap() {
+        Map<String, Integer> offsetMap = new HashMap<>();
+        try {
+            List<InitialCount> counts = database.songDao().getCountsByInitial();
+            int totalHashAndDigits = 0;
+            int totalSoFar = 0;
+
+            // 先统计 '#' 与 0-9 的合并偏移
+            int hashCount = 0;
+            int digitCount = 0;
+            for (InitialCount ic : counts) {
+                if (ic == null || ic.initial == null) continue;
+                String k = ic.initial;
+                if ("#".equals(k)) hashCount += ic.cnt;
+                else if (k.length() == 1 && Character.isDigit(k.charAt(0))) digitCount += ic.cnt;
+            }
+            totalHashAndDigits = hashCount + digitCount;
+
+            // '#' 锚点指向最开头（仅当确有 '#' 或数字组时）
+            if (totalHashAndDigits > 0) {
+                offsetMap.put("#", 0);
+            }
+
+            // A-Z 顺序累积（A 的偏移 = '#'与数字的总和 + 'A'之前字母组的计数和）
+            totalSoFar = totalHashAndDigits;
+            for (char c = 'A'; c <= 'Z'; c++) {
+                String key = String.valueOf(c);
+                int cnt = 0;
+                for (InitialCount ic : counts) {
+                    if (ic != null && key.equals(ic.initial)) {
+                        cnt = ic.cnt;
+                        break;
+                    }
+                }
+                if (cnt > 0) {
+                    offsetMap.put(key, totalSoFar);
+                    totalSoFar += cnt;
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "计算字母偏移映射失败", e);
+        }
+        return offsetMap;
     }
     
     /**
