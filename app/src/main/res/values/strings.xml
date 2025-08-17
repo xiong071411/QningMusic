@@ -42,7 +42,7 @@
     <string name="navigation_drawer_open">打开导航菜单</string>
     <string name="navigation_drawer_close">关闭导航菜单</string>
     <string name="nav_all_songs">所有歌曲</string>
-    <string name="nav_playlists">播放列表</string>
+    <string name="nav_playlists">歌单</string>
     <string name="nav_artists">艺术家</string>
     <string name="nav_albums">专辑</string>
     <string name="nav_settings">设置</string>
@@ -93,5 +93,11 @@
     <string name="storage_usage">存储使用</string>
     <string name="clear_downloads">清理下载</string>
     <string name="download_all_album">下载整张专辑</string>
+
+    <string name="reorder">调整顺序</string>
+    <string name="playlist">歌单</string>
+    <string name="playlist_detail">歌单详情</string>
+    <string name="new_playlist">新建歌单</string>
+    <string name="add_to_playlist">添加到歌单</string>
 
 </resources>

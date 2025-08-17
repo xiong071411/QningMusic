@@ -67,6 +67,18 @@
             android:label="@string/download_management"
             android:exported="false"
             android:parentActivityName=".MainActivity" />
+
+        <!-- 新增：歌单页面注册 -->
+        <activity
+            android:name=".ui.PlaylistListActivity"
+            android:label="歌单"
+            android:exported="false"
+            android:parentActivityName=".MainActivity" />
+        <activity
+            android:name=".ui.PlaylistDetailActivity"
+            android:label="歌单详情"
+            android:exported="false"
+            android:parentActivityName=".ui.PlaylistListActivity" />
         
         <meta-data
             android:name="com.google.android.wearable.standalone"

@@ -10,7 +10,7 @@ import androidx.room.TypeConverters;
 /**
  * 音乐数据库类，管理所有数据库相关操作
  */
-@Database(entities = {AlbumEntity.class, SongEntity.class, DownloadEntity.class}, version = 4, exportSchema = false)
+@Database(entities = {AlbumEntity.class, SongEntity.class, DownloadEntity.class, PlaylistEntity.class, PlaylistSongEntity.class}, version = 7, exportSchema = false)
 @TypeConverters({DatabaseConverters.class})
 public abstract class MusicDatabase extends RoomDatabase {
     
@@ -21,6 +21,8 @@ public abstract class MusicDatabase extends RoomDatabase {
     public abstract AlbumDao albumDao();
     public abstract SongDao songDao();
     public abstract DownloadDao downloadDao();
+    public abstract PlaylistDao playlistDao();
+    public abstract PlaylistSongDao playlistSongDao();
     
     /**
      * 获取数据库单例实例

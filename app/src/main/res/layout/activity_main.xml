@@ -30,14 +30,37 @@
 
         </com.google.android.material.appbar.AppBarLayout>
 
-        <!-- 占位容器：Skeleton/空态/错误态 -->
-        <FrameLayout
-            android:id="@+id/placeholder_container"
+        <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+            android:id="@+id/swipe_refresh"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-            <!-- 骨架屏：简单的卡片占位（3行） -->
+            <FrameLayout
+                android:id="@+id/content_container"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent"
+                    android:clipToPadding="false"
+                    android:paddingBottom="80dp"
+                    android:paddingStart="4dp"
+                    android:paddingEnd="4dp"
+                    android:scrollbars="vertical"
+                    android:scrollbarThumbVertical="@drawable/scrollbar_thumb"
+                    android:scrollbarSize="4dp"
+                    android:scrollbarStyle="outsideOverlay"
+                    android:fadeScrollbars="false" />
+
+                <!-- 占位容器：Skeleton/空态/错误态（放在同一容器内以支持下拉） -->
+                <FrameLayout
+                    android:id="@+id/placeholder_container"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent">
+
             <LinearLayout
                 android:id="@+id/skeleton_container"
                 android:layout_width="match_parent"
@@ -45,13 +68,11 @@
                 android:orientation="vertical"
                 android:padding="12dp"
                 android:visibility="gone">
-
                 <include layout="@layout/item_album_skeleton"/>
                 <include layout="@layout/item_album_skeleton"/>
                 <include layout="@layout/item_album_skeleton"/>
             </LinearLayout>
 
-            <!-- 空态视图 -->
             <LinearLayout
                 android:id="@+id/empty_container"
                 android:layout_width="match_parent"
@@ -75,7 +96,6 @@
                     android:text="重试"/>
             </LinearLayout>
 
-            <!-- 错误视图 -->
             <LinearLayout
                 android:id="@+id/error_container"
                 android:layout_width="match_parent"
@@ -99,21 +119,8 @@
                     android:text="重试"/>
             </LinearLayout>
         </FrameLayout>
-
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/recycler_view"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:clipToPadding="false"
-            android:paddingBottom="80dp"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:scrollbars="vertical"
-            android:scrollbarThumbVertical="@drawable/scrollbar_thumb"
-            android:scrollbarSize="4dp"
-            android:scrollbarStyle="outsideOverlay"
-            android:fadeScrollbars="false"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
+            </FrameLayout>
+        </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
         <!-- 播放控制栏 -->
         <LinearLayout

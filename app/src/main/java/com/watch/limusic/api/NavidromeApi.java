@@ -203,28 +203,20 @@ public class NavidromeApi {
             if (!response.isSuccessful()) {
                 throw new IOException("Unexpected response " + response);
             }
-            
-            // 解析响应
             AlbumResponse albumResponse = gson.fromJson(
                 response.body().string(), 
                 new TypeToken<AlbumResponse>(){}.getType()
             );
-            
             if (albumResponse != null && 
                 albumResponse.getResponse() != null && 
                 albumResponse.getResponse().getAlbum() != null) {
-                
                 AlbumData album = albumResponse.getResponse().getAlbum();
                 List<Song> songs = album.getSongs();
-                
-                // 为每首歌曲设置专辑ID和专辑封面
                 for (Song song : songs) {
                     song.setAlbumId(album.getId());
                 }
-                
                 return songs;
             }
-            
             return new ArrayList<>();
         }
     }
@@ -245,7 +237,6 @@ public class NavidromeApi {
                 .toString();
     }
 
-    // 构造带转码参数的流地址（用于在设备不支持某些编解码时回退）
     public String getTranscodedStreamUrl(String songId, String format, int maxBitRateKbps) {
         String salt = generateSalt();
         String token = generateToken(password, salt);
@@ -276,7 +267,7 @@ public class NavidromeApi {
                 .addQueryParameter("v", API_VERSION)
                 .addQueryParameter("c", CLIENT_NAME)
                 .addQueryParameter("f", "json")
-                .addQueryParameter("size", "500")  // 获取较大数量的歌曲
+                .addQueryParameter("size", "500")
                 .build();
 
         Request request = new Request.Builder()
@@ -287,105 +278,287 @@ public class NavidromeApi {
             if (!response.isSuccessful()) {
                 throw new IOException("Unexpected response " + response);
             }
-            
-            // 解析响应
             SongsResponse songsResponse = gson.fromJson(
                 response.body().string(), 
                 new TypeToken<SongsResponse>(){}.getType()
             );
-            
             if (songsResponse != null && 
                 songsResponse.getResponse() != null && 
                 songsResponse.getResponse().getSongs() != null) {
-                
                 List<Song> songs = songsResponse.getResponse().getSongs();
-                
-                // 确保每首歌曲都有专辑ID
                 for (Song song : songs) {
                     if (song.getAlbumId() == null) {
-                        // 如果没有专辑ID，使用coverArt作为专辑ID
                         song.setAlbumId(song.getCoverArtUrl());
                     }
                 }
-                
                 return songs;
             }
-            
             return new ArrayList<>();
+        }
+    }
+
+    // ============ Playlists (Navidrome/Subsonic) ============
+    public PlaylistsEnvelope getPlaylists() throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl url = getBaseUrlBuilder()
+                .addPathSegment("getPlaylists")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .build();
+        Request request = new Request.Builder().url(url).build();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IOException("Unexpected response " + response);
+            PlaylistsEnvelope env = gson.fromJson(response.body().string(), new TypeToken<PlaylistsEnvelope>(){}.getType());
+            return env;
+        }
+    }
+
+    public PlaylistEnvelope getPlaylist(String playlistId) throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl url = getBaseUrlBuilder()
+                .addPathSegment("getPlaylist")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .addQueryParameter("id", playlistId)
+                .build();
+        Request request = new Request.Builder().url(url).build();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) throw new IOException("Unexpected response " + response);
+            PlaylistEnvelope env = gson.fromJson(response.body().string(), new TypeToken<PlaylistEnvelope>(){}.getType());
+            return env;
+        }
+    }
+
+    public boolean createPlaylist(String name, boolean isPublic) throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl url = getBaseUrlBuilder()
+                .addPathSegment("createPlaylist")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .addQueryParameter("name", name)
+                .addQueryParameter("public", String.valueOf(isPublic))
+                .build();
+        Request request = new Request.Builder().url(url).build();
+        try (Response response = client.newCall(request).execute()) {
+            return response.isSuccessful();
+        }
+    }
+
+    public boolean updatePlaylist(String playlistId, String newName, Boolean isPublic,
+                                  List<String> songIdsToAdd, List<Integer> indexesToRemove) throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl.Builder b = getBaseUrlBuilder()
+                .addPathSegment("updatePlaylist")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .addQueryParameter("playlistId", playlistId);
+        if (newName != null && !newName.isEmpty()) b.addQueryParameter("name", newName);
+        if (isPublic != null) b.addQueryParameter("public", String.valueOf(isPublic));
+        if (songIdsToAdd != null) {
+            for (String id : songIdsToAdd) {
+                b.addQueryParameter("songIdToAdd", id);
+            }
+        }
+        if (indexesToRemove != null) {
+            for (Integer idx : indexesToRemove) {
+                b.addQueryParameter("songIndexToRemove", String.valueOf(idx));
+            }
+        }
+        Request request = new Request.Builder().url(b.build()).build();
+        try (Response response = client.newCall(request).execute()) {
+            return response.isSuccessful();
+        }
+    }
+
+    public boolean deletePlaylist(String playlistId) throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl url = getBaseUrlBuilder()
+                .addPathSegment("deletePlaylist")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .addQueryParameter("id", playlistId)
+                .build();
+        Request request = new Request.Builder().url(url).build();
+        try (Response response = client.newCall(request).execute()) {
+            return response.isSuccessful();
+        }
+    }
+
+    // ------- inner DTOs for playlists -------
+    public static class PlaylistsEnvelope {
+        @SerializedName("subsonic-response")
+        private PlaylistsResponse response;
+        public PlaylistsResponse getResponse() { return response; }
+    }
+    public static class PlaylistsResponse {
+        private String status;
+        private String version;
+        private Playlists playlists;
+        public boolean isSuccess() { return "ok".equals(status); }
+        public Playlists getPlaylists() { return playlists; }
+    }
+    public static class Playlists {
+        @SerializedName("playlist")
+        private List<Playlist> list;
+        public List<Playlist> getList() { return list != null ? list : new ArrayList<>(); }
+    }
+    public static class PlaylistEnvelope {
+        @SerializedName("subsonic-response")
+        private PlaylistResponse response;
+        public PlaylistResponse getResponse() { return response; }
+    }
+    public static class PlaylistResponse {
+        private String status;
+        private String version;
+        private RemotePlaylist playlist;
+        public boolean isSuccess() { return "ok".equals(status); }
+        public RemotePlaylist getPlaylist() { return playlist; }
+    }
+    public static class Playlist {
+        private String id;
+        private String name;
+        private String comment;
+        private String owner;
+        @SerializedName("public")
+        private boolean isPublic;
+        private String coverArt;
+        private int songCount;
+        private long duration;
+        // 注意：Navidrome 这里是 ISO8601 字符串，如 2025-08-17T03:24:23.660116375Z
+        private String created;
+        private String changed;
+        public String getId() { return id; }
+        public String getName() { return name; }
+        public String getOwner() { return owner; }
+        public boolean isPublic() { return isPublic; }
+        public int getSongCount() { return songCount; }
+        public String getCoverArt() { return coverArt; }
+        public long getCreated() { return parseIsoToEpoch(created); }
+        public long getChanged() { return parseIsoToEpoch(changed); }
+        private long parseIsoToEpoch(String value) {
+            try {
+                if (value == null || value.isEmpty()) return 0L;
+                // 规范化到毫秒精度：YYYY-MM-DDTHH:mm:ss.SSSZ
+                int dot = value.indexOf('.');
+                int z = value.indexOf('Z', dot >= 0 ? dot : 0);
+                if (dot >= 0 && z > dot) {
+                    String frac = value.substring(dot + 1, z);
+                    String ms;
+                    if (frac.length() >= 3) ms = frac.substring(0, 3);
+                    else if (frac.length() == 2) ms = frac + "0";
+                    else if (frac.length() == 1) ms = frac + "00";
+                    else ms = "000";
+                    value = value.substring(0, dot) + "." + ms + "Z";
+                }
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US);
+                sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                return sdf.parse(value).getTime();
+            } catch (Exception ignore) {
+                return 0L;
+            }
+        }
+    }
+    public static class RemotePlaylist {
+        private String id;
+        private String name;
+        private String owner;
+        @SerializedName("public")
+        private boolean isPublic;
+        // ISO8601 字符串
+        private String changed;
+        @SerializedName("entry")
+        private List<Song> entries;
+        public String getId() { return id; }
+        public String getName() { return name; }
+        public String getOwner() { return owner; }
+        public boolean isPublic() { return isPublic; }
+        public long getChanged() { return parseIsoToEpoch(changed); }
+        public List<Song> getEntries() { return entries != null ? entries : new ArrayList<>(); }
+        private long parseIsoToEpoch(String value) {
+            try {
+                if (value == null || value.isEmpty()) return 0L;
+                int dot = value.indexOf('.');
+                int z = value.indexOf('Z', dot >= 0 ? dot : 0);
+                if (dot >= 0 && z > dot) {
+                    String frac = value.substring(dot + 1, z);
+                    String ms;
+                    if (frac.length() >= 3) ms = frac.substring(0, 3);
+                    else if (frac.length() == 2) ms = frac + "0";
+                    else if (frac.length() == 1) ms = frac + "00";
+                    else ms = "000";
+                    value = value.substring(0, dot) + "." + ms + "Z";
+                }
+                java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US);
+                sdf.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                return sdf.parse(value).getTime();
+            } catch (Exception ignore) { return 0L; }
         }
     }
 
     private static class AlbumResponse {
         @SerializedName("subsonic-response")
         private AlbumResponseData response;
-
-        public AlbumResponseData getResponse() {
-            return response;
-        }
+        public AlbumResponseData getResponse() { return response; }
     }
-
     private static class AlbumResponseData {
         private String status;
         private String version;
         private AlbumData album;
         private Error error;
-
-        public boolean isSuccess() {
-            return "ok".equals(status);
-        }
-
-        public AlbumData getAlbum() {
-            return album;
-        }
+        public boolean isSuccess() { return "ok".equals(status); }
+        public AlbumData getAlbum() { return album; }
     }
-
     private static class SongsResponse {
         @SerializedName("subsonic-response")
         private SongsResponseData response;
-
-        public SongsResponseData getResponse() {
-            return response;
-        }
+        public SongsResponseData getResponse() { return response; }
     }
-
     private static class SongsResponseData {
         private String status;
         private String version;
         @SerializedName("randomSongs")
         private SongsData songsData;
         private Error error;
-
-        public boolean isSuccess() {
-            return "ok".equals(status);
-        }
-
-        public List<Song> getSongs() {
-            return songsData != null ? songsData.getSongs() : new ArrayList<>();
-        }
+        public boolean isSuccess() { return "ok".equals(status); }
+        public List<Song> getSongs() { return songsData != null ? songsData.getSongs() : new ArrayList<>(); }
     }
-
     private static class SongsData {
         @SerializedName("song")
         private List<Song> songs;
-
-        public List<Song> getSongs() {
-            return songs != null ? songs : new ArrayList<>();
-        }
+        public List<Song> getSongs() { return songs != null ? songs : new ArrayList<>(); }
     }
-
     private static class AlbumData {
         private String id;
         private String name;
         private String artist;
         @SerializedName("song")
         private List<Song> songs;
-
-        public String getId() {
-            return id;
-        }
-
-        public List<Song> getSongs() {
-            return songs != null ? songs : new ArrayList<>();
-        }
+        public String getId() { return id; }
+        public List<Song> getSongs() { return songs != null ? songs : new ArrayList<>(); }
     }
 } 

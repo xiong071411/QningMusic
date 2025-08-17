@@ -48,6 +48,12 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 	private final Set<Integer> loadingOffsets = new HashSet<>();
 	private Map<String, Integer> letterOffsetMap = new HashMap<>();
 
+	// 选择模式支持
+	private boolean selectionMode = false;
+	private final java.util.LinkedHashSet<String> selectedIds = new java.util.LinkedHashSet<>();
+	public interface OnItemLongClickListener { void onItemLongClick(int position); }
+	private OnItemLongClickListener longClickListener;
+
 	public AllSongsRangeAdapter(Context context, MusicRepository repository, SongAdapter.OnSongClickListener listener) {
 		this.context = context;
 		this.musicRepository = repository;
@@ -59,6 +65,16 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 	public void setOnDownloadClickListener(SongAdapter.OnDownloadClickListener listener) {
 		this.downloadClickListener = listener;
 	}
+
+	public void setOnItemLongClickListener(OnItemLongClickListener l) { this.longClickListener = l; }
+	public void setSelectionMode(boolean enable) { this.selectionMode = enable; if (!enable) selectedIds.clear(); notifyDataSetChanged(); }
+	public boolean isSelectionMode() { return selectionMode; }
+	public interface OnSelectionChanged { void onSelectionCountChanged(int count); }
+	private OnSelectionChanged selectionChangedListener;
+	public void setOnSelectionChangedListener(OnSelectionChanged l) { this.selectionChangedListener = l; }
+			public void toggleSelect(String songId) { if (!selectionMode || songId == null) return; if (selectedIds.contains(songId)) selectedIds.remove(songId); else selectedIds.add(songId); if (selectionChangedListener != null) selectionChangedListener.onSelectionCountChanged(selectedIds.size()); notifyDataSetChanged(); }
+	public java.util.List<String> getSelectedIdsInOrder() { return new java.util.ArrayList<>(selectedIds); }
+	public String getSongIdAt(int position) { SongWithIndex swi = loaded.get(position); return swi != null ? swi.getId() : null; }
 
 	public void setShowCoverArt(boolean show) { this.showCoverArt = show; notifyDataSetChanged(); }
 	public void setShowDownloadStatus(boolean show) { this.showDownloadStatus = show; notifyDataSetChanged(); }
@@ -111,11 +127,14 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 	}
 
 	private void bindPlaceholder(@NonNull ViewHolder holder, int position) {
-		// 占位渲染：仅显示编号，其余置灰
+		// 占位渲染：仅显示编号，其余置灰；占位行不可选
 		holder.songTitle.setText(" ");
 		holder.songArtist.setText(" ");
 		holder.songDuration.setText(" ");
 		holder.songNumber.setText(String.format(Locale.getDefault(), "%02d", position + 1));
+		holder.checkbox.setVisibility(View.GONE);
+		holder.songNumber.setVisibility(View.VISIBLE);
+		holder.itemView.setBackgroundResource(R.drawable.item_background);
 		holder.itemView.setAlpha(0.6f);
 		holder.downloadContainer.setVisibility(View.GONE);
 	}
@@ -130,6 +149,18 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		int minutes = duration / 60;
 		int seconds = duration % 60;
 		holder.songDuration.setText(String.format(Locale.getDefault(), "%d:%02d", minutes, seconds));
+
+		if (selectionMode) {
+			holder.checkbox.setVisibility(View.VISIBLE);
+			holder.songNumber.setVisibility(View.GONE);
+			boolean checked = selectedIds.contains(song.getId());
+			holder.checkbox.setImageResource(checked ? R.drawable.ic_check_box : R.drawable.ic_check_box_outline);
+			holder.itemView.setBackgroundResource(checked ? R.drawable.item_song_selected_bg : R.drawable.item_background);
+		} else {
+			holder.checkbox.setVisibility(View.GONE);
+			holder.songNumber.setVisibility(View.VISIBLE);
+			holder.itemView.setBackgroundResource(R.drawable.item_background);
+		}
 
 		setupDownloadUI(holder, song);
 
@@ -154,7 +185,14 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		}
 
 		holder.itemView.setOnClickListener(v -> {
-			if (songClickListener != null) songClickListener.onSongClick(song, adapterPosition);
+			if (selectionMode) {
+				toggleSelect(song.getId());
+				notifyItemChanged(holder.getBindingAdapterPosition());
+			} else if (songClickListener != null) songClickListener.onSongClick(song, adapterPosition);
+		});
+		holder.itemView.setOnLongClickListener(v -> {
+			if (longClickListener != null) { longClickListener.onItemLongClick(adapterPosition); return true; }
+			return false;
 		});
 		// 防止点击下载区域触发整行播放
 		holder.downloadContainer.setOnClickListener(v -> {});
@@ -313,6 +351,7 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		final TextView songArtist;
 		final TextView songDuration;
 		final TextView songNumber;
+		final ImageView checkbox;
 		final FrameLayout downloadContainer;
 		final ImageButton btnDownload;
 		final ProgressBar downloadProgress;
@@ -327,6 +366,7 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 			songArtist = itemView.findViewById(R.id.song_artist);
 			songDuration = itemView.findViewById(R.id.song_duration);
 			songNumber = itemView.findViewById(R.id.song_number);
+			checkbox = itemView.findViewById(R.id.checkbox);
 			downloadContainer = itemView.findViewById(R.id.download_container);
 			btnDownload = itemView.findViewById(R.id.btn_download);
 			downloadProgress = itemView.findViewById(R.id.download_progress);

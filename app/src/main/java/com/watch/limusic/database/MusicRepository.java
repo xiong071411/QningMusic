@@ -131,7 +131,11 @@ public class MusicRepository {
         executorService.execute(() -> {
             try {
                 List<AlbumEntity> entities = EntityConverter.toAlbumEntities(albums);
-                database.albumDao().insertAllAlbums(entities);
+                // 避免 REPLACE 触发外键删除引发约束失败：先 IGNORE 插入占位，再 UPDATE 对齐
+                database.albumDao().insertAlbumsIfAbsent(entities);
+                for (AlbumEntity e : entities) {
+                    try { database.albumDao().updateAlbum(e); } catch (Exception ignore) {}
+                }
                 Log.d(TAG, "成功保存 " + albums.size() + " 张专辑到数据库");
             } catch (Exception e) {
                 Log.e(TAG, "保存专辑到数据库失败", e);
@@ -217,7 +221,7 @@ public class MusicRepository {
         executorService.execute(() -> {
             try {
                 List<SongEntity> entities = EntityConverter.toSongEntities(songs);
-
+                
                 // 先补齐缺失的专辑占位，避免外键约束失败
                 try {
                     List<AlbumEntity> placeholders = new ArrayList<>();

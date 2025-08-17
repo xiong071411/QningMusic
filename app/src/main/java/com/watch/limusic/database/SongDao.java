@@ -32,6 +32,10 @@ public interface SongDao {
     @Query("SELECT * FROM songs WHERE id = :songId")
     SongEntity getSongById(String songId);
     
+    // 新增：根据ID列表取歌名，提示重复时使用
+    @Query("SELECT title FROM songs WHERE id IN (:ids)")
+    List<String> getTitlesByIds(List<String> ids);
+    
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' ORDER BY title")
     List<SongEntity> searchSongs(String query);
     

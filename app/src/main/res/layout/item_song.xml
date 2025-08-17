@@ -10,6 +10,14 @@
     android:clickable="true"
     android:focusable="true">
 
+    <ImageView
+        android:id="@+id/checkbox"
+        android:layout_width="30dp"
+        android:layout_height="30dp"
+        android:scaleType="centerInside"
+        android:visibility="gone"
+        tools:src="@drawable/ic_check_box_outline"/>
+
     <TextView
         android:id="@+id/song_number"
         android:layout_width="30dp"
@@ -124,5 +132,16 @@
             android:visibility="gone" />
 
     </FrameLayout>
+
+    <!-- 歌单拖动排序的拖动柄（仅歌单详情页显示） -->
+    <ImageView
+        android:id="@+id/drag_handle"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:layout_marginStart="6dp"
+        android:src="@drawable/ic_drag_handle"
+        android:contentDescription="@string/reorder"
+        android:visibility="gone"
+        tools:visibility="visible" />
 
 </LinearLayout>
