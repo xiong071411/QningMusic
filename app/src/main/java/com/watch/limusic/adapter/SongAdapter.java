@@ -181,9 +181,13 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         return new ViewHolder(view);
     }
 
+    private boolean shouldBindFromBackingList() {
+        return selectionMode && isPlaylistDetail && !backingList.isEmpty();
+    }
+
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        SongWithIndex songItem = getItem(position);
+        SongWithIndex songItem = shouldBindFromBackingList() && position < backingList.size() ? backingList.get(position) : getItem(position);
         Song song = songItem.getSong();
 
         holder.songTitle.setText(song.getTitle());
@@ -500,7 +504,12 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
 
     @Override
     public long getItemId(int position) {
-        SongWithIndex it = position >= 0 && position < getItemCount() ? getItem(position) : null;
+        SongWithIndex it;
+        if (shouldBindFromBackingList() && position >= 0 && position < backingList.size()) {
+            it = backingList.get(position);
+        } else {
+            it = position >= 0 && position < getItemCount() ? getItem(position) : null;
+        }
         if (it == null) return RecyclerView.NO_ID;
         // 使用歌曲id的hash稳定化（注意避免碰撞概率极小）
         return it.getId().hashCode();
@@ -538,7 +547,12 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
 
     public void moveItem(int from, int to) {
         if (from == to || from < 0 || to < 0 || from >= getItemCount() || to >= getItemCount()) return;
-        java.util.Collections.swap(backingList, from, to);
+        SongWithIndex moved = backingList.remove(from);
+        if (to >= backingList.size()) {
+            backingList.add(moved);
+        } else {
+            backingList.add(to, moved);
+        }
         notifyItemMoved(from, to);
     }
 

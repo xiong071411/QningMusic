@@ -276,93 +276,79 @@ public class PlaylistRepository {
 			PlaylistEntity p = playlistDao.getByLocalId(playlistLocalId);
 			if (p == null || p.getServerId() == null || p.getServerId().isEmpty()) return false;
 			int localCount = playlistSongDao.getCount(playlistLocalId);
-			// 若本地明细为空，直接拉取详情并对齐
-			if (localCount == 0) {
-				NavidromeApi.PlaylistEnvelope detail = api.getPlaylist(p.getServerId());
-				NavidromeApi.RemotePlaylist remote = detail != null && detail.getResponse() != null ? detail.getResponse().getPlaylist() : null;
-				if (remote != null) {
-					try {
-						List<Song> entries = remote.getEntries();
-						if (entries != null && !entries.isEmpty()) {
-							List<com.watch.limusic.database.AlbumEntity> placeholders = new ArrayList<>();
-							for (Song s : entries) {
-								String albumId = s.getAlbumId();
-								if (albumId == null || albumId.isEmpty()) continue;
-								com.watch.limusic.database.AlbumEntity existAlbum = db.albumDao().getAlbumById(albumId);
-								if (existAlbum == null) {
-									String name = s.getAlbum() != null ? s.getAlbum() : "";
-									String artist = s.getArtist() != null ? s.getArtist() : "";
-									String cover = s.getCoverArtUrl();
-									placeholders.add(new com.watch.limusic.database.AlbumEntity(albumId, name, artist, "", cover, 0, 0, 0));
-								}
-							}
-							if (!placeholders.isEmpty()) db.albumDao().insertAlbumsIfAbsent(placeholders);
-							List<SongEntity> toInsert = com.watch.limusic.database.EntityConverter.toSongEntities(entries);
-							db.songDao().insertAllSongs(toInsert);
-						}
-					} catch (Exception eIgnore) { Log.w(TAG, "回填歌单歌曲到本地失败(忽略): " + eIgnore.getMessage()); }
-					playlistSongDao.deleteAllForPlaylist(playlistLocalId);
-					List<Song> entries = remote.getEntries();
-					long now = System.currentTimeMillis();
-					List<PlaylistSongEntity> items = new ArrayList<>();
-					for (int i = 0; i < entries.size(); i++) {
-						items.add(new PlaylistSongEntity(playlistLocalId, entries.get(i).getId(), i, now));
-					}
-					if (!items.isEmpty()) playlistSongDao.insertAll(items);
-					playlistDao.updateStats(playlistLocalId, items.size(), remote.getChanged(), false);
-					sendPlaylistChangedBroadcast(playlistLocalId);
-					return true;
-				}
-			}
-			// 正常路径：根据 changed 判定是否需要刷新
+
+			// 1) 拉取服务器歌单头部变化，用于判断是否需要明细刷新
 			NavidromeApi.PlaylistsEnvelope env = api.getPlaylists();
 			NavidromeApi.PlaylistsResponse r = env != null ? env.getResponse() : null;
-			List<NavidromeApi.Playlist> list = r != null && r.getPlaylists() != null ? r.getPlaylists().getList() : new ArrayList<>();
+			java.util.List<NavidromeApi.Playlist> list = r != null && r.getPlaylists() != null ? r.getPlaylists().getList() : new java.util.ArrayList<>();
+			NavidromeApi.Playlist head = null;
 			for (NavidromeApi.Playlist rp : list) {
-				if (p.getServerId().equals(rp.getId())) {
-					if (rp.getChanged() == p.getChangedAt()) return false;
-					NavidromeApi.PlaylistEnvelope detail = api.getPlaylist(p.getServerId());
-					NavidromeApi.RemotePlaylist remote = detail != null && detail.getResponse() != null ? detail.getResponse().getPlaylist() : null;
-					if (remote != null) {
-						// 先将服务端返回的歌曲写入本地 songs 表，避免 join 为空
-						try {
-							List<Song> entries = remote.getEntries();
-							if (entries != null && !entries.isEmpty()) {
-								// 专辑占位
-								List<com.watch.limusic.database.AlbumEntity> placeholders = new ArrayList<>();
-								for (Song s : entries) {
-									String albumId = s.getAlbumId();
-									if (albumId == null || albumId.isEmpty()) continue;
-									com.watch.limusic.database.AlbumEntity existAlbum = db.albumDao().getAlbumById(albumId);
-									if (existAlbum == null) {
-										String name = s.getAlbum() != null ? s.getAlbum() : "";
-										String artist = s.getArtist() != null ? s.getArtist() : "";
-										String cover = s.getCoverArtUrl();
-										placeholders.add(new com.watch.limusic.database.AlbumEntity(albumId, name, artist, "", cover, 0, 0, 0));
-									}
-								}
-								if (!placeholders.isEmpty()) db.albumDao().insertAlbumsIfAbsent(placeholders);
-								// 插入歌曲
-								List<SongEntity> toInsert = com.watch.limusic.database.EntityConverter.toSongEntities(entries);
-								db.songDao().insertAllSongs(toInsert);
-							}
-						} catch (Exception eIgnore) { Log.w(TAG, "回填歌单歌曲到本地失败(忽略): " + eIgnore.getMessage()); }
+				if (p.getServerId().equals(rp.getId())) { head = rp; break; }
+			}
+			if (head == null) return false;
 
-						// 对齐歌单明细
-						playlistSongDao.deleteAllForPlaylist(playlistLocalId);
-						List<Song> entries = remote.getEntries();
-						long now = System.currentTimeMillis();
-						List<PlaylistSongEntity> items = new ArrayList<>();
-						for (int i = 0; i < entries.size(); i++) {
-							items.add(new PlaylistSongEntity(playlistLocalId, entries.get(i).getId(), i, now));
+			// 如果本地已有明细（localCount>0），我们采用“本地排序优先 + 增量合并”的策略：
+			// - 不覆盖本地已有曲目的相对顺序
+			// - 服务端有但本地没有的曲目，按服务端返回顺序追加到尾部
+			// - 服务端已删除的曲目，从本地移除
+			NavidromeApi.PlaylistEnvelope detail = api.getPlaylist(p.getServerId());
+			NavidromeApi.RemotePlaylist remote = detail != null && detail.getResponse() != null ? detail.getResponse().getPlaylist() : null;
+			if (remote == null) return false;
+
+			java.util.List<Song> remoteEntries = remote.getEntries() != null ? remote.getEntries() : new java.util.ArrayList<>();
+
+			// 回填缺失的歌曲元数据，避免 JOIN 为空
+			try {
+				if (!remoteEntries.isEmpty()) {
+					java.util.List<com.watch.limusic.database.AlbumEntity> placeholders = new java.util.ArrayList<>();
+					for (Song s : remoteEntries) {
+						String albumId = s.getAlbumId();
+						if (albumId == null || albumId.isEmpty()) continue;
+						com.watch.limusic.database.AlbumEntity existAlbum = db.albumDao().getAlbumById(albumId);
+						if (existAlbum == null) {
+							String name = s.getAlbum() != null ? s.getAlbum() : "";
+							String artist = s.getArtist() != null ? s.getArtist() : "";
+							String cover = s.getCoverArtUrl();
+							placeholders.add(new com.watch.limusic.database.AlbumEntity(albumId, name, artist, "", cover, 0, 0, 0));
 						}
-						if (!items.isEmpty()) playlistSongDao.insertAll(items);
-						playlistDao.updateStats(playlistLocalId, items.size(), remote.getChanged(), false);
-						sendPlaylistChangedBroadcast(playlistLocalId);
-						return true;
 					}
+					if (!placeholders.isEmpty()) db.albumDao().insertAlbumsIfAbsent(placeholders);
+					java.util.List<SongEntity> toInsert = com.watch.limusic.database.EntityConverter.toSongEntities(remoteEntries);
+					db.songDao().insertAllSongs(toInsert);
+				}
+			} catch (Exception ignore) {}
+
+			java.util.List<String> localOrderedIds = playlistSongDao.getSongIdsOrdered(playlistLocalId);
+			java.util.LinkedHashSet<String> localSet = new java.util.LinkedHashSet<>(localOrderedIds);
+			java.util.ArrayList<String> remoteIds = new java.util.ArrayList<>();
+			for (Song s : remoteEntries) remoteIds.add(s.getId());
+			java.util.LinkedHashSet<String> remoteSet = new java.util.LinkedHashSet<>(remoteIds);
+
+			// 需要移除的本地曲目：本地有而远端没有（按真实 ordinal 删除，避免有空洞时 i != ordinal）
+			java.util.ArrayList<String> idsToRemove = new java.util.ArrayList<>();
+			for (String id : localOrderedIds) {
+				if (!remoteSet.contains(id)) idsToRemove.add(id);
+			}
+			java.util.List<Integer> ordinalsToRemove = java.util.Collections.emptyList();
+			if (!idsToRemove.isEmpty()) {
+				ordinalsToRemove = playlistSongDao.getOrdinalsForSongIds(playlistLocalId, idsToRemove);
+				if (ordinalsToRemove != null && !ordinalsToRemove.isEmpty()) {
+					playlistSongDao.deleteByOrdinals(playlistLocalId, ordinalsToRemove);
 				}
 			}
+
+			// 需要追加的远端曲目：远端有而本地没有（保持服务端顺序，尾部追加）
+			java.util.ArrayList<String> toAppend = new java.util.ArrayList<>();
+			for (String rid : remoteIds) if (!localSet.contains(rid)) toAppend.add(rid);
+			if (!toAppend.isEmpty()) {
+				playlistSongDao.insertAtTailKeepingOrder(playlistLocalId, toAppend);
+			}
+
+			// 更新统计并广播
+			int count = playlistSongDao.getCount(playlistLocalId);
+			playlistDao.updateStats(playlistLocalId, count, head.getChanged(), false);
+			sendPlaylistChangedBroadcast(playlistLocalId);
+			return !toAppend.isEmpty() || !ordinalsToRemove.isEmpty();
 		} catch (Exception e) {
 			Log.w(TAG, "校验或刷新歌单失败: " + e.getMessage());
 		}

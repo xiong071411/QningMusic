@@ -67,12 +67,18 @@ public interface PlaylistSongDao {
 		shiftAllOrdinalsFrom(playlistLocalId, BIG, -(BIG - n));
 	}
 
+	@Query("SELECT songId FROM playlist_songs WHERE playlistLocalId = :playlistLocalId ORDER BY ordinal ASC")
+	List<String> getSongIdsOrdered(long playlistLocalId);
+
+	@Query("SELECT COALESCE(MAX(ordinal), -1) FROM playlist_songs WHERE playlistLocalId = :playlistLocalId")
+	int getMaxOrdinal(long playlistLocalId);
+
 	// 新增：按尾部追加，保持“先添加的在前面”
 	@Transaction
 	default void insertAtTailKeepingOrder(long playlistLocalId, List<String> songIdsInSelectOrder) {
 		int n = songIdsInSelectOrder != null ? songIdsInSelectOrder.size() : 0;
 		if (n <= 0) return;
-		int base = getCount(playlistLocalId);
+		int base = getMaxOrdinal(playlistLocalId) + 1;
 		long now = System.currentTimeMillis();
 		java.util.ArrayList<PlaylistSongEntity> list = new java.util.ArrayList<>();
 		for (int i = 0; i < n; i++) {

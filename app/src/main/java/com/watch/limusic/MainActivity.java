@@ -369,7 +369,9 @@ public class MainActivity extends AppCompatActivity
         @Override public void onReceive(Context context, Intent intent) {
             if ("playlist_detail".equals(currentView)) {
                 long pid = intent.getLongExtra("playlistLocalId", -1L);
+                long now = System.currentTimeMillis();
                 if (pid > 0) {
+                    if (pid == suppressPlaylistLocalId && now < suppressPlaylistChangedUntilMs) return;
                     new Thread(() -> {
                         List<com.watch.limusic.model.Song> songs2 = playlistRepository.getSongsInPlaylist(pid, 500, 0);
                         runOnUiThread(() -> songAdapter.processAndSubmitListKeepOrder(songs2));
@@ -399,6 +401,10 @@ public class MainActivity extends AppCompatActivity
 
     // 拖动排序助手（歌单详情用）
     private androidx.recyclerview.widget.ItemTouchHelper itemTouchHelper;
+
+	// 抑制窗口：重排提交后短时间内忽略自身歌单的刷新广播，避免松手后列表跳动
+	private long suppressPlaylistChangedUntilMs = 0L;
+	private long suppressPlaylistLocalId = -1L;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -1573,7 +1579,7 @@ public class MainActivity extends AppCompatActivity
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
             .setTitle("关于")
-            .setMessage("LiMusic\n\n该软件由作者熬了四个大夜（截止至这一个版本更新）呕心沥血匠心制作，由于艺术家分类还没做所以版本号就不更到2.0了。泠鸢yousa    B站uid：282994，快去关注！")
+            .setMessage("版本：v2.3Beta2\n\n软件作者 九秒冬眠 b站uid：515083950 ")
             .setPositiveButton("确定", null)
             .show();
     }
@@ -2399,6 +2405,11 @@ public class MainActivity extends AppCompatActivity
                     if (dragStart != null && lastTo != null && !dragStart.equals(lastTo)) {
                         final int fromFinal = dragStart;
                         final int toFinal = lastTo;
+                        // 开启抑制窗口，避免刚提交重排引发的广播刷新导致跳动
+                        suppressPlaylistLocalId = currentPlaylistLocalId;
+                        suppressPlaylistChangedUntilMs = System.currentTimeMillis() + 700L;
+                        // 停止任何惯性滚动，不做自动对齐
+                        try { rv.stopScroll(); } catch (Exception ignore) {}
                         new Thread(() -> {
                             playlistRepository.reorder(currentPlaylistLocalId, fromFinal, toFinal);
                         }).start();
