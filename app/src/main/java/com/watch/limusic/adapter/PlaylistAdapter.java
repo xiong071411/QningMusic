@@ -11,15 +11,16 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
-import com.bumptech.glide.signature.ObjectKey;
+import com.bumptech.glide.request.RequestOptions;
 import com.watch.limusic.R;
 import com.watch.limusic.api.NavidromeApi;
 import com.watch.limusic.database.PlaylistEntity;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.ViewHolder> {
@@ -47,7 +48,6 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.ViewHo
 	public void setCoverArtMap(Map<String, String> map) {
 		coverArtByServerId.clear();
 		if (map != null) coverArtByServerId.putAll(map);
-		notifyDataSetChanged();
 	}
 
 	@NonNull
@@ -63,6 +63,7 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.ViewHo
 		holder.name.setText(p.getName());
 		holder.info.setText(p.getSongCount() + " 首歌曲 · " + (p.getOwner() == null || p.getOwner().isEmpty() ? "-" : p.getOwner()));
 		holder.publicFlag.setText(p.isPublic() ? "公开" : "私有");
+
 		// 封面：优先使用服务端返回的 playlist coverArt，否则占位
 		String coverId = null;
 		if (p.getServerId() != null) {
@@ -74,10 +75,18 @@ public class PlaylistAdapter extends RecyclerView.Adapter<PlaylistAdapter.ViewHo
 		} else {
 			source = R.drawable.default_album_art;
 		}
+
+		RequestOptions opts = new RequestOptions()
+				.format(DecodeFormat.PREFER_RGB_565)
+				.disallowHardwareConfig()
+				.dontAnimate()
+				.override(40, 40)
+				.placeholder(R.drawable.default_album_art)
+				.error(R.drawable.default_album_art);
+
 		Glide.with(context)
 				.load(source)
-				.override(100, 100)
-				.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+				.apply(opts.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC))
 				.into(holder.cover);
 
 		holder.itemView.setOnClickListener(v -> { if (listener != null) listener.onClick(p); });

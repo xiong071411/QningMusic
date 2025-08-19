@@ -11,8 +11,8 @@ android {
         applicationId "com.watch.limusic"
         minSdk 27
         targetSdk 33
-        versionCode 11
-        versionName "2.3.0Beta2"
+        versionCode 12
+        versionName "2.3.0Beta3"
     }
 
     buildTypes {
@@ -48,6 +48,7 @@ dependencies {
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.okhttp3:logging-interceptor:4.11.0'
     implementation 'com.github.bumptech.glide:glide:4.11.0'
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.11.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4'

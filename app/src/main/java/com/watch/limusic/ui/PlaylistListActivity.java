@@ -75,7 +75,11 @@ public class PlaylistListActivity extends AppCompatActivity implements PlaylistA
 
 	@Override
 	public void onClick(PlaylistEntity playlist) {
-		PlaylistDetailActivity.start(this, playlist.getLocalId());
+		// 统一到 MainActivity 内嵌详情：通过 Intent Extra 请求打开该歌单
+		android.content.Intent i = new android.content.Intent(this, com.watch.limusic.MainActivity.class);
+		i.putExtra("open_playlist_local_id", playlist.getLocalId());
+		i.addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+		startActivity(i);
 	}
 
 	@Override

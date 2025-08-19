@@ -11,7 +11,9 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.annotation.NonNull;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.ObjectKey;
 import com.watch.limusic.R;
 import com.watch.limusic.model.Album;
@@ -144,22 +146,24 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
             String coverArtUrl = (localCover != null) ? ("file://" + localCover) : NavidromeApi.getInstance(context).getCoverArtUrl(key);
             boolean isLocal = coverArtUrl != null && coverArtUrl.startsWith("file://");
 
+            RequestOptions opts = new RequestOptions()
+                    .format(DecodeFormat.PREFER_RGB_565)
+                    .disallowHardwareConfig()
+                    .dontAnimate()
+                    .override(40, 40)
+                    .placeholder(R.drawable.default_album_art)
+                    .error(R.drawable.default_album_art);
+
             if (isLocal) {
                 Glide.with(context)
                     .load(coverArtUrl)
-                    .placeholder(R.drawable.default_album_art)
-                    .error(R.drawable.default_album_art)
-                    .diskCacheStrategy(DiskCacheStrategy.NONE)
-                    .override(100, 100)
+                    .apply(opts.diskCacheStrategy(DiskCacheStrategy.NONE))
                     .into(albumCoverView);
             } else {
             Glide.with(context)
                 .load(coverArtUrl)
-                .placeholder(R.drawable.default_album_art)
-                .error(R.drawable.default_album_art)
-                    .signature(new ObjectKey(key != null ? key : ""))
-                    .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                    .override(100, 100)
+                    .apply(opts.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                            .signature(new ObjectKey(key != null ? key : "")))
                 .into(albumCoverView);
             }
         }

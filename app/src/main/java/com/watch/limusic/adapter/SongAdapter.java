@@ -17,7 +17,9 @@ import android.widget.FrameLayout;
 import android.graphics.Color;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.ObjectKey;
 import com.watch.limusic.R;
 import com.watch.limusic.database.CacheDetector;
@@ -219,22 +221,24 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
             String coverArtUrl = (localCover != null) ? ("file://" + localCover) : NavidromeApi.getInstance(context).getCoverArtUrl(key);
             boolean isLocal = coverArtUrl != null && coverArtUrl.startsWith("file://");
 
+            RequestOptions opts = new RequestOptions()
+                    .format(DecodeFormat.PREFER_RGB_565)
+                    .disallowHardwareConfig()
+                    .dontAnimate()
+                    .override(36, 36)
+                    .placeholder(R.drawable.default_album_art)
+                    .error(R.drawable.default_album_art);
+
             if (isLocal) {
                 Glide.with(context)
                         .load(coverArtUrl)
-                        .override(100, 100)
-                        .placeholder(R.drawable.default_album_art)
-                        .error(R.drawable.default_album_art)
-                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .apply(opts.diskCacheStrategy(DiskCacheStrategy.NONE))
                         .into(holder.albumArt);
             } else {
             Glide.with(context)
                     .load(coverArtUrl)
-                    .override(100, 100)
-                    .placeholder(R.drawable.default_album_art)
-                    .error(R.drawable.default_album_art)
-                        .signature(new ObjectKey(key != null ? key : ""))
-                        .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                        .apply(opts.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                                .signature(new ObjectKey(key != null ? key : "")))
                     .into(holder.albumArt);
             }
         } else {

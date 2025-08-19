@@ -70,6 +70,9 @@ public interface PlaylistSongDao {
 	@Query("SELECT songId FROM playlist_songs WHERE playlistLocalId = :playlistLocalId ORDER BY ordinal ASC")
 	List<String> getSongIdsOrdered(long playlistLocalId);
 
+	@Query("SELECT ordinal FROM playlist_songs WHERE playlistLocalId = :playlistLocalId ORDER BY ordinal ASC")
+	List<Integer> getOrdinalsOrdered(long playlistLocalId);
+
 	@Query("SELECT COALESCE(MAX(ordinal), -1) FROM playlist_songs WHERE playlistLocalId = :playlistLocalId")
 	int getMaxOrdinal(long playlistLocalId);
 

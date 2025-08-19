@@ -205,10 +205,37 @@ public class PlaylistRepository {
 		new Thread(() -> {
 			try {
 				PlaylistEntity p = playlistDao.getByLocalId(playlistLocalId);
-				if (p != null && p.getServerId() != null && !p.getServerId().isEmpty() && serverIndexBySongId != null) {
-					List<Integer> serverIdx = new ArrayList<>(serverIndexBySongId.values());
+				if (p != null && p.getServerId() != null && !p.getServerId().isEmpty()) {
+					// 重新获取服务端顺序，按 songId 精确映射出要删除的索引
+					List<Integer> serverIdx = new ArrayList<>();
+					try {
+						NavidromeApi.PlaylistEnvelope env = api.getPlaylist(p.getServerId());
+						if (env != null && env.getResponse() != null && env.getResponse().getPlaylist() != null) {
+							List<com.watch.limusic.model.Song> entries = env.getResponse().getPlaylist().getEntries();
+							// 从本地被删的 ordinal 反查删哪些 songId
+							List<String> localOrderIds = playlistSongDao.getSongIdsOrdered(playlistLocalId);
+							java.util.HashSet<String> removedIds = new java.util.HashSet<>();
+							// 这里的 ordinals 来自删除前的本地快照，已删除后 localOrderIds 少了对应项，故改为在调用前就收集 ids；
+							// 如果上层已传入 serverIndexBySongId（按 songId 映射），优先用它。
+							if (serverIndexBySongId != null && !serverIndexBySongId.isEmpty()) {
+								for (Map.Entry<String,Integer> e : serverIndexBySongId.entrySet()) {
+									String sid = e.getKey();
+									// 找到 sid 在服务端 entries 中的位置
+									for (int i = 0; i < entries.size(); i++) {
+										if (sid.equals(entries.get(i).getId())) { serverIdx.add(i); break; }
+									}
+								}
+							} else {
+								// 无映射则放弃服务端删除（避免误删），由后续对账修正
+							}
+						}
+					} catch (Exception ex) {
+						Log.w(TAG, "获取服务端歌单详情失败，跳过服务端删除: " + ex.getMessage());
+					}
+					if (!serverIdx.isEmpty()) {
 					boolean ok = api.updatePlaylist(p.getServerId(), null, null, null, serverIdx);
 					if (ok) playlistDao.updateStats(playlistLocalId, count, System.currentTimeMillis(), false);
+					}
 				}
 			} catch (Exception e) {
 				Log.w(TAG, "移除歌曲服务器同步失败: " + e.getMessage());
@@ -216,8 +243,15 @@ public class PlaylistRepository {
 		}).start();
 	}
 
-	public void reorder(long playlistLocalId, int from, int to) {
-		playlistSongDao.reorder(playlistLocalId, from, to);
+	public void reorder(long playlistLocalId, int fromIndex, int toIndex) {
+		// 将适配器位置映射为真实 ordinal，避免因删除/合并导致的 ordinal 空洞引发错排
+		List<Integer> ordinals = playlistSongDao.getOrdinalsOrdered(playlistLocalId);
+		if (ordinals == null) return;
+		if (fromIndex < 0 || toIndex < 0 || fromIndex >= ordinals.size() || toIndex >= ordinals.size()) return;
+		int fromOrdinal = ordinals.get(fromIndex);
+		int toOrdinal = ordinals.get(toIndex);
+		if (fromOrdinal == toOrdinal) return;
+		playlistSongDao.reorder(playlistLocalId, fromOrdinal, toOrdinal);
 		playlistDao.updateStats(playlistLocalId, playlistSongDao.getCount(playlistLocalId), System.currentTimeMillis(), true);
 		sendPlaylistChangedBroadcast(playlistLocalId);
 	}

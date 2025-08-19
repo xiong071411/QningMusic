@@ -51,7 +51,7 @@ public class NavidromeApi {
 
         // 设置 OkHttpClient，添加日志拦截器和User-Agent拦截器
         HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
-        logging.setLevel(HttpLoggingInterceptor.Level.BODY);
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
 
         client = new OkHttpClient.Builder()
                 .addInterceptor(logging)

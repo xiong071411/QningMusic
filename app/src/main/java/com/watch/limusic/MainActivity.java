@@ -35,7 +35,9 @@ import android.widget.Button;
 import android.view.View;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.DecodeFormat;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.request.RequestOptions;
 import com.bumptech.glide.signature.ObjectKey;
 import com.watch.limusic.adapter.SongAdapter;
 import com.watch.limusic.model.Song;
@@ -262,6 +264,17 @@ public class MainActivity extends AppCompatActivity
             // 立即告知服务UI可见
             playerService.setUiVisible(true); 
             updatePlaybackState();
+            // 若是因用户点击播放而触发绑定，则开始播放
+            if (pendingStartPlayOnBind) {
+                pendingStartPlayOnBind = false;
+                try { playerService.play(); } catch (Exception ignore) {}
+            }
+            // 若存在排队的点歌请求，优先设置播放列表
+            if (pendingPlaylist != null && !pendingPlaylist.isEmpty() && pendingPlaylistRebasedIndex >= 0) {
+                try { playerService.setPlaylist(pendingPlaylist, pendingPlaylistRebasedIndex); } catch (Exception ignore) {}
+                pendingPlaylist = null;
+                pendingPlaylistRebasedIndex = -1;
+            }
         }
 
         @Override
@@ -455,6 +468,19 @@ public class MainActivity extends AppCompatActivity
         retryEmptyButton.setOnClickListener(retry);
         retryErrorButton.setOnClickListener(retry);
 
+        // 处理可能的外部请求：打开某个歌单详情
+        try {
+            long reqPid = getIntent() != null ? getIntent().getLongExtra("open_playlist_local_id", -1L) : -1L;
+            if (reqPid > 0) {
+                // 读取名称以更新标题
+                com.watch.limusic.database.PlaylistEntity pe = com.watch.limusic.database.MusicDatabase.getInstance(this).playlistDao().getByLocalId(reqPid);
+                String name = pe != null ? pe.getName() : "";
+                openPlaylistDetail(reqPid, name);
+                // 清理一次性参数，避免后续 onResume 重复触发
+                getIntent().removeExtra("open_playlist_local_id");
+            }
+        } catch (Exception ignore) {}
+
         // 初始展示骨架屏
         showSkeleton();
 
@@ -476,6 +502,9 @@ public class MainActivity extends AppCompatActivity
         
         // 设置播放控制
         setupPlaybackControls();
+        
+        // 在未绑定服务时，先从本地偏好恢复上次离开时的播放器UI（仅UI，不启动播放）
+        restorePlayerUiFromPrefs();
         
         // 检查配置，加载数据
         checkConfiguration();
@@ -555,8 +584,8 @@ public class MainActivity extends AppCompatActivity
     protected void onStart() {
         super.onStart();
         
-        // 绑定服务
-        bindService();
+        // 延迟绑定服务：仅在需要播放或用户交互时再绑定
+        // bindService();
         
         // 注册播放状态接收器
         IntentFilter filter = new IntentFilter("com.watch.limusic.PLAYBACK_STATE_CHANGED");
@@ -565,7 +594,7 @@ public class MainActivity extends AppCompatActivity
         // 监听数据库更新
         try { registerReceiver(dbSongsUpdatedReceiver, new IntentFilter("com.watch.limusic.DB_SONGS_UPDATED")); } catch (Exception ignore) {}
         
-        // 设置UI可见性标志
+        // 设置UI可见性标志（如已绑定再标记）
         if (bound && playerService != null) {
             playerService.setUiVisible(true);
         }
@@ -626,6 +655,14 @@ public class MainActivity extends AppCompatActivity
         // 设置UI不可见标志
         if (bound && playerService != null) {
             playerService.setUiVisible(false);
+        }
+        // 退出时更新滚动位置与当前视图
+        if ("album_songs".equals(currentView)) {
+            saveLastView("album_songs", currentAlbumId, currentAlbumTitle);
+        } else if ("playlist_detail".equals(currentView)) {
+            saveLastView("playlist_detail", currentPlaylistLocalId);
+        } else {
+            saveLastView(currentView);
         }
     }
 
@@ -757,8 +794,6 @@ public class MainActivity extends AppCompatActivity
         // 优化RecyclerView性能
         recyclerView.setHasFixedSize(true);
         recyclerView.setItemViewCacheSize(20);
-        recyclerView.setDrawingCacheEnabled(true);
-        recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
         
         // 添加分割线
         DividerItemDecoration divider = new DividerItemDecoration(this, layoutManager.getOrientation());
@@ -930,15 +965,20 @@ public class MainActivity extends AppCompatActivity
         bindService(intent, connection, BIND_AUTO_CREATE);
     }
 
+    private boolean pendingStartPlayOnBind = false;
     private void togglePlayback() {
-        if (bound) {
+        if (!bound) {
+            // 首次交互时绑定服务，连接后开始播放
+            pendingStartPlayOnBind = true;
+            bindService();
+            return;
+        }
             if (playerService.isPlaying()) {
                 playerService.pause();
                 playPauseButton.setImageResource(R.drawable.ic_play);
             } else {
                 playerService.play();
                 playPauseButton.setImageResource(R.drawable.ic_pause);
-            }
         }
     }
 
@@ -958,22 +998,23 @@ public class MainActivity extends AppCompatActivity
             
             if (coverArtUrl != null) {
                 boolean isLocal = coverArtUrl.startsWith("file://");
+                RequestOptions optsLarge = new RequestOptions()
+                    .format(DecodeFormat.PREFER_RGB_565)
+                    .disallowHardwareConfig()
+                    .dontAnimate()
+                    .override(150, 150)
+                    .placeholder(R.drawable.default_album_art)
+                    .error(R.drawable.default_album_art);
                 if (isLocal) {
                     Glide.with(this)
                         .load(coverArtUrl)
-                        .override(150, 150)
-                        .placeholder(R.drawable.default_album_art)
-                        .error(R.drawable.default_album_art)
-                        .diskCacheStrategy(DiskCacheStrategy.NONE)
+                        .apply(optsLarge.diskCacheStrategy(DiskCacheStrategy.NONE))
                         .into(albumArt);
                 } else {
                     Glide.with(this)
                         .load(coverArtUrl)
-                        .override(150, 150)
-                        .placeholder(R.drawable.default_album_art)
-                        .error(R.drawable.default_album_art)
-                        .signature(new ObjectKey(key != null ? key : ""))
-                        .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                        .apply(optsLarge.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
+                            .signature(new ObjectKey(key != null ? key : "")))
                         .into(albumArt);
                 }
             } else {
@@ -1030,13 +1071,12 @@ public class MainActivity extends AppCompatActivity
                 
                 // 确保歌曲有专辑ID，用于显示封面
                 if (song.getAlbumId() == null || song.getAlbumId().isEmpty()) {
-                    // 如果没有专辑ID，尝试使用封面URL作为专辑ID
                     if (song.getCoverArtUrl() != null && !song.getCoverArtUrl().isEmpty()) {
                         song.setAlbumId(song.getCoverArtUrl());
                     }
                 }
                 
-                // 预先加载封面
+                // 预先加载封面（省略代码不变）
                 if (song.getAlbumId() != null && !song.getAlbumId().isEmpty()) {
                     String albumId = song.getAlbumId();
                     String key = albumId;
@@ -1071,9 +1111,33 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(this, "播放出错: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             }
         } else {
-            Toast.makeText(this, "播放服务未就绪", Toast.LENGTH_SHORT).show();
+            // 未绑定时：保存待播放请求，绑定后自动执行
+            pendingPlaylist = buildCurrentPlaylistFor(position);
+            bindService();
+            Toast.makeText(this, "正在连接播放服务…", Toast.LENGTH_SHORT).show();
         }
     }
+
+    private List<Song> buildCurrentPlaylistFor(int clickPosition) {
+        List<Song> list = null;
+        int rebased = clickPosition;
+        RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+        if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+            list = new java.util.ArrayList<>();
+            int start = Math.max(0, clickPosition - 50);
+            int end = Math.min(adapter.getItemCount() - 1, clickPosition + 200);
+            List<Song> range = musicRepository.getSongsRange(end - start + 1, start);
+            list.addAll(range);
+            rebased = Math.min(Math.max(0, clickPosition - start), list.size() - 1);
+        } else if (songAdapter != null) {
+            list = songAdapter.getSongList();
+        }
+        pendingPlaylistRebasedIndex = rebased;
+        return list != null ? list : java.util.Collections.emptyList();
+    }
+
+    private List<Song> pendingPlaylist = null;
+    private int pendingPlaylistRebasedIndex = -1;
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -1579,7 +1643,7 @@ public class MainActivity extends AppCompatActivity
     private void showAboutDialog() {
         new AlertDialog.Builder(this)
             .setTitle("关于")
-            .setMessage("版本：v2.3Beta2\n\n软件作者 九秒冬眠 b站uid：515083950 ")
+            .setMessage("版本：v2.3Beta3\n\n软件作者 九秒冬眠 b站uid：515083950 ")
             .setPositiveButton("确定", null)
             .show();
     }
@@ -1588,15 +1652,123 @@ public class MainActivity extends AppCompatActivity
         SharedPreferences prefs = getSharedPreferences("navidrome_settings", MODE_PRIVATE);
         String serverUrl = prefs.getString("server_url", "");
         if (serverUrl.isEmpty()) {
-            // 如果未配置，直接打开设置界面
             startActivity(new Intent(this, SettingsActivity.class));
         } else {
-            // 已配置，加载音乐列表
+            // 恢复上次视图或默认专辑
+            restoreLastViewOrDefault();
+        }
+    }
+
+    private void saveLastView(String view) {
+        saveLastView(view, null, null, -1L);
+    }
+    private void saveLastView(String view, String albumId, String albumTitle) {
+        saveLastView(view, albumId, albumTitle, -1L);
+    }
+    private void saveLastView(String view, long playlistLocalId) {
+        saveLastView(view, null, null, playlistLocalId);
+    }
+    private void saveLastView(String view, String albumId, String albumTitle, long playlistLocalId) {
+        try {
+            SharedPreferences sp = getSharedPreferences("ui_prefs", MODE_PRIVATE);
+            SharedPreferences.Editor e = sp.edit();
+            e.putString("last_view", view);
+            if (albumId != null) e.putString("last_album_id", albumId); else e.remove("last_album_id");
+            if (albumTitle != null) e.putString("last_album_title", albumTitle); else e.remove("last_album_title");
+            if (playlistLocalId > 0) e.putLong("last_playlist_local_id", playlistLocalId); else e.remove("last_playlist_local_id");
+            // 保存当前滚动位置
+            try {
+                if (recyclerView != null && recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                    androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                    int pos = lm.findFirstVisibleItemPosition();
+                    View v = lm.findViewByPosition(pos);
+                    int offset = v != null ? v.getTop() : 0;
+                    e.putInt("last_scroll_pos", Math.max(0, pos));
+                    e.putInt("last_scroll_offset", offset);
+                }
+            } catch (Exception ignore) {}
+            e.apply();
+        } catch (Exception ignore) {}
+    }
+
+    private void resetUiForNewView() {
+        try {
+            if (recyclerView != null) {
+                recyclerView.setAdapter(null);
+            }
+            if (skeletonContainer != null) skeletonContainer.setVisibility(View.GONE);
+            if (emptyContainer != null) emptyContainer.setVisibility(View.GONE);
+            if (errorContainer != null) errorContainer.setVisibility(View.GONE);
+            if (progressBar != null) progressBar.setVisibility(View.GONE);
+        } catch (Exception ignore) {}
+    }
+
+    private void restoreLastViewOrDefault() {
+        try {
+            SharedPreferences sp = getSharedPreferences("ui_prefs", MODE_PRIVATE);
+            String v = sp.getString("last_view", null);
+            int pos = sp.getInt("last_scroll_pos", 0);
+            int off = sp.getInt("last_scroll_offset", 0);
+            if (v == null) { resetUiForNewView(); loadAlbums(); return; }
+            switch (v) {
+                case "songs":
+                    resetUiForNewView();
+                    loadAllSongs();
+                    postRestoreScroll(pos, off);
+                    break;
+                case "playlists":
+                    resetUiForNewView();
+                    loadPlaylists();
+                    postRestoreScroll(pos, off);
+                    break;
+                case "album_songs":
+                    String aid = sp.getString("last_album_id", null);
+                    if (aid != null && !aid.isEmpty()) {
+                        resetUiForNewView();
+                        loadAlbumSongs(aid);
+                        postRestoreScroll(pos, off);
+                    } else { resetUiForNewView(); loadAlbums(); }
+                    break;
+                case "playlist_detail":
+                    long pid = sp.getLong("last_playlist_local_id", -1L);
+                    if (pid > 0) {
+                        resetUiForNewView();
+                        com.watch.limusic.database.PlaylistEntity pe = com.watch.limusic.database.MusicDatabase.getInstance(this).playlistDao().getByLocalId(pid);
+                        String name = pe != null ? pe.getName() : "";
+                        openPlaylistDetail(pid, name);
+                        postRestoreScroll(pos, off);
+                    } else { resetUiForNewView(); loadPlaylists(); }
+                    break;
+                case "albums":
+                default:
+                    resetUiForNewView();
+            loadAlbums();
+                    postRestoreScroll(pos, off);
+            }
+        } catch (Exception e) {
+            resetUiForNewView();
             loadAlbums();
         }
     }
 
+    private void postRestoreScroll(int position, int offset) {
+        try {
+            if (recyclerView != null) recyclerView.post(() -> {
+                try {
+                    if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                        androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                        lm.scrollToPositionWithOffset(Math.max(0, position), offset);
+                    } else {
+                        recyclerView.scrollToPosition(Math.max(0, position));
+                    }
+                } catch (Exception ignore) {}
+            });
+        } catch (Exception ignore) {}
+    }
+
     private void loadAllSongs() {
+        // 在进入新视图前确保清理旧UI状态，避免骨架混叠
+        // resetUiForNewView(); // 已在调用方（恢复/导航）统一处理
         Toast.makeText(this, R.string.loading, Toast.LENGTH_SHORT).show();
         new Thread(() -> {
             try {
@@ -1653,6 +1825,7 @@ public class MainActivity extends AppCompatActivity
                         currentView = "songs";
                         enterRootNavigationMode();
                         invalidateOptionsMenu();
+                        saveLastView("songs");
                         
                     // 首屏预取
                     rangeAdapter.prefetch(0);
@@ -2053,6 +2226,7 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void loadPlaylists() {
+        // resetUiForNewView(); // 调用方统一清理
         enterRootNavigationMode();
         showSkeleton();
         progressBar.setVisibility(View.VISIBLE);
@@ -2272,6 +2446,11 @@ public class MainActivity extends AppCompatActivity
             List<Song> songs2 = playlistRepository.getSongsInPlaylist(playlistLocalId, 500, 0);
             runOnUiThread(() -> songAdapter.processAndSubmitListKeepOrder(songs2));
         }).start();
+        // 确保进度条在详情页首屏可见，并同步一次播放器UI
+        ensureProgressBarVisible();
+        if (bound && playerService != null) {
+            updatePlaybackState();
+        }
     }
 
     private void updateSelectionTitle() {
@@ -2407,7 +2586,7 @@ public class MainActivity extends AppCompatActivity
                         final int toFinal = lastTo;
                         // 开启抑制窗口，避免刚提交重排引发的广播刷新导致跳动
                         suppressPlaylistLocalId = currentPlaylistLocalId;
-                        suppressPlaylistChangedUntilMs = System.currentTimeMillis() + 700L;
+                        suppressPlaylistChangedUntilMs = System.currentTimeMillis() + 1500L;
                         // 停止任何惯性滚动，不做自动对齐
                         try { rv.stopScroll(); } catch (Exception ignore) {}
                         new Thread(() -> {
@@ -2426,5 +2605,94 @@ public class MainActivity extends AppCompatActivity
             itemTouchHelper.attachToRecyclerView(null);
             itemTouchHelper = null;
         }
+    }
+
+    private void restorePlayerUiFromPrefs() {
+        try {
+            SharedPreferences prefs = getSharedPreferences("player_prefs", MODE_PRIVATE);
+            String songId = prefs.getString("last_song_id", null);
+            String title = prefs.getString("last_title", null);
+            String artist = prefs.getString("last_artist", null);
+            String albumId = prefs.getString("last_album_id", null);
+            int savedMode = prefs.getInt("last_playback_mode", PlayerService.PLAYBACK_MODE_REPEAT_ALL);
+            long position = prefs.getLong("last_position", 0L);
+
+            if (songId == null || songId.isEmpty()) return; // 没有历史状态
+
+            // 标题/艺人
+            if (songTitle != null) songTitle.setText(title != null ? title : "");
+            if (songArtist != null) songArtist.setText(artist != null ? artist : "");
+
+            // 封面：优先本地，不做网络请求以降低启动成本
+            if (albumArt != null) {
+                boolean loaded = false;
+                if (albumId != null && !albumId.isEmpty()) {
+                    String localCover = new LocalFileDetector(this).getDownloadedAlbumCoverPath(albumId);
+                    if (localCover != null) {
+                        Glide.with(this)
+                                .load("file://" + localCover)
+                                .apply(new com.bumptech.glide.request.RequestOptions()
+                                        .format(com.bumptech.glide.load.DecodeFormat.PREFER_RGB_565)
+                                        .disallowHardwareConfig()
+                                        .dontAnimate()
+                                        .override(150, 150)
+                                        .placeholder(R.drawable.default_album_art)
+                                        .error(R.drawable.default_album_art))
+                                .into(albumArt);
+                        loaded = true;
+                    }
+                }
+                if (!loaded) albumArt.setImageResource(R.drawable.default_album_art);
+            }
+
+            // 播放模式按钮图标
+            if (repeatModeButton != null) {
+                int iconRes;
+                switch (savedMode) {
+                    case PlayerService.PLAYBACK_MODE_REPEAT_ONE:
+                        iconRes = R.drawable.ic_repeat_one; break;
+                    case PlayerService.PLAYBACK_MODE_SHUFFLE:
+                        iconRes = R.drawable.ic_shuffle; break;
+                    case PlayerService.PLAYBACK_MODE_REPEAT_ALL:
+                    default:
+                        iconRes = R.drawable.ic_repeat; break;
+                }
+                repeatModeButton.setImageResource(iconRes);
+            }
+
+            // 进度条与时间文本（尽力估计 duration）
+            int durationMs = 0;
+            try {
+                com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getSongById(songId);
+                if (se != null) durationMs = Math.max(0, se.getDuration() * 1000); // DB 为秒，UI 用毫秒
+            } catch (Exception ignore) {}
+
+            if (seekBar != null) {
+                if (durationMs > 0) seekBar.setMax(durationMs); else seekBar.setMax(0);
+                seekBar.setProgress((int) Math.max(0, Math.min(position, durationMs > 0 ? durationMs : Integer.MAX_VALUE)));
+            }
+            if (progressBar != null) {
+                if (durationMs > 0) progressBar.setMax(durationMs);
+                progressBar.setProgress((int) Math.max(0, Math.min(position, durationMs > 0 ? durationMs : Integer.MAX_VALUE)));
+                progressBar.setVisibility(View.VISIBLE);
+                progressBar.invalidate();
+            }
+            // 更新时间显示文本
+            try { updateTimeDisplay(position, durationMs); } catch (Exception ignore) {}
+        } catch (Exception ignore) {}
+    }
+
+	@Override
+	protected void onNewIntent(android.content.Intent intent) {
+		super.onNewIntent(intent);
+		if (intent == null) return;
+		try {
+			long reqPid = intent.getLongExtra("open_playlist_local_id", -1L);
+			if (reqPid > 0) {
+				com.watch.limusic.database.PlaylistEntity pe = com.watch.limusic.database.MusicDatabase.getInstance(this).playlistDao().getByLocalId(reqPid);
+				String name = pe != null ? pe.getName() : "";
+				openPlaylistDetail(reqPid, name);
+			}
+		} catch (Exception ignore) {}
     }
 }
