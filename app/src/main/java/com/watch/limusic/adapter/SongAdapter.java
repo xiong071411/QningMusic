@@ -216,10 +216,8 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         if (showCoverArt) {
             holder.albumArt.setVisibility(View.VISIBLE);
             String albumId = song.getAlbumId();
-            String key = (albumId != null && !albumId.isEmpty()) ? albumId : song.getCoverArtUrl();
+            String coverId = song.getCoverArtUrl();
             String localCover = (albumId != null && !albumId.isEmpty()) ? localFileDetector.getDownloadedAlbumCoverPath(albumId) : null;
-            String coverArtUrl = (localCover != null) ? ("file://" + localCover) : NavidromeApi.getInstance(context).getCoverArtUrl(key);
-            boolean isLocal = coverArtUrl != null && coverArtUrl.startsWith("file://");
 
             RequestOptions opts = new RequestOptions()
                     .format(DecodeFormat.PREFER_RGB_565)
@@ -229,17 +227,20 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
                     .placeholder(R.drawable.default_album_art)
                     .error(R.drawable.default_album_art);
 
-            if (isLocal) {
+            if (localCover != null) {
                 Glide.with(context)
-                        .load(coverArtUrl)
+                        .load("file://" + localCover)
                         .apply(opts.diskCacheStrategy(DiskCacheStrategy.NONE))
                         .into(holder.albumArt);
-            } else {
-            Glide.with(context)
-                    .load(coverArtUrl)
+            } else if (coverId != null && !coverId.isEmpty()) {
+                String url = NavidromeApi.getInstance(context).getCoverArtUrl(coverId);
+                Glide.with(context)
+                        .load(url)
                         .apply(opts.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                                .signature(new ObjectKey(key != null ? key : "")))
-                    .into(holder.albumArt);
+                                .signature(new ObjectKey(coverId)))
+                        .into(holder.albumArt);
+            } else {
+                holder.albumArt.setImageResource(R.drawable.default_album_art);
             }
         } else {
             holder.albumArt.setVisibility(View.GONE);

@@ -202,11 +202,13 @@ public class PlayerService extends Service {
                     case Player.STATE_READY:
                         Log.d(TAG, "播放器就绪");
                         updatePlaybackState();
-						logPlaybackDiagnostics("STATE_READY");
+                        logPlaybackDiagnostics("STATE_READY");
+                        // 补发一次心跳广播，确保前台/未绑定场景也能拿到正确的时长与进度
+                        sendPlaybackStateBroadcast();
                         break;
                     case Player.STATE_BUFFERING:
                         Log.d(TAG, "正在缓冲");
-						logPlaybackDiagnostics("STATE_BUFFERING");
+                        logPlaybackDiagnostics("STATE_BUFFERING");
                         break;
                     case Player.STATE_ENDED:
                         Log.d(TAG, "播放结束");
@@ -296,11 +298,10 @@ public class PlayerService extends Service {
                                 Log.d(TAG, "原因: 播放列表改变");
                                 break;
                         }
+                        // 切歌时补发一次广播，避免未绑定场景下UI停在0:00
+                        sendPlaybackStateBroadcast();
                     }
                 }
-                updateNotification();
-                // 立即广播，确保UI更新标题/作者
-                sendPlaybackStateBroadcast();
             }
         });
 
@@ -618,13 +619,13 @@ public class PlayerService extends Service {
         if (playlist.isEmpty()) {
             return;
         }
-
+        
         // 耳机上一首：强制切到上一首；非强制时保留“>3s回到本曲起点”的体验
         if (!forceToPrevious && player.getCurrentPosition() > 3000) {
             player.seekTo(0);
             return;
         }
-
+        
         if (currentIndex > 0) {
             currentIndex--;
         } else if (playbackMode == PLAYBACK_MODE_REPEAT_ALL && !playlist.isEmpty()) {
@@ -634,7 +635,7 @@ public class PlayerService extends Service {
             // 已经是第一首，不处理
             return;
         }
-
+        
         player.seekTo(currentIndex, 0);
         Log.d(TAG, "播放上一首: 索引 " + currentIndex + (forceToPrevious ? " (forced)" : ""));
         sendPlaybackStateBroadcast();

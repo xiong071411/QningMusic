@@ -136,15 +136,13 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
             }
             albumInfoView.setText(infoText);
             
-            // 使用Glide加载图片：优先本地封面，其次网络URL（为网络URL添加稳定签名）
+            // 使用Glide加载图片：优先本地封面，其次网络URL（仅在存在coverArtId时），否则占位图
             String albumId = album.getId();
-            String key = (album.getCoverArt() != null && !album.getCoverArt().isEmpty()) ? album.getCoverArt() : albumId;
+            String coverId = album.getCoverArt();
             String localCover = null;
             if (albumId != null && !albumId.isEmpty()) {
                 localCover = new LocalFileDetector(context).getDownloadedAlbumCoverPath(albumId);
             }
-            String coverArtUrl = (localCover != null) ? ("file://" + localCover) : NavidromeApi.getInstance(context).getCoverArtUrl(key);
-            boolean isLocal = coverArtUrl != null && coverArtUrl.startsWith("file://");
 
             RequestOptions opts = new RequestOptions()
                     .format(DecodeFormat.PREFER_RGB_565)
@@ -154,17 +152,21 @@ public class AlbumAdapter extends RecyclerView.Adapter<AlbumAdapter.ViewHolder> 
                     .placeholder(R.drawable.default_album_art)
                     .error(R.drawable.default_album_art);
 
-            if (isLocal) {
+            if (localCover != null) {
                 Glide.with(context)
-                    .load(coverArtUrl)
+                    .load("file://" + localCover)
                     .apply(opts.diskCacheStrategy(DiskCacheStrategy.NONE))
                     .into(albumCoverView);
-            } else {
-            Glide.with(context)
-                .load(coverArtUrl)
+            } else if (coverId != null && !coverId.isEmpty()) {
+                String url = NavidromeApi.getInstance(context).getCoverArtUrl(coverId);
+                Glide.with(context)
+                    .load(url)
                     .apply(opts.diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
-                            .signature(new ObjectKey(key != null ? key : "")))
-                .into(albumCoverView);
+                            .signature(new ObjectKey(coverId)))
+                    .into(albumCoverView);
+            } else {
+                // 无封面ID且本地无封面：直接使用占位图，避免请求远端导致显示Navidrome默认封面
+                albumCoverView.setImageResource(R.drawable.default_album_art);
             }
         }
     }

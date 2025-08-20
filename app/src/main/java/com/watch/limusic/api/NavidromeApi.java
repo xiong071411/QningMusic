@@ -286,11 +286,6 @@ public class NavidromeApi {
                 songsResponse.getResponse() != null && 
                 songsResponse.getResponse().getSongs() != null) {
                 List<Song> songs = songsResponse.getResponse().getSongs();
-                for (Song song : songs) {
-                    if (song.getAlbumId() == null) {
-                        song.setAlbumId(song.getCoverArtUrl());
-                    }
-                }
                 return songs;
             }
             return new ArrayList<>();

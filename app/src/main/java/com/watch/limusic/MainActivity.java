@@ -598,6 +598,9 @@ public class MainActivity extends AppCompatActivity
         if (bound && playerService != null) {
             playerService.setUiVisible(true);
         }
+        
+        // 若正在播放或最近在播，则条件绑定服务以恢复心跳广播
+        maybeBindIfPlaying();
     }
 
     @Override
@@ -1040,8 +1043,18 @@ public class MainActivity extends AppCompatActivity
                     // 直接从数据库按排序范围取数据
                     List<Song> range = musicRepository.getSongsRange(end - start + 1, start);
                     currentList.addAll(range);
-                    // 重新定位点击项在当前窗口中的索引
-                    position = Math.min(Math.max(0, position - start), currentList.size() - 1);
+                    // 优先基于点击的 songId 在窗口内重新定位索引，避免UI与DB的时序漂移
+                    String clickedId = song != null ? song.getId() : null;
+                    if (clickedId != null) {
+                        int found = -1;
+                        for (int i = 0; i < currentList.size(); i++) {
+                            Song it = currentList.get(i);
+                            if (it != null && clickedId.equals(it.getId())) { found = i; break; }
+                        }
+                        position = (found >= 0) ? found : Math.min(Math.max(0, position - start), currentList.size() - 1);
+                    } else {
+                        position = Math.min(Math.max(0, position - start), currentList.size() - 1);
+                    }
                 } else if (songAdapter != null) {
                     currentList = songAdapter.getSongList();
                 }
@@ -2726,5 +2739,18 @@ public class MainActivity extends AppCompatActivity
 				openPlaylistDetail(reqPid, name);
 			}
 		} catch (Exception ignore) {}
+    }
+
+    // 当返回前台且处于播放状态时，自动绑定服务以恢复UI心跳更新
+    private void maybeBindIfPlaying() {
+        try {
+            if (bound) return;
+            android.content.SharedPreferences prefs = getSharedPreferences("player_prefs", MODE_PRIVATE);
+            boolean wasPlaying = prefs.getBoolean("last_is_playing", false);
+            String lastSongId = prefs.getString("last_song_id", null);
+            if (wasPlaying && lastSongId != null && !lastSongId.isEmpty()) {
+                bindService();
+            }
+        } catch (Exception ignore) {}
     }
 }
