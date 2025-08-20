@@ -336,7 +336,7 @@ public class PlayerService extends Service {
 
             @Override
             public void onSkipToPrevious() {
-                previous();
+                previousInternal(true);
             }
 
             @Override
@@ -611,16 +611,20 @@ public class PlayerService extends Service {
     }
 
     public void previous() {
+        previousInternal(false);
+    }
+
+    private void previousInternal(boolean forceToPrevious) {
         if (playlist.isEmpty()) {
             return;
         }
-        
-        // 如果当前播放进度超过3秒，则重新播放当前歌曲
-        if (player.getCurrentPosition() > 3000) {
+
+        // 耳机上一首：强制切到上一首；非强制时保留“>3s回到本曲起点”的体验
+        if (!forceToPrevious && player.getCurrentPosition() > 3000) {
             player.seekTo(0);
             return;
         }
-        
+
         if (currentIndex > 0) {
             currentIndex--;
         } else if (playbackMode == PLAYBACK_MODE_REPEAT_ALL && !playlist.isEmpty()) {
@@ -630,9 +634,9 @@ public class PlayerService extends Service {
             // 已经是第一首，不处理
             return;
         }
-        
+
         player.seekTo(currentIndex, 0);
-        Log.d(TAG, "播放上一首: 索引 " + currentIndex);
+        Log.d(TAG, "播放上一首: 索引 " + currentIndex + (forceToPrevious ? " (forced)" : ""));
         sendPlaybackStateBroadcast();
     }
 

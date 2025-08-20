@@ -1367,12 +1367,30 @@ public class MainActivity extends AppCompatActivity
         hasMoreData = true;
         currentOffset = 0;
         
+        // 强制重置状态避免早退
+        isLoading = false;
         // 显示加载中
         progressBar.setVisibility(View.VISIBLE);
         isLoading = true;
 
         // 保证骨架屏已显示
         showSkeleton();
+
+        // 确保专辑适配器附着
+        if (albumAdapter == null) {
+            albumAdapter = new AlbumAdapter(MainActivity.this);
+            albumAdapter.setOnAlbumClickListener(album -> {
+                Log.d(TAG, "专辑点击监听器触发: " + album.getName() + ", ID: " + album.getId());
+                if (album.getId() == null || album.getId().isEmpty()) {
+                    Toast.makeText(this, "专辑ID无效，无法加载歌曲", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                loadAlbumSongs(album.getId());
+            });
+        }
+        if (recyclerView.getAdapter() != albumAdapter) {
+            recyclerView.setAdapter(albumAdapter);
+        }
 
         // 1) 先快速渲染本地缓存，提升首屏速度
         new Thread(() -> {
@@ -1397,6 +1415,10 @@ public class MainActivity extends AppCompatActivity
                                 loadAlbumSongs(album.getId());
                             });
                             recyclerView.setAdapter(albumAdapter);
+                        } else {
+                            if (recyclerView.getAdapter() != albumAdapter) {
+                                recyclerView.setAdapter(albumAdapter);
+                            }
                         }
                         albumAdapter.setAlbums(cached);
                         currentOffset = cached.size();
@@ -1435,6 +1457,10 @@ public class MainActivity extends AppCompatActivity
                                 loadAlbumSongs(album.getId());
                             });
                             recyclerView.setAdapter(albumAdapter);
+                        } else {
+                            if (recyclerView.getAdapter() != albumAdapter) {
+                                recyclerView.setAdapter(albumAdapter);
+                            }
                         }
                         
                         // 覆盖数据
@@ -2201,11 +2227,17 @@ public class MainActivity extends AppCompatActivity
     
     // 从专辑详情返回到专辑选择界面（不刷新数据，直接切换适配器）
     private void navigateBackToAlbums() {
+        // 如果适配器未初始化或没有数据，走加载流程
+        if (albumAdapter == null || albumAdapter.getItemCount() == 0) {
+            resetUiForNewView();
+            loadAlbums();
+            return;
+        }
         currentView = "albums";
         if (getSupportActionBar() != null) {
             getSupportActionBar().setTitle("专辑");
         }
-        if (albumAdapter != null) {
+        if (recyclerView.getAdapter() != albumAdapter) {
             recyclerView.setAdapter(albumAdapter);
         }
         // 切换回汉堡菜单模式
