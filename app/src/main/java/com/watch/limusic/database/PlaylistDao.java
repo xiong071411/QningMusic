@@ -22,6 +22,10 @@ public interface PlaylistDao {
 	@Query("SELECT * FROM playlists WHERE isDeleted = 0 ORDER BY changedAt DESC")
 	List<PlaylistEntity> getAll();
 
+	// 新增：清空所有歌单头（用于服务器切换时重建）
+	@Query("DELETE FROM playlists")
+	int deleteAll();
+
 	// 新增：包含已删除项的全量列表，用于与服务端对账
 	@Query("SELECT * FROM playlists ORDER BY changedAt DESC")
 	List<PlaylistEntity> getAllIncludingDeleted();

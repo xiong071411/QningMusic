@@ -10,6 +10,9 @@ import java.util.List;
 
 @Dao
 public interface PlaylistSongDao {
+	// 新增：清空所有歌单明细（用于服务器切换时安全清库）
+	@Query("DELETE FROM playlist_songs")
+	int deleteAll();
 	@Insert(onConflict = OnConflictStrategy.ABORT)
 	void insertAll(List<PlaylistSongEntity> items);
 

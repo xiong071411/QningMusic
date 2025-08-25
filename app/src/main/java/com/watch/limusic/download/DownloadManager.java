@@ -26,6 +26,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import android.content.SharedPreferences;
 import java.util.Locale;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
 
 /**
  * 下载管理器 - 处理歌曲的手动下载
@@ -58,6 +60,7 @@ public class DownloadManager {
     private final File songsDir;
     private final File coversDir;
     private final DownloadRepository downloadRepository;
+    private BroadcastReceiver configUpdatedReceiver;
 
     private DownloadManager(Context context) {
         this.context = context.getApplicationContext();
@@ -74,6 +77,17 @@ public class DownloadManager {
         this.coversDir = new File(downloadDir, "covers");
         
         createDirectories();
+
+        // 监听配置更新，立即中断所有下载任务
+        try {
+            configUpdatedReceiver = new BroadcastReceiver() {
+                @Override public void onReceive(Context ctx, Intent intent) {
+                    if (!com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED.equals(intent.getAction())) return;
+                    cancelAll();
+                }
+            };
+            context.registerReceiver(configUpdatedReceiver, new IntentFilter(com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED));
+        } catch (Exception ignore) {}
     }
 
     public static synchronized DownloadManager getInstance(Context context) {
@@ -135,6 +149,20 @@ public class DownloadManager {
         downloadTasks.put(songId, task);
         
         Log.i(TAG, "开始下载歌曲: " + song.getTitle());
+    }
+
+    /**
+     * 取消所有进行中的下载（用于服务器配置切换时的立即中断）
+     */
+    public void cancelAll() {
+        try {
+            java.util.List<String> ids = new java.util.ArrayList<>(activeDownloads.keySet());
+            for (String id : ids) {
+                try { cancelDownload(id); } catch (Exception ignore) {}
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "取消全部下载时发生异常: " + e.getMessage());
+        }
     }
 
     /**
@@ -465,6 +493,7 @@ public class DownloadManager {
      */
     public void shutdown() {
         downloadExecutor.shutdown();
+        try { if (configUpdatedReceiver != null) context.unregisterReceiver(configUpdatedReceiver); } catch (Exception ignore) {}
     }
 
     /**

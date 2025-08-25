@@ -459,6 +459,30 @@ public class MusicRepository {
     }
     
     /**
+     * 服务器切换时清理所有歌曲（避免“所有歌曲”混入历史数据）
+     */
+    public void purgeAllOnServerSwitch() {
+        executorService.execute(() -> {
+            try {
+                // 先清空歌单明细，再清空歌曲与歌单头，避免外键约束并保证干净状态
+                database.playlistSongDao().deleteAll();
+                database.songDao().deleteAllSongs();
+                try { database.playlistDao().deleteAll(); } catch (Exception ignore) {}
+                // 通知UI刷新（仅针对“所有歌曲”范围适配器）
+                try {
+                    int total = database.songDao().getSongCount();
+                    Intent intent = new Intent("com.watch.limusic.DB_SONGS_UPDATED");
+                    intent.putExtra("totalCount", total);
+                    context.sendBroadcast(intent);
+                } catch (Exception ignore) {}
+                Log.i(TAG, "已在服务器切换时清空歌单明细、所有歌曲与歌单头");
+            } catch (Exception e) {
+                Log.e(TAG, "清空数据失败", e);
+            }
+        });
+    }
+    
+    /**
      * 关闭存储库，清理资源
      */
     public void shutdown() {

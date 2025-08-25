@@ -14,6 +14,7 @@ import android.os.Binder;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.content.IntentFilter;
 import androidx.core.app.NotificationCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -59,6 +60,7 @@ import com.watch.limusic.database.SongEntity;
 import com.watch.limusic.database.EntityConverter;
 
 public class PlayerService extends Service {
+	private android.content.BroadcastReceiver configUpdatedReceiver;
     private static final String TAG = "PlayerService";
     private static final String CHANNEL_ID = "music_playback_channel";
     private static final int NOTIFICATION_ID = 1;
@@ -124,6 +126,23 @@ public class PlayerService extends Service {
         
         // 初始化Navidrome API
         navidromeApi = NavidromeApi.getInstance(this);
+
+        // 注册配置更新广播：立即切换到新服务器
+        try {
+            configUpdatedReceiver = new android.content.BroadcastReceiver() {
+                @Override public void onReceive(Context ctx, Intent intent) {
+                    if (!com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED.equals(intent.getAction())) return;
+                    try { navidromeApi.reloadCredentials(); } catch (Exception ignore) {}
+                    try { if (player != null) { player.stop(); player.clearMediaItems(); } } catch (Exception ignore) {}
+                    currentSong = null;
+                    mediaItems.clear();
+                    playlist.clear();
+                    transcodingFallbackTried.clear();
+                    try { updatePlaybackState(); } catch (Exception ignore) {}
+                }
+            };
+            registerReceiver(configUpdatedReceiver, new IntentFilter(com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED));
+        } catch (Exception ignore) {}
 
         // 初始化本地文件检测器
         localFileDetector = new LocalFileDetector(this);
@@ -1025,6 +1044,7 @@ public class PlayerService extends Service {
         releaseAudioFocus();
         stopForeground(true); // 服务销毁时，移除通知
         stopUiUpdate(); // 服务销毁时，确保停止更新
+        try { if (configUpdatedReceiver != null) unregisterReceiver(configUpdatedReceiver); } catch (Exception ignore) {}
         Log.d(TAG, "PlayerService销毁");
     }
 

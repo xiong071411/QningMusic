@@ -255,6 +255,31 @@ public class MainActivity extends AppCompatActivity
         }
     };
 
+    // 服务器配置更新广播：清库并跳转到"所有歌曲"且刷新
+    private final BroadcastReceiver navidromeConfigUpdatedReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (!com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED.equals(intent.getAction())) return;
+            try {
+                // 清空歌曲表，避免旧服务器数据残留
+                musicRepository.purgeAllOnServerSwitch();
+            } catch (Exception ignore) {}
+            try {
+                // 写入最新服务器签名，避免后续 onStart 再次重复清库
+                String sig = buildCurrentServerSignature();
+                if (sig != null && !sig.isEmpty()) {
+                    SharedPreferences sp = getSharedPreferences("ui_prefs", MODE_PRIVATE);
+                    sp.edit().putString("last_server_signature", sig).apply();
+                }
+            } catch (Exception ignore) {}
+            try {
+                // 导航到"所有歌曲"并刷新
+                resetUiForNewView();
+                loadAllSongs();
+                Toast.makeText(MainActivity.this, "已切换至新服务器，列表已刷新", Toast.LENGTH_SHORT).show();
+            } catch (Exception ignore) {}
+        }
+    };
+
     private final ServiceConnection connection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -594,6 +619,12 @@ public class MainActivity extends AppCompatActivity
         // 监听数据库更新
         try { registerReceiver(dbSongsUpdatedReceiver, new IntentFilter("com.watch.limusic.DB_SONGS_UPDATED")); } catch (Exception ignore) {}
         
+        // 监听服务器配置更新
+        try { registerReceiver(navidromeConfigUpdatedReceiver, new IntentFilter(com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED)); } catch (Exception ignore) {}
+
+        // 服务器签名自检：若变更则清库并刷新"所有歌曲"
+        try { checkAndHandleServerSignatureChange(); } catch (Exception ignore) {}
+        
         // 设置UI可见性标志（如已绑定再标记）
         if (bound && playerService != null) {
             playerService.setUiVisible(true);
@@ -654,6 +685,7 @@ public class MainActivity extends AppCompatActivity
         
         // 取消注册 DB 更新接收器
         try { unregisterReceiver(dbSongsUpdatedReceiver); } catch (Exception ignore) {}
+        try { unregisterReceiver(navidromeConfigUpdatedReceiver); } catch (Exception ignore) {}
         
         // 设置UI不可见标志
         if (bound && playerService != null) {
@@ -2378,9 +2410,7 @@ public class MainActivity extends AppCompatActivity
                             com.watch.limusic.database.PlaylistEntity local = com.watch.limusic.database.MusicDatabase.getInstance(MainActivity.this).playlistDao().getByServerId(rp.getId());
                             com.watch.limusic.database.PlaylistEntity pe;
                             if (local != null) {
-                                if (local.isDeleted()) {
-                                    continue; // 本地已删除则跳过展示
-                                }
+                                // 即使本地曾标记软删除，也优先按远端可见；不跳过
                                 pe = local;
                                 pe.setSongCount(rp.getSongCount());
                                 pe.setChangedAt(rp.getChanged());
@@ -2413,7 +2443,7 @@ public class MainActivity extends AppCompatActivity
                             if (errorContainer != null) errorContainer.setVisibility(View.GONE);
                             ensureProgressBarVisible();
                         });
-                        // 后台持久化到本地
+                        // 先持久化远端头部，再进行本地对账，确保切回仍可见
                         try { playlistRepository.syncPlaylistsHeader(); } catch (Exception ignore) {}
                     }
                 } catch (Exception netEx) {
@@ -2752,5 +2782,39 @@ public class MainActivity extends AppCompatActivity
                 bindService();
             }
         } catch (Exception ignore) {}
+    }
+
+    // ===== 服务器签名自检与更新 =====
+    private String buildCurrentServerSignature() {
+        try {
+            SharedPreferences prefs = getSharedPreferences("navidrome_settings", MODE_PRIVATE);
+            String url = prefs.getString("server_url", "");
+            String port = prefs.getString("server_port", "4533");
+            String username = prefs.getString("username", "");
+            if (url == null) url = "";
+            if (port == null || port.isEmpty()) port = "4533";
+            if (username == null) username = "";
+            if (url.isEmpty()) return "";
+            return url + "|" + port + "|" + username;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private void checkAndHandleServerSignatureChange() {
+        String current = buildCurrentServerSignature();
+        if (current == null || current.isEmpty()) return;
+        SharedPreferences sp = getSharedPreferences("ui_prefs", MODE_PRIVATE);
+        String last = sp.getString("last_server_signature", "");
+        if (!current.equals(last)) {
+            // 先写入，以避免重复触发
+            sp.edit().putString("last_server_signature", current).apply();
+            try { musicRepository.purgeAllOnServerSwitch(); } catch (Exception ignore) {}
+            try {
+                resetUiForNewView();
+                loadAllSongs();
+                Toast.makeText(this, "已切换至新服务器，列表已刷新", Toast.LENGTH_SHORT).show();
+            } catch (Exception ignore) {}
+        }
     }
 }

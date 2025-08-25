@@ -133,6 +133,8 @@ public class PlaylistRepository {
 				long id = playlistDao.insert(add);
 				add.setLocalId(id);
 			} else {
+				// 远端存在则强制取消软删除，确保可见
+				exist.setDeleted(false);
 				exist.setName(rp.getName());
 				exist.setPublic(rp.isPublic());
 				exist.setSongCount(rp.getSongCount());

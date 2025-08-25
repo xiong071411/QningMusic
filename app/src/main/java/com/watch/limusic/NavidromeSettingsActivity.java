@@ -82,22 +82,18 @@ public class NavidromeSettingsActivity extends AppCompatActivity {
             serverPort = "4533";
         }
 
-        // 先保存到 SharedPreferences 便于 API 使用
-        SharedPreferences.Editor editor = preferences.edit();
-        editor.putString("server_url", serverUrl);
-        editor.putString("server_port", serverPort);
-        editor.putString("username", username);
-        editor.putString("password", password);
-        editor.apply();
-
         ProgressDialog dialog = new ProgressDialog(this);
         dialog.setMessage("正在测试连接...");
         dialog.setCancelable(false);
         dialog.show();
 
+        final String finalServerUrl = serverUrl;
+        final int finalPort;
+        try { finalPort = Integer.parseInt(serverPort); } catch (Exception e) { dialog.dismiss(); Toast.makeText(this, "端口无效", Toast.LENGTH_SHORT).show(); return; }
+
         new Thread(() -> {
             try {
-                boolean ok = NavidromeApi.getInstance(this).ping();
+                boolean ok = com.watch.limusic.api.NavidromeApi.ping(finalServerUrl, finalPort, username, password);
                 runOnUiThread(() -> {
                     dialog.dismiss();
                     Toast.makeText(this, ok ? "连接成功！" : "连接失败：服务器返回错误", Toast.LENGTH_SHORT).show();
@@ -135,7 +131,13 @@ public class NavidromeSettingsActivity extends AppCompatActivity {
         editor.putString("password", password);
         editor.apply();
 
-        Toast.makeText(this, "设置已保存", Toast.LENGTH_SHORT).show();
+        // 发送配置更新广播
+        try {
+            android.content.Intent intent = new android.content.Intent(com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED);
+            sendBroadcast(intent);
+        } catch (Exception ignore) {}
+
+        Toast.makeText(this, "已切换至新服务器", Toast.LENGTH_SHORT).show();
         finish();
     }
 

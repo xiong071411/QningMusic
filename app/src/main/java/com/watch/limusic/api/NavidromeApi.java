@@ -26,6 +26,7 @@ import okhttp3.logging.HttpLoggingInterceptor;
 
 public class NavidromeApi {
     private static final String TAG = "NavidromeApi";
+    public static final String ACTION_NAVIDROME_CONFIG_UPDATED = "com.watch.limusic.NAVIDROME_CONFIG_UPDATED";
     private static final String API_VERSION = NavidromeClient.API_VERSION;
     private static final String CLIENT_NAME = NavidromeClient.CLIENT_NAME;
     private static NavidromeApi instance;
@@ -81,6 +82,9 @@ public class NavidromeApi {
         serverPort = Integer.parseInt(prefs.getString("server_port", "4533"));
     }
 
+    // 显式刷新凭据，供外部在配置更新广播到达时调用
+    public synchronized void reloadCredentials() { loadCredentials(); }
+
     private String generateSalt() {
         Random random = new Random();
         return String.valueOf(random.nextInt(900000000) + 100000000);
@@ -103,6 +107,8 @@ public class NavidromeApi {
     }
 
     private HttpUrl.Builder getBaseUrlBuilder() {
+        // 每次构建请求前刷新一次配置，确保使用最新服务器设置
+        loadCredentials();
         return new HttpUrl.Builder()
                 .scheme(serverUrl.startsWith("https") ? "https" : "http")
                 .host(serverUrl.replace("http://", "").replace("https://", ""))
@@ -110,10 +116,10 @@ public class NavidromeApi {
                 .addPathSegment("rest");
     }
 
+    // 统一构建请求（带签名参数）
     private Request.Builder getRequestBuilder(String endpoint) {
         String salt = generateSalt();
         String token = generateToken(password, salt);
-
         HttpUrl url = getBaseUrlBuilder()
                 .addPathSegment(endpoint)
                 .addQueryParameter("u", username)
@@ -123,8 +129,76 @@ public class NavidromeApi {
                 .addQueryParameter("c", CLIENT_NAME)
                 .addQueryParameter("f", "json")
                 .build();
-
         return new Request.Builder().url(url);
+    }
+
+    // 兼容旧版 Gson：parse json 字符串为 JsonObject
+    private static com.google.gson.JsonObject parseJsonObjectCompat(String json) {
+        try {
+            com.google.gson.JsonParser parser = new com.google.gson.JsonParser();
+            return parser.parse(json).getAsJsonObject();
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    // 使用传入配置进行一次性 ping 测试（不依赖单例缓存）
+    public static boolean ping(String serverUrl, int serverPort, String username, String password) throws IOException {
+        HttpLoggingInterceptor logging = new HttpLoggingInterceptor();
+        logging.setLevel(HttpLoggingInterceptor.Level.BASIC);
+        OkHttpClient tempClient = new OkHttpClient.Builder()
+                .addInterceptor(logging)
+                .addInterceptor(chain -> {
+                    Request originalRequest = chain.request();
+                    Request requestWithUserAgent = originalRequest.newBuilder()
+                            .header("User-Agent", CLIENT_NAME)
+                            .build();
+                    return chain.proceed(requestWithUserAgent);
+                })
+                .build();
+
+        String salt;
+        {
+            java.util.Random random = new java.util.Random();
+            salt = String.valueOf(random.nextInt(900000000) + 100000000);
+        }
+        String token;
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("MD5");
+            String input = password + salt;
+            byte[] bytes = md.digest(input.getBytes());
+            StringBuilder sb = new StringBuilder();
+            for (byte b : bytes) sb.append(String.format("%02x", b));
+            token = sb.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IOException("无法生成校验令牌", e);
+        }
+
+        String scheme = serverUrl != null && serverUrl.startsWith("https") ? "https" : "http";
+        String hostPart = serverUrl == null ? "" : serverUrl.replace("http://", "").replace("https://", "");
+        int slashIdx = hostPart.indexOf('/');
+        if (slashIdx >= 0) hostPart = hostPart.substring(0, slashIdx);
+        int colonIdx = hostPart.indexOf(':');
+        if (colonIdx >= 0) hostPart = hostPart.substring(0, colonIdx);
+
+        HttpUrl url = new HttpUrl.Builder()
+                .scheme(scheme)
+                .host(hostPart)
+                .port(serverPort)
+                .addPathSegment("rest")
+                .addPathSegment("ping")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .build();
+
+        Request request = new Request.Builder().url(url).build();
+        try (Response response = tempClient.newCall(request).execute()) {
+            return response.isSuccessful();
+        }
     }
 
     public boolean ping() throws IOException {
@@ -308,7 +382,28 @@ public class NavidromeApi {
         Request request = new Request.Builder().url(url).build();
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) throw new IOException("Unexpected response " + response);
-            PlaylistsEnvelope env = gson.fromJson(response.body().string(), new TypeToken<PlaylistsEnvelope>(){}.getType());
+            String json = response.body().string();
+            // 兼容：当 playlists.playlist 为单对象而非数组时，包装成数组
+            try {
+                com.google.gson.JsonObject root = parseJsonObjectCompat(json);
+                if (root != null) {
+                    com.google.gson.JsonObject sr = root.has("subsonic-response") && root.get("subsonic-response").isJsonObject()
+                            ? root.getAsJsonObject("subsonic-response") : null;
+                    if (sr != null && sr.has("playlists") && sr.get("playlists").isJsonObject()) {
+                        com.google.gson.JsonObject pls = sr.getAsJsonObject("playlists");
+                        if (pls.has("playlist")) {
+                            com.google.gson.JsonElement pl = pls.get("playlist");
+                            if (pl != null && pl.isJsonObject()) {
+                                com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+                                arr.add(pl.getAsJsonObject());
+                                pls.add("playlist", arr);
+                                json = root.toString();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+            PlaylistsEnvelope env = gson.fromJson(json, new TypeToken<PlaylistsEnvelope>(){}.getType());
             return env;
         }
     }
@@ -329,7 +424,28 @@ public class NavidromeApi {
         Request request = new Request.Builder().url(url).build();
         try (Response response = client.newCall(request).execute()) {
             if (!response.isSuccessful()) throw new IOException("Unexpected response " + response);
-            PlaylistEnvelope env = gson.fromJson(response.body().string(), new TypeToken<PlaylistEnvelope>(){}.getType());
+            String json = response.body().string();
+            // 兼容：当 playlist.entry 为单对象而非数组时，包装成数组
+            try {
+                com.google.gson.JsonObject root = parseJsonObjectCompat(json);
+                if (root != null) {
+                    com.google.gson.JsonObject sr = root.has("subsonic-response") && root.get("subsonic-response").isJsonObject()
+                            ? root.getAsJsonObject("subsonic-response") : null;
+                    if (sr != null && sr.has("playlist") && sr.get("playlist").isJsonObject()) {
+                        com.google.gson.JsonObject pl = sr.getAsJsonObject("playlist");
+                        if (pl.has("entry")) {
+                            com.google.gson.JsonElement en = pl.get("entry");
+                            if (en != null && en.isJsonObject()) {
+                                com.google.gson.JsonArray arr = new com.google.gson.JsonArray();
+                                arr.add(en.getAsJsonObject());
+                                pl.add("entry", arr);
+                                json = root.toString();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+            PlaylistEnvelope env = gson.fromJson(json, new TypeToken<PlaylistEnvelope>(){}.getType());
             return env;
         }
     }
