@@ -32,6 +32,12 @@ import java.util.Set;
 
 import android.util.SparseArray;
 
+// 新增：后台执行器与下载/缓存状态内存集合
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ConcurrentSkipListSet;
+
 public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdapter.ViewHolder> {
 	private final Context context;
 	private final MusicRepository musicRepository;
@@ -48,6 +54,18 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 	private final Set<Integer> loadingOffsets = new HashSet<>();
 	private Map<String, Integer> letterOffsetMap = new HashMap<>();
 
+	// 新增：后台单线程执行器，降低主线程干扰
+	private final ExecutorService bgExecutor = Executors.newSingleThreadExecutor(new ThreadFactory() {
+		@Override public Thread newThread(Runnable r) {
+			return new Thread(() -> {
+				try { android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND); } catch (Throwable ignore) {}
+				r.run();
+			}, "AllSongsRangeAdapter-IO");
+		}
+	});
+	// 新增：内存集合，避免逐条文件系统查询
+	private final Set<String> downloadedSongIds = new ConcurrentSkipListSet<>();
+
 	// 选择模式支持
 	private boolean selectionMode = false;
 	private final java.util.LinkedHashSet<String> selectedIds = new java.util.LinkedHashSet<>();
@@ -60,6 +78,15 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		this.localFileDetector = new LocalFileDetector(context);
 		this.downloadManager = DownloadManager.getInstance(context);
 		this.songClickListener = listener;
+		// 启用稳定ID，减少全量刷新和回收导致的闪烁/跳位
+		setHasStableIds(true);
+		// 异步预扫描下载目录，填充内存集合
+		bgExecutor.execute(() -> {
+			try {
+				java.util.List<String> ids = localFileDetector.getAllDownloadedSongIds();
+				if (ids != null) downloadedSongIds.addAll(ids);
+			} catch (Throwable ignore) {}
+		});
 	}
 
 	public void setOnDownloadClickListener(SongAdapter.OnDownloadClickListener listener) {
@@ -84,6 +111,29 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		notifyDataSetChanged();
 	}
 
+	// 新增：仅根据新总数做局部差量更新，避免全量刷新
+	public void applyTotalCountAndDiff(int newTotal) {
+		int old = this.totalCount;
+		newTotal = Math.max(0, newTotal);
+		if (newTotal == old) return;
+		this.totalCount = newTotal;
+		if (newTotal > old) {
+			int inserted = newTotal - old;
+			notifyItemRangeInserted(old, inserted);
+		} else {
+			int removed = old - newTotal;
+			notifyItemRangeRemoved(newTotal, removed);
+			// 同步清理已加载缓存中超出范围的条目
+			for (int i = loaded.size() - 1; i >= 0; i--) {
+				int key = loaded.keyAt(i);
+				if (key >= newTotal) loaded.removeAt(i);
+			}
+		}
+	}
+
+	// 新增：对外暴露当前总数，便于比较
+	public int getTotalCount() { return totalCount; }
+
 	public void setLetterOffsetMap(Map<String,Integer> map) {
 		this.letterOffsetMap = map != null ? map : new HashMap<>();
 	}
@@ -107,6 +157,17 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 
 	@Override
 	public int getItemCount() { return totalCount; }
+
+	@Override
+	public long getItemId(int position) {
+		SongWithIndex swi = loaded.get(position);
+		if (swi != null && swi.getId() != null) {
+			// 用歌曲ID生成稳定long，减少碰撞
+			return (long) swi.getId().hashCode() & 0xffffffffL;
+		}
+		// 占位行使用位置派生的稳定ID，待真实数据到达时自然过渡
+		return 0x40000000L + position;
+	}
 
 	@NonNull
 	@Override
@@ -258,7 +319,7 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 			});
 			return;
 		}
-		boolean isDownloaded = localFileDetector.isSongDownloaded(song);
+		boolean isDownloaded = downloadedSongIds.contains(song.getId());
 		if (isDownloaded) {
 			holder.downloadComplete.setVisibility(View.VISIBLE);
 			holder.downloadComplete.setOnClickListener(v -> {
@@ -277,12 +338,15 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		int aligned = Math.max(0, (centerPosition / pageSize) * pageSize);
 		if (loadingOffsets.contains(aligned)) return;
 		loadingOffsets.add(aligned);
-		new Thread(() -> {
+		bgExecutor.execute(() -> {
 			List<Song> songs = musicRepository.getSongsRange(pageSize, aligned);
 			List<SongWithIndex> items = new ArrayList<>();
 			for (int i = 0; i < songs.size(); i++) {
 				Song s = songs.get(i);
-				boolean cached = localFileDetector.isSongDownloaded(s) || com.watch.limusic.cache.CacheManager.getInstance(context).isCached(com.watch.limusic.api.NavidromeApi.getInstance(context).getStreamUrl(s.getId()));
+				boolean isDownloaded = downloadedSongIds.contains(s.getId());
+				boolean cachedByKey = com.watch.limusic.cache.CacheManager.getInstance(context).isCachedByKey("stream_mp3_" + s.getId())
+					|| com.watch.limusic.cache.CacheManager.getInstance(context).isCachedByKey("stream_raw_" + s.getId());
+				boolean cached = isDownloaded || cachedByKey;
 				SongWithIndex swi = new SongWithIndex(s, aligned + i, cached);
 				items.add(swi);
 			}
@@ -292,7 +356,7 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 					notifyItemChanged(aligned + i);
 				}
 			});
-		}).start();
+		});
 	}
 
 	// 在给定位置附近预取当前/前一页/后一页，避免仅显示序号
@@ -332,6 +396,13 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 				break;
 			}
 		}
+		// 同步维护内存集合
+		try {
+			if (songId != null && !songId.isEmpty()) {
+				boolean nowDownloaded = localFileDetector.isSongDownloaded(songId);
+				if (nowDownloaded) downloadedSongIds.add(songId); else downloadedSongIds.remove(songId);
+			}
+		} catch (Throwable ignore) {}
 	}
 
 	public void updateSongDownloadProgress(String songId, int progress) {

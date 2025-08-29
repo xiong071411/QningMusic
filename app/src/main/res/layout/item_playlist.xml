@@ -10,7 +10,7 @@
     android:layout_marginTop="2dp"
     android:layout_marginBottom="2dp"
     app:cardCornerRadius="6dp"
-    app:cardBackgroundColor="@color/card_background"
+    app:cardBackgroundColor="@color/background_elevated"
     app:cardElevation="0dp"
     android:foreground="?attr/selectableItemBackground">
 
@@ -63,7 +63,7 @@
                     android:paddingBottom="2dp"
                     android:textSize="10sp"
                     android:textColor="@color/text_primary"
-                    android:background="@drawable/item_background"
+                    android:background="@drawable/item_background_v2"
                     tools:text="公开"/>
             </LinearLayout>
 

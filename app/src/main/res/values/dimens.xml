@@ -19,4 +19,8 @@
     <dimen name="spacing_small">4dp</dimen>
     <dimen name="spacing_normal">8dp</dimen>
     <dimen name="spacing_large">16dp</dimen>
+    <dimen name="corner_card_v2">12dp</dimen>
+    <dimen name="corner_cover_v2">10dp</dimen>
+    <dimen name="padding_h_list_v2">12dp</dimen>
+    <dimen name="padding_v_list_v2">8dp</dimen>
 </resources> 

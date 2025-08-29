@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+	android:id="@+id/lyrics_root"
+	android:layout_width="match_parent"
+	android:layout_height="match_parent"
+	android:layout_gravity="center"
+	android:layout_marginTop="44dp"
+	android:paddingStart="16dp"
+	android:paddingEnd="16dp"
+	android:paddingBottom="32dp">
+
+	<!-- 歌词显示区域（可下移/上移以微调整体位置） -->
+
+	<TextView
+		android:id="@+id/lyrics_placeholder"
+		android:layout_width="wrap_content"
+		android:layout_height="wrap_content"
+		android:layout_gravity="center"
+		android:text="@string/no_lyrics"
+		android:textColor="@android:color/white"
+		android:textSize="14sp"/>
+
+
+	<!-- 歌词显示区域（可下移/上移以微调整体位置，顶部沿建议与页指示器区保持间距） -->
+	<androidx.recyclerview.widget.RecyclerView
+		android:id="@+id/lyrics_list"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:visibility="gone"
+		android:paddingTop="8dp"
+		android:clipToPadding="false"/>
+
+</FrameLayout> 

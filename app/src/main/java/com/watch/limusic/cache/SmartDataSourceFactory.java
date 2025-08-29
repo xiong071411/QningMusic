@@ -11,6 +11,7 @@ import com.google.android.exoplayer2.upstream.cache.Cache;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSink;
 import com.google.android.exoplayer2.upstream.cache.CacheDataSource;
 import com.google.android.exoplayer2.upstream.DataSpec;
+import android.content.SharedPreferences;
 
 import java.io.IOException;
 import java.util.Map;
@@ -26,6 +27,7 @@ public class SmartDataSourceFactory implements DataSource.Factory {
 	private final DefaultHttpDataSource.Factory httpFactory;
 	private final DefaultDataSource.Factory defaultFactory;
 	private final CacheDataSource.Factory cacheFactory;
+	private final CacheDataSource.Factory cacheFactoryReadOnly;
 
 	public SmartDataSourceFactory(Context context) {
 		this.context = context.getApplicationContext();
@@ -37,10 +39,17 @@ public class SmartDataSourceFactory implements DataSource.Factory {
 				.setUpstreamDataSourceFactory(httpFactory)
 				.setCacheWriteDataSinkFactory(new CacheDataSink.Factory().setCache(cache))
 				.setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
+		// 只读缓存：不写入磁盘，低耗模式使用
+		this.cacheFactoryReadOnly = new CacheDataSource.Factory()
+				.setCache(cache)
+				.setUpstreamDataSourceFactory(httpFactory)
+				// 不设置写入sink，即仅读缓存
+				.setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR);
 	}
 
 	@Override
 	public DataSource createDataSource() {
+		// 始终使用读写缓存（避免频繁走网络导致更高功耗）
 		final DataSource httpCached = cacheFactory.createDataSource();
 		final DataSource localDs = defaultFactory.createDataSource();
 		return new SwitchingDataSource(localDs, httpCached);

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">LiMusic</string>
+    <string name="app_name">轻柠音乐</string>
     <string name="app_description">OPPO Watch 2 音乐播放器</string>
     
     <!-- 按钮描述 -->
@@ -100,4 +100,11 @@
     <string name="new_playlist">新建歌单</string>
     <string name="add_to_playlist">添加到歌单</string>
 
+    <!-- 全屏播放器 -->
+    <string name="back_to_list">返回列表</string>
+    <string name="more">更多</string>
+
+    <!-- 歌词 -->
+    <string name="no_lyrics">暂无歌词</string>
+    <string name="lyrics_disabled_low_power">省电模式下已禁用歌词</string>
 </resources>

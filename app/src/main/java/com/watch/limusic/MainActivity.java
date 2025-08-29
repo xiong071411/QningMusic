@@ -33,6 +33,8 @@ import android.view.Window;
 import android.widget.ProgressBar;
 import android.widget.Button;
 import android.view.View;
+import android.view.ViewStub;
+import android.media.AudioManager;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DecodeFormat;
@@ -54,6 +56,7 @@ import com.watch.limusic.migration.DownloadSystemMigration;
 import com.watch.limusic.util.NetworkUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.watch.limusic.cache.CacheManager;
+import com.watch.limusic.util.BlurUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -74,6 +77,9 @@ public class MainActivity extends AppCompatActivity
     private NavigationView navigationView;
     private RecyclerView recyclerView;
     private LinearLayoutManager layoutManager;
+    // 用于滚动期延迟处理 DB 刷新，避免闪烁与跳位
+    private int lastKnownScrollState = RecyclerView.SCROLL_STATE_IDLE;
+    private boolean pendingDbUpdate = false;
     private ImageView albumArt;
     private TextView songTitle;
     private TextView songArtist;
@@ -91,6 +97,8 @@ public class MainActivity extends AppCompatActivity
     private int currentOffset = 0;  // 当前加载偏移量
     private boolean isLoading = false;  // 是否正在加载
     private boolean hasMoreData = true;  // 是否还有更多数据
+    private int albumsScrollPos = 0;     // 专辑列表：上次可见位置
+    private int albumsScrollOffset = 0;  // 专辑列表：上次偏移（用于精确还原）
     private boolean userIsSeeking = false;
     private TextView timeDisplay;
     private String originalTitle = "";
@@ -227,14 +235,40 @@ public class MainActivity extends AppCompatActivity
             if (!"com.watch.limusic.DB_SONGS_UPDATED".equals(intent.getAction())) return;
             if (!"songs".equals(currentView)) return;
             try {
+                // 若正在滚动，延迟合并刷新到空闲再处理，避免即时全量变更导致跳位
+                if (lastKnownScrollState == RecyclerView.SCROLL_STATE_DRAGGING || lastKnownScrollState == RecyclerView.SCROLL_STATE_SETTLING) {
+                    pendingDbUpdate = true;
+                    return;
+                }
                 RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
                 if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
                     int total = musicRepository.getSongCount();
                     java.util.Map<String, Integer> letterOffsets = musicRepository.getLetterOffsetMap();
                     com.watch.limusic.adapter.AllSongsRangeAdapter range = (com.watch.limusic.adapter.AllSongsRangeAdapter) adapter;
-                    range.clearCache();
-                    range.setTotalCount(total);
-                    range.setLetterOffsetMap(letterOffsets);
+                    // 若总数变化，采用差量更新避免全量闪烁
+                    int oldTotal = range.getTotalCount();
+                    if (total != oldTotal) {
+                        // 刷新前记录位置与偏移
+                        int firstPos = 0; int firstOffset = 0;
+                        try {
+                            if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                                androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                                firstPos = lm.findFirstVisibleItemPosition();
+                                android.view.View v = lm.findViewByPosition(firstPos);
+                                firstOffset = v != null ? v.getTop() : 0;
+                            }
+                        } catch (Exception ignore) {}
+                        range.applyTotalCountAndDiff(total);
+                        range.setLetterOffsetMap(letterOffsets);
+                        // 恢复位置
+                        try {
+                            if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                                ((androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(Math.max(0, firstPos), firstOffset);
+                            }
+                        } catch (Exception ignore) {}
+                    } else {
+                        range.setLetterOffsetMap(letterOffsets);
+                    }
                     // 若存在待跳转的字母，入库完成后立即纠正到该字母首项并预取三页
                     if ("songs".equals(currentView) && pendingJumpLetter != null) {
                         Integer pos = letterOffsets.get(pendingJumpLetter);
@@ -318,11 +352,14 @@ public class MainActivity extends AppCompatActivity
             if (intent.getAction().equals("com.watch.limusic.PLAYBACK_STATE_CHANGED")) {
                 long position = intent.getLongExtra("position", 0);
                 long duration = intent.getLongExtra("duration", 0);
+                boolean durationUnset = (duration <= 0) || (duration == com.google.android.exoplayer2.C.TIME_UNSET);
                 boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
                 int mode = intent.getIntExtra("playbackMode", PlayerService.PLAYBACK_MODE_REPEAT_ALL);
                 String title = intent.getStringExtra("title");
                 String artist = intent.getStringExtra("artist");
                 String albumId = intent.getStringExtra("albumId");
+                String songIdFromSvc = intent.getStringExtra("songId");
+                long fallbackDurationMs = intent.getLongExtra("fallbackDurationMs", 0L);
                 
                 // 更新播放/暂停按钮
                 playPauseButton.setImageResource(isPlaying ? R.drawable.ic_pause : R.drawable.ic_play);
@@ -334,31 +371,122 @@ public class MainActivity extends AppCompatActivity
                     songTitle.setSelected(true);
                 }
                 if (artist != null) songArtist.setText(artist);
+                // 全屏播放器：同步标题/艺术家并保持标题走马灯
+                if (isFullPlayerVisible) {
+                    if (fullSongTitle != null && title != null && !title.equals(fullSongTitle.getText() != null ? fullSongTitle.getText().toString() : "")) {
+                        fullSongTitle.setText(title);
+                        try { fullSongTitle.setSelected(true); } catch (Exception ignore) {}
+                    }
+                    if (fullSongArtist != null && artist != null && !userIsSeeking) {
+                        fullSongArtist.setText(artist);
+                    }
+                }
                 
+                // 计算可用的时长：优先用 Exo 的 duration，若无则用服务端提供的 fallback，再不行保持为0（显示 --:--）
+                long effectiveDuration = (!durationUnset && duration > 0) ? duration : (fallbackDurationMs > 0 ? fallbackDurationMs : 0);
+
+                // 曲目切换或时长未知时的保护：避免残留上一首的末尾进度
+                boolean isDurationUnknown = effectiveDuration <= 0;
+                boolean titleChanged = title != null && !title.equals(songTitle.getText() != null ? songTitle.getText().toString() : "");
+                if (isDurationUnknown || titleChanged) {
+                    try {
+                        seekBar.setMax((int) Math.max(0, effectiveDuration));
+                        seekBar.setProgress(0);
+                        progressBar.setMax((int) Math.max(0, effectiveDuration));
+                        progressBar.setProgress(0);
+                        progressBar.setVisibility(View.VISIBLE);
+                        progressBar.invalidate();
+                        // 时间显示：未知总时长时显示 00:00 / --:--
+                        if (timeDisplay != null) {
+                            if (effectiveDuration > 0) {
+                                updateTimeDisplay(0, effectiveDuration);
+                            } else {
+                                timeDisplay.setText("00:00 / --:--");
+                            }
+                        }
+                    } catch (Exception ignore) {}
+                }
+
                 // 优化进度条更新：只有在不拖动且满足更新间隔时才更新进度条
                 long currentTime = System.currentTimeMillis();
-                if (duration > 0) {
-                    // 始终更新最大值，确保进度条比例正确
-                    seekBar.setMax((int) duration);
-                    progressBar.setMax((int) duration);
-                    
-                    if (!userIsSeeking && (currentTime - lastProgressUpdateTime > PROGRESS_UPDATE_INTERVAL || position == 0)) {
-                        // 只在不拖动时更新进度
+                if (!userIsSeeking && currentTime - lastProgressUpdateTime >= PROGRESS_UPDATE_INTERVAL) {
+                    lastProgressUpdateTime = currentTime;
+                    if (!suppressProgressFromBroadcast || currentTime > suppressUntilMs) {
+                        suppressProgressFromBroadcast = false;
+                        if (seekBar != null && effectiveDuration > 0) {
+                    seekBar.setMax((int) effectiveDuration);
                         seekBar.setProgress((int) position);
-                    progressBar.setProgress((int) position);
-                        
-                        // 确保进度条始终可见
-                        progressBar.setVisibility(View.VISIBLE);
-                        
-                        progressBar.invalidate();
-                        lastProgressUpdateTime = currentTime;
+                        }
+                        if (progressBar != null && effectiveDuration > 0) {
+                            progressBar.setMax((int) effectiveDuration);
+                        progressBar.setProgress((int) position);
+                        }
+                        if (isFullPlayerVisible && !userIsSeeking && effectiveDuration > 0) {
+                        if (fullSeekBar != null) fullSeekBar.setProgress((int) position);
+                        if (fullProgress != null) fullProgress.setProgress((int) position);
+                        }
                     }
+                    if (timeDisplay != null && effectiveDuration > 0) {
+                        updateTimeDisplay(position, effectiveDuration);
+                    }
+                }
+
+                // 歌曲切换时刷新歌词数据
+                if (songIdFromSvc != null) {
+                    try {
+                        SharedPreferences sp2 = getSharedPreferences("player_prefs", MODE_PRIVATE);
+                        String lastSid = sp2.getString("last_song_id_for_lyrics", null);
+                        if (!songIdFromSvc.equals(lastSid)) {
+                            sp2.edit().putString("last_song_id_for_lyrics", songIdFromSvc).apply();
+                            if (lyricsController != null) {
+                                lyricsController.loadLyricsIfNeeded();
+                            }
+                        }
+                    } catch (Exception ignore) {}
+                }
+
+                // 触发一次歌词tick（仅换行刷新）
+                if (lyricsController != null) {
+                    lyricsController.onPlaybackTick();
                 }
                 
                 // 更新播放模式按钮
                 updatePlaybackModeButton();
 
-                // 更新专辑封面（仅当albumId变化时）
+                // 若全屏播放器可见，同步刷新其UI与背景（当 songId 变化）
+                if (isFullPlayerVisible && fullPlayerOverlay != null) {
+                    if (btnPlayPauseFull != null) {
+                        btnPlayPauseFull.setImageResource(isPlaying ? R.drawable.ic_pause_rounded : R.drawable.ic_play_rounded);
+                    }
+                    if (effectiveDuration > 0) {
+                        if (fullSeekBar != null) fullSeekBar.setMax((int) effectiveDuration);
+                        if (fullProgress != null) fullProgress.setMax((int) effectiveDuration);
+                        if (!userIsSeeking && (currentTime - lastProgressUpdateTime > PROGRESS_UPDATE_INTERVAL || position == 0)) {
+                            if (fullSeekBar != null) fullSeekBar.setProgress((int) position);
+                            if (fullProgress != null) fullProgress.setProgress((int) position);
+                        }
+                    }
+                    // 若之前在时长未知时记录了待执行的 seek，且现在时长可用，则立即执行一次
+                    if (pendingSeekMs >= 0 && effectiveDuration > 0 && bound && playerService != null) {
+                        int ps = pendingSeekMs;
+                        pendingSeekMs = -1;
+                        try { playerService.seekTo(Math.min(ps, (int) effectiveDuration)); } catch (Exception ignore) {}
+                    }
+                    updateFullPlaybackModeButton();
+                    // 背景：若歌曲变更则刷新
+                    if (songIdFromSvc != null && !songIdFromSvc.equals(lastBgSongId)) {
+                        lastBgSongId = songIdFromSvc;
+                        try { applyFullPlayerBackground(); } catch (Exception ignore) {}
+                    }
+                }
+                // 全局：若存在待执行 seek 且此时已拿到有效时长，则立即执行（兼容非全屏场景）
+                if (pendingSeekMs >= 0 && effectiveDuration > 0 && bound && playerService != null) {
+                    int ps2 = pendingSeekMs;
+                    pendingSeekMs = -1;
+                    try { playerService.seekTo(Math.min(ps2, (int) effectiveDuration)); } catch (Exception ignore) {}
+                }
+
+                // 更新专辑封面与全屏播放器背景（基于albumId或songId变化）
                 if (albumId != null && !albumId.isEmpty() && !albumId.equals(lastAlbumId)) {
                     lastAlbumId = albumId;
                     String coverArtUrl;
@@ -387,6 +515,11 @@ public class MainActivity extends AppCompatActivity
                             .diskCacheStrategy(DiskCacheStrategy.AUTOMATIC)
                             .into(albumArt);
                     }
+                    // songId 或 albumId 变化时，立即刷新全屏播放器背景
+                    if (isFullPlayerVisible && (songIdFromSvc != null && !songIdFromSvc.equals(lastBgSongId))) {
+                        lastBgSongId = songIdFromSvc;
+                        try { applyFullPlayerBackground(); } catch (Exception ignore) {}
+                    }
                 }
             }
         }
@@ -399,7 +532,17 @@ public class MainActivity extends AppCompatActivity
     private final BroadcastReceiver playlistsUpdatedReceiver = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) {
             if ("playlists".equals(currentView)) {
-                loadPlaylists();
+                // 若正在滚动，延迟刷新到空闲后合并，避免抖动
+                if (lastKnownScrollState == RecyclerView.SCROLL_STATE_DRAGGING || lastKnownScrollState == RecyclerView.SCROLL_STATE_SETTLING) {
+                    pendingDbUpdate = true;
+                    return;
+                }
+                // 轻量去抖：空闲后延迟一点再刷新
+                recyclerView.postDelayed(() -> {
+                    if ("playlists".equals(currentView) && lastKnownScrollState == RecyclerView.SCROLL_STATE_IDLE) {
+                        loadPlaylists();
+                    }
+                }, 180);
             }
         }
     };
@@ -410,10 +553,18 @@ public class MainActivity extends AppCompatActivity
                 long now = System.currentTimeMillis();
                 if (pid > 0) {
                     if (pid == suppressPlaylistLocalId && now < suppressPlaylistChangedUntilMs) return;
-                    new Thread(() -> {
-                        List<com.watch.limusic.model.Song> songs2 = playlistRepository.getSongsInPlaylist(pid, 500, 0);
-                        runOnUiThread(() -> songAdapter.processAndSubmitListKeepOrder(songs2));
-                    }).start();
+                    // 滚动期间延迟刷新，空闲后再合并
+                    if (lastKnownScrollState == RecyclerView.SCROLL_STATE_DRAGGING || lastKnownScrollState == RecyclerView.SCROLL_STATE_SETTLING) {
+                        pendingDbUpdate = true;
+                        return;
+                    }
+                    recyclerView.postDelayed(() -> {
+                        if (!"playlist_detail".equals(currentView)) return;
+                        new Thread(() -> {
+                            List<com.watch.limusic.model.Song> songs2 = playlistRepository.getSongsInPlaylist(pid, 500, 0);
+                            runOnUiThread(() -> songAdapter.processAndSubmitListKeepOrder(songs2));
+                        }).start();
+                    }, 150);
                 }
             }
         }
@@ -444,6 +595,71 @@ public class MainActivity extends AppCompatActivity
 	private long suppressPlaylistChangedUntilMs = 0L;
 	private long suppressPlaylistLocalId = -1L;
 
+    private View fullPlayerOverlay; // 全屏播放器覆盖层根视图
+    private ViewStub fullPlayerStub; // 懒加载占位
+    private boolean isFullPlayerVisible = false; // 覆盖层显示状态
+
+    // 全屏播放器控件引用
+    private ImageButton btnPrevFull;
+    private ImageButton btnPlayPauseFull;
+    private ImageButton btnNextFull;
+    private ImageButton btnPlayModeFull;
+    private SeekBar fullSeekBar;
+    private ProgressBar fullProgress;
+    private TextView fullSongTitle;
+    private TextView fullSongArtist;
+    private ImageButton btnVolumeToggle;
+    	private View volumeOverlay;
+    private SeekBar volumeSeek;
+    private AudioManager audioManager;
+    private ImageView fullBgImage;
+
+    // 新增：歌词控制器与页指示器
+    private com.watch.limusic.LyricsController lyricsController;
+    private android.widget.ImageView dotMain;
+    private android.widget.ImageView dotLyrics;
+    private int currentFullPage = 0; // 0=主控, 1=歌词
+
+    private final BroadcastReceiver uiSettingsChangedReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (!"com.watch.limusic.UI_SETTINGS_CHANGED".equals(intent.getAction())) return;
+            if (isFullPlayerVisible) {
+                try { applyFullPlayerBackground(); } catch (Exception ignore) {}
+                // 省电模式切换时，更新页指示器和可见性（省电下禁用歌词页）
+                try {
+                    if (isLowPowerEnabled()) {
+                        currentFullPage = 0;
+                        applyFullPageVisibility();
+                    }
+                    updatePageIndicator();
+                } catch (Exception ignore) {}
+            }
+        }
+    };
+
+    private String lastBgSongId = null;
+
+    private boolean suppressProgressFromBroadcast = false;
+    private long suppressUntilMs = 0L;
+    private int pendingSeekMs = -1;
+
+    // 新增：实时拖拽切页状态
+    private boolean isDraggingPages = false;
+    private float dragStartX = 0f;
+    private float dragStartY = 0f;
+    private float lastDragDx = 0f;
+    private int horizontalTouchSlopPx = 0;
+    private boolean isSettling = false;
+
+    private int dpToPx(int dp) { return Math.round(getResources().getDisplayMetrics().density * dp); }
+
+    private View findViewByIdName(View root, String idName) {
+        try {
+            int id = getResources().getIdentifier(idName, "id", getPackageName());
+            return id != 0 && root != null ? root.findViewById(id) : null;
+        } catch (Exception e) { return null; }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -460,6 +676,10 @@ public class MainActivity extends AppCompatActivity
         }
         
         setContentView(R.layout.activity_main);
+
+        // 初始化覆盖层引用（懒加载）
+        fullPlayerStub = findViewById(R.id.full_player_stub) instanceof ViewStub ? (ViewStub) findViewById(R.id.full_player_stub) : null;
+        fullPlayerOverlay = null;
 
         // 初始化Repository
         musicRepository = MusicRepository.getInstance(this);
@@ -528,6 +748,18 @@ public class MainActivity extends AppCompatActivity
         // 设置播放控制
         setupPlaybackControls();
         
+        // 绑定小播放器信息区点击以打开全屏播放器
+        View miniInfo = findViewById(R.id.mini_player_info_container);
+        if (miniInfo != null) {
+            miniInfo.setOnClickListener(v -> openFullPlayer());
+        }
+        
+        // 将小播放器的专辑封面区域也作为打开全屏播放器的入口
+        View albumArtView = findViewById(R.id.album_art);
+        if (albumArtView != null) {
+            albumArtView.setOnClickListener(v -> openFullPlayer());
+        }
+        
         // 在未绑定服务时，先从本地偏好恢复上次离开时的播放器UI（仅UI，不启动播放）
         restorePlayerUiFromPrefs();
         
@@ -541,6 +773,9 @@ public class MainActivity extends AppCompatActivity
         // 注册网络状态变化广播接收器
         IntentFilter networkFilter = new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE");
         registerReceiver(networkStatusReceiver, networkFilter);
+        
+        // UI设置变更广播（常驻，保证在设置页顶起时也能接收）
+        try { registerReceiver(uiSettingsChangedReceiver, new IntentFilter("com.watch.limusic.UI_SETTINGS_CHANGED")); } catch (Exception ignore) {}
         
         // 注册下载相关的本地广播
         LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
@@ -617,7 +852,49 @@ public class MainActivity extends AppCompatActivity
         registerReceiver(playbackStateReceiver, filter);
         
         // 监听数据库更新
-        try { registerReceiver(dbSongsUpdatedReceiver, new IntentFilter("com.watch.limusic.DB_SONGS_UPDATED")); } catch (Exception ignore) {}
+                    try { registerReceiver(dbSongsUpdatedReceiver, new IntentFilter("com.watch.limusic.DB_SONGS_UPDATED")); } catch (Exception ignore) {}
+            // 监听滚动状态，用于在滚动中延迟合并刷新
+            try {
+                recyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                    @Override public void onScrollStateChanged(@NonNull RecyclerView rv, int newState) {
+                        super.onScrollStateChanged(rv, newState);
+                        lastKnownScrollState = newState;
+                        if (newState == RecyclerView.SCROLL_STATE_IDLE && pendingDbUpdate) {
+                            pendingDbUpdate = false;
+                            // 主动触发一次处理（相当于重发一遍 DB_SONGS_UPDATED 的处理）
+                            try {
+                                int total = musicRepository.getSongCount();
+                                java.util.Map<String, Integer> letterOffsets = musicRepository.getLetterOffsetMap();
+                                RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+                                if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                                    com.watch.limusic.adapter.AllSongsRangeAdapter range = (com.watch.limusic.adapter.AllSongsRangeAdapter) adapter;
+                                    int oldTotal = range.getTotalCount();
+                                    if (total != oldTotal) {
+                                        int firstPos = 0; int firstOffset = 0;
+                                        try {
+                                            if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                                                androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                                                firstPos = lm.findFirstVisibleItemPosition();
+                                                android.view.View v = lm.findViewByPosition(firstPos);
+                                                firstOffset = v != null ? v.getTop() : 0;
+                                            }
+                                        } catch (Exception ignore2) {}
+                                        range.applyTotalCountAndDiff(total);
+                                        range.setLetterOffsetMap(letterOffsets);
+                                        try {
+                                            if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                                                ((androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager()).scrollToPositionWithOffset(Math.max(0, firstPos), firstOffset);
+                                            }
+                                        } catch (Exception ignore3) {}
+                                    } else {
+                                        range.setLetterOffsetMap(letterOffsets);
+                                    }
+                                }
+                            } catch (Exception ignore4) {}
+                        }
+                    }
+                });
+            } catch (Exception ignore) {}
         
         // 监听服务器配置更新
         try { registerReceiver(navidromeConfigUpdatedReceiver, new IntentFilter(com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED)); } catch (Exception ignore) {}
@@ -632,6 +909,12 @@ public class MainActivity extends AppCompatActivity
         
         // 若正在播放或最近在播，则条件绑定服务以恢复心跳广播
         maybeBindIfPlaying();
+
+        try { registerReceiver(uiSettingsChangedReceiver, new IntentFilter("com.watch.limusic.UI_SETTINGS_CHANGED")); } catch (Exception ignore) {}
+        // 返回前台时，如全屏播放器可见，按最新设置立即应用背景
+        if (isFullPlayerVisible) {
+            try { applyFullPlayerBackground(); } catch (Exception ignore) {}
+        }
     }
 
     @Override
@@ -670,6 +953,20 @@ public class MainActivity extends AppCompatActivity
                 Log.e(TAG, "预加载歌曲失败", e);
             }
         }).start();
+
+        // 全屏可见时校正当前页显隐，避免叠层混合
+        if (isFullPlayerVisible && fullPlayerOverlay != null) {
+            // 始终先回主控页再应用一次，再切回当前记录页，确保状态一致
+            int keep = currentFullPage;
+            currentFullPage = 0;
+            applyFullPageVisibility();
+            updatePageIndicator();
+            if (keep == 1) {
+                currentFullPage = 1;
+                applyFullPageVisibility();
+                updatePageIndicator();
+            }
+        }
     }
 
     @Override
@@ -699,6 +996,8 @@ public class MainActivity extends AppCompatActivity
         } else {
             saveLastView(currentView);
         }
+
+        try { unregisterReceiver(uiSettingsChangedReceiver); } catch (Exception ignore) {}
     }
 
     private void initViews() {
@@ -852,6 +1151,9 @@ public class MainActivity extends AppCompatActivity
                 return;
             }
             
+            // 进入专辑详情前，记录当前专辑列表滚动位置
+            recordAlbumsScrollPosition();
+            
             // 加载专辑歌曲
             loadAlbumSongs(album.getId());
         });
@@ -925,7 +1227,22 @@ public class MainActivity extends AppCompatActivity
                     
                     // 更新时间显示
                     if (isSeeking && bound && playerService != null) {
-                        updateTimeDisplay(progress, playerService.getDuration());
+                        long dur = playerService.getDuration();
+                        if (dur <= 0) {
+                            // 尝试读取本地 DB 兜底时长
+                            try {
+                                SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+                                String sid = sp.getString("last_song_id", null);
+                                long fb = 0L;
+                                if (sid != null) {
+                                    com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(MainActivity.this).songDao().getSongById(sid);
+                                    if (se != null && se.getDuration() > 0) fb = (long) se.getDuration() * 1000L;
+                                }
+                                updateTimeDisplay(progress, fb);
+                            } catch (Exception ignore) { updateTimeDisplay(progress, 0); }
+                        } else {
+                            updateTimeDisplay(progress, dur);
+                        }
                     }
                 }
             }
@@ -944,7 +1261,21 @@ public class MainActivity extends AppCompatActivity
                 timeDisplay.setText("00:00 / 00:00");
                 
                 if (bound && playerService != null) {
-                    updateTimeDisplay(playerService.getCurrentPosition(), playerService.getDuration());
+                    long dur = playerService.getDuration();
+                    if (dur <= 0) {
+                        long fb = 0L;
+                        try {
+                            SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+                            String sid = sp.getString("last_song_id", null);
+                            if (sid != null) {
+                                com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(MainActivity.this).songDao().getSongById(sid);
+                                if (se != null && se.getDuration() > 0) fb = (long) se.getDuration() * 1000L;
+                            }
+                        } catch (Exception ignore) {}
+                        updateTimeDisplay(playerService.getCurrentPosition(), fb);
+                    } else {
+                        updateTimeDisplay(playerService.getCurrentPosition(), dur);
+                    }
                 }
             }
 
@@ -962,8 +1293,15 @@ public class MainActivity extends AppCompatActivity
                 // 仅在拖动结束时更新播放器进度，提高滑动流畅性
                 if (bound && playerService != null) {
                     int progress = seekBar.getProgress();
-                    playerService.seekTo(progress);
-                    
+                    if (seekBar.getMax() <= 0) {
+                        // 记录一次待执行 seek，等待拿到有效时长后执行
+                        pendingSeekMs = progress;
+                        Toast.makeText(MainActivity.this, "正在获取时长，稍后将跳转", Toast.LENGTH_SHORT).show();
+                    } else {
+                        playerService.seekTo(progress);
+                    }
+                    suppressProgressFromBroadcast = true;
+                    suppressUntilMs = System.currentTimeMillis() + 600L;
                     // 更新进度条，确保始终可见
                     progressBar.setProgress(progress);
                     progressBar.setVisibility(View.VISIBLE);
@@ -1068,14 +1406,12 @@ public class MainActivity extends AppCompatActivity
                 List<Song> currentList = null;
                 RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
                 if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
-                    // 按需加载模式：为了点击即播，动态构造"当前位置±N"窗口作为播放列表
+                    // 构造"所有歌曲"的完整列表，确保末尾曲目播放结束后循环回真正的第一首
                     currentList = new java.util.ArrayList<>();
-                    int start = Math.max(0, position - 50);
-                    int end = Math.min(adapter.getItemCount() - 1, position + 200); // 向后多取，保证顺播
-                    // 直接从数据库按排序范围取数据
-                    List<Song> range = musicRepository.getSongsRange(end - start + 1, start);
+                    int total = musicRepository.getSongCount();
+                    List<Song> range = musicRepository.getSongsRange(Math.max(0, total), 0);
                     currentList.addAll(range);
-                    // 优先基于点击的 songId 在窗口内重新定位索引，避免UI与DB的时序漂移
+                    // 在完整列表中定位点击的那一首
                     String clickedId = song != null ? song.getId() : null;
                     if (clickedId != null) {
                         int found = -1;
@@ -1083,9 +1419,9 @@ public class MainActivity extends AppCompatActivity
                             Song it = currentList.get(i);
                             if (it != null && clickedId.equals(it.getId())) { found = i; break; }
                         }
-                        position = (found >= 0) ? found : Math.min(Math.max(0, position - start), currentList.size() - 1);
+                        position = (found >= 0) ? found : Math.min(Math.max(0, position), currentList.size() - 1);
                     } else {
-                        position = Math.min(Math.max(0, position - start), currentList.size() - 1);
+                        position = Math.min(Math.max(0, position), currentList.size() - 1);
                     }
                 } else if (songAdapter != null) {
                     currentList = songAdapter.getSongList();
@@ -1149,7 +1485,12 @@ public class MainActivity extends AppCompatActivity
                 }
                 
                 // 设置整个播放列表，并从选中的歌曲开始播放
-                playerService.setPlaylist(currentList, position);
+                RecyclerView.Adapter<?> adp = recyclerView.getAdapter();
+                if (adp instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                    try { playerService.playAllSongsFromGlobal(position); } catch (Exception ignore) {}
+                } else {
+                    playerService.setPlaylist(currentList, position);
+                }
                 
             } catch (Exception e) {
                 Log.e("MainActivity", "准备播放时出错", e);
@@ -1169,11 +1510,10 @@ public class MainActivity extends AppCompatActivity
         RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
         if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
             list = new java.util.ArrayList<>();
-            int start = Math.max(0, clickPosition - 50);
-            int end = Math.min(adapter.getItemCount() - 1, clickPosition + 200);
-            List<Song> range = musicRepository.getSongsRange(end - start + 1, start);
+            int total = musicRepository.getSongCount();
+            List<Song> range = musicRepository.getSongsRange(Math.max(0, total), 0);
             list.addAll(range);
-            rebased = Math.min(Math.max(0, clickPosition - start), list.size() - 1);
+            rebased = Math.min(Math.max(0, clickPosition), list.size() - 1);
         } else if (songAdapter != null) {
             list = songAdapter.getSongList();
         }
@@ -1430,6 +1770,9 @@ public class MainActivity extends AppCompatActivity
                     Toast.makeText(this, "专辑ID无效，无法加载歌曲", Toast.LENGTH_SHORT).show();
                     return;
                 }
+                // 进入专辑详情前，记录当前专辑列表滚动位置
+                recordAlbumsScrollPosition();
+                
                 loadAlbumSongs(album.getId());
             });
         }
@@ -1457,6 +1800,9 @@ public class MainActivity extends AppCompatActivity
                                     Toast.makeText(this, "专辑ID无效，无法加载歌曲", Toast.LENGTH_SHORT).show();
                                     return;
                                 }
+                                // 进入专辑详情前，记录当前专辑列表滚动位置
+                                recordAlbumsScrollPosition();
+                                
                                 loadAlbumSongs(album.getId());
                             });
                             recyclerView.setAdapter(albumAdapter);
@@ -1499,6 +1845,9 @@ public class MainActivity extends AppCompatActivity
                                     Toast.makeText(this, "专辑ID无效，无法加载歌曲", Toast.LENGTH_SHORT).show();
                                     return;
                                 }
+                                // 进入专辑详情前，记录当前专辑列表滚动位置
+                                recordAlbumsScrollPosition();
+                                
                                 loadAlbumSongs(album.getId());
                             });
                             recyclerView.setAdapter(albumAdapter);
@@ -1712,9 +2061,15 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void showAboutDialog() {
+        String versionName = "unknown";
+        try {
+            android.content.pm.PackageManager pm = getPackageManager();
+            android.content.pm.PackageInfo pi = pm.getPackageInfo(getPackageName(), 0);
+            if (pi != null && pi.versionName != null) versionName = pi.versionName;
+        } catch (Exception ignore) {}
         new AlertDialog.Builder(this)
             .setTitle("关于")
-            .setMessage("版本：v2.3Beta3\n\n软件作者 九秒冬眠 b站uid：515083950 ")
+            .setMessage("版本：v" + versionName + "\n软件作者 九秒冬眠 b站uid：515083950 ")
             .setPositiveButton("确定", null)
             .show();
     }
@@ -1912,14 +2267,28 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onBackPressed() {
+        if (isFullPlayerVisible) {
+            closeFullPlayer();
+            return;
+        }
         if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
             drawerLayout.closeDrawer(GravityCompat.START);
+            return;
+        }
+        // 选择模式优先：系统返回退出选择模式
+        if (selectionMode) {
+            exitSelectionMode();
             return;
         }
         
         if ("album_songs".equals(currentView)) {
             // 二级界面：返回到专辑选择界面
             navigateBackToAlbums();
+            return;
+        }
+        if ("playlist_detail".equals(currentView)) {
+            // 二级界面：返回到歌单列表
+            navigateBackToPlaylists();
             return;
         }
         
@@ -2285,6 +2654,8 @@ public class MainActivity extends AppCompatActivity
         if (recyclerView.getAdapter() != albumAdapter) {
             recyclerView.setAdapter(albumAdapter);
         }
+        // 恢复进入专辑前的滚动位置
+        restoreAlbumsScrollPosition();
         // 切换回汉堡菜单模式
         enterRootNavigationMode();
         // 更新菜单
@@ -2480,6 +2851,8 @@ public class MainActivity extends AppCompatActivity
     }
 
     private void openPlaylistDetail(long playlistLocalId, String name) {
+        // 先统一清理当前视图，避免短暂显示上一个列表内容
+        resetUiForNewView();
         currentView = "playlist_detail";
         currentPlaylistTitle = name;
         enterAlbumDetailNavigationMode(name);
@@ -2489,6 +2862,12 @@ public class MainActivity extends AppCompatActivity
         recyclerView.setAdapter(songAdapter);
         songAdapter.setShowCoverArt(false);
         songAdapter.setPlaylistDetail(true);
+        // 进入歌单详情时退出选择模式，避免旧状态干扰
+        selectionMode = false;
+        if (songAdapter != null) songAdapter.setSelectionMode(false);
+        // 首屏展示骨架，避免先闪旧数据
+        showSkeleton();
+        if (progressBar != null) progressBar.setVisibility(View.VISIBLE);
         // 为歌单详情配置长按进入选择模式
         songAdapter.setOnItemLongClickListener(pos -> {
             com.watch.limusic.model.Song s = songAdapter.getSongItemAt(pos).getSong();
@@ -2511,15 +2890,31 @@ public class MainActivity extends AppCompatActivity
         invalidateOptionsMenu();
         // 本地先显
         currentPlaylistLocalId = playlistLocalId;
+        final long tokenPid = playlistLocalId;
         new Thread(() -> {
             List<Song> songs = playlistRepository.getSongsInPlaylist(playlistLocalId, 500, 0);
-            runOnUiThread(() -> songAdapter.processAndSubmitListKeepOrder(songs));
+            runOnUiThread(() -> {
+                if ("playlist_detail".equals(currentView) && currentPlaylistLocalId == tokenPid) {
+                    songAdapter.processAndSubmitListKeepOrder(songs);
+                    // 数据到达，收起骨架
+                    if (skeletonContainer != null) skeletonContainer.setVisibility(View.GONE);
+                    if (progressBar != null) progressBar.setVisibility(View.GONE);
+                    if (emptyContainer != null) emptyContainer.setVisibility(View.GONE);
+                    if (errorContainer != null) errorContainer.setVisibility(View.GONE);
+                }
+            });
         }).start();
         // 轻量校验并可能刷新
         new Thread(() -> {
             boolean refreshed = playlistRepository.validateAndMaybeRefreshFromServer(playlistLocalId);
-            List<Song> songs2 = playlistRepository.getSongsInPlaylist(playlistLocalId, 500, 0);
-            runOnUiThread(() -> songAdapter.processAndSubmitListKeepOrder(songs2));
+            if (refreshed) {
+                List<Song> songs2 = playlistRepository.getSongsInPlaylist(playlistLocalId, 500, 0);
+                runOnUiThread(() -> {
+                    if ("playlist_detail".equals(currentView) && currentPlaylistLocalId == tokenPid) {
+                        songAdapter.processAndSubmitListKeepOrder(songs2);
+                    }
+                });
+            }
         }).start();
         // 确保进度条在详情页首屏可见，并同步一次播放器UI
         ensureProgressBarVisible();
@@ -2776,9 +3171,9 @@ public class MainActivity extends AppCompatActivity
         try {
             if (bound) return;
             android.content.SharedPreferences prefs = getSharedPreferences("player_prefs", MODE_PRIVATE);
-            boolean wasPlaying = prefs.getBoolean("last_is_playing", false);
             String lastSongId = prefs.getString("last_song_id", null);
-            if (wasPlaying && lastSongId != null && !lastSongId.isEmpty()) {
+            // 放宽条件：只要存在上一首记录，就绑定以恢复心跳
+            if (lastSongId != null && !lastSongId.isEmpty()) {
                 bindService();
             }
         } catch (Exception ignore) {}
@@ -2816,5 +3211,744 @@ public class MainActivity extends AppCompatActivity
                 Toast.makeText(this, "已切换至新服务器，列表已刷新", Toast.LENGTH_SHORT).show();
             } catch (Exception ignore) {}
         }
+    }
+
+    // 打开全屏播放器覆盖层
+    private void openFullPlayer() {
+        if (isFullPlayerVisible) return;
+        if (fullPlayerOverlay == null) {
+            try {
+                if (fullPlayerStub != null) {
+                    fullPlayerOverlay = fullPlayerStub.inflate();
+                } else {
+                    fullPlayerOverlay = findViewById(R.id.full_player_overlay);
+                }
+            } catch (Exception e) {
+                fullPlayerOverlay = findViewById(R.id.full_player_overlay);
+            }
+            // 首次inflate后，初始化控件与事件
+            initFullPlayerViews(fullPlayerOverlay);
+            // 初始化歌词控制器与页指示器
+            try {
+                dotMain = fullPlayerOverlay.findViewById(R.id.dot_main);
+                dotLyrics = fullPlayerOverlay.findViewById(R.id.dot_lyrics);
+                updatePageIndicator();
+                // 页指示器点击切换
+                if (dotMain != null) dotMain.setOnClickListener(v -> switchFullPage(0));
+                if (dotLyrics != null) dotLyrics.setOnClickListener(v -> switchFullPage(1));
+                // 在歌曲信息区域支持左右滑切页，避免干扰底部控件
+                View infoArea = fullPlayerOverlay.findViewById(R.id.full_info_container);
+                if (infoArea != null) {
+                    infoArea.setOnTouchListener(new com.watch.limusic.util.SwipeGestureListener(this) {
+                        @Override public void onSwipeRight() { switchFullPage(0); }
+                        @Override public void onSwipeLeft() { if (!isLowPowerEnabled()) switchFullPage(1); }
+                        @Override public void onLongPress() {}
+                    });
+                }
+                View indicator = fullPlayerOverlay.findViewById(R.id.page_indicator);
+                if (indicator != null) {
+                    indicator.setOnTouchListener(new com.watch.limusic.util.SwipeGestureListener(this) {
+                        @Override public void onSwipeRight() { switchFullPage(0); }
+                        @Override public void onSwipeLeft() { if (!isLowPowerEnabled()) switchFullPage(1); }
+                        @Override public void onLongPress() {}
+                    });
+                }
+                // 不预加载歌词页，只有在用户首次横向切换到歌词页时才加载
+
+            } catch (Exception ignore) {}
+        }
+        if (fullPlayerOverlay == null) return;
+        // 确保置顶并拦截触摸
+        try { fullPlayerOverlay.bringToFront(); } catch (Exception ignore) {}
+        try { fullPlayerOverlay.setClickable(true); } catch (Exception ignore) {}
+        try { fullPlayerOverlay.setFocusable(true); } catch (Exception ignore) {}
+        // 每次打开都按当前设置与曲目应用一次背景
+        try { applyFullPlayerBackground(); } catch (Exception ignore) {}
+        // 打开时默认进入主控页
+        currentFullPage = 0;
+        applyFullPageVisibility();
+        fullPlayerOverlay.setVisibility(View.VISIBLE);
+        fullPlayerOverlay.post(() -> {
+            fullPlayerOverlay.setTranslationY(fullPlayerOverlay.getHeight());
+            fullPlayerOverlay.animate()
+                    .translationY(0)
+                    .setDuration(220)
+                    .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                    .withStartAction(() -> {
+                        isFullPlayerVisible = true;
+                        // 打开时同步一次UI
+                        trySyncFullPlayerUi();
+                    })
+                    .start();
+        });
+        View collapseLeft = fullPlayerOverlay.findViewById(R.id.btn_collapse_left);
+        if (collapseLeft != null) collapseLeft.setOnClickListener(v -> closeFullPlayer());
+        View returnPlayer = fullPlayerOverlay.findViewById(R.id.btn_return_player);
+        if (returnPlayer != null) returnPlayer.setOnClickListener(v -> animateReturnToMain());
+        // 扩大滑动判定区域（除音量条外）
+        try {
+            View volume = findViewByIdName(fullPlayerOverlay, "volume_seek");
+            View seekArea = findViewByIdName(fullPlayerOverlay, "full_seek_container");
+            horizontalTouchSlopPx = dpToPx(8);
+            fullPlayerOverlay.setOnTouchListener((v, ev) -> {
+                if (isLowPowerEnabled()) return false;
+                int action = ev.getActionMasked();
+                switch (action) {
+                    case android.view.MotionEvent.ACTION_DOWN: {
+                        dragStartX = ev.getX();
+                        dragStartY = ev.getY();
+                        lastDragDx = 0f;
+                        isDraggingPages = false;
+                        return false; }
+                    case android.view.MotionEvent.ACTION_MOVE: {
+                        float dx = ev.getX() - dragStartX;
+                        float dy = ev.getY() - dragStartY;
+                        if (!isDraggingPages) {
+                            // 排除进度条与音量条区域
+                            if (isPointInsideView(ev, volume) || isPointInsideView(ev, seekArea)) return false;
+                            if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > horizontalTouchSlopPx) {
+                                // 禁止从歌词页通过右滑返回
+                                if (currentFullPage == 1 && dx > 0) return false;
+                                isDraggingPages = true;
+                                // 首次向左拖动时，确保歌词已inflate可见
+                                if (dx < 0) ensureLyricsController();
+                            } else {
+                                return false;
+                            }
+                        }
+                        lastDragDx = dx;
+                        applyDragOffset(dx);
+                        return true; }
+                    case android.view.MotionEvent.ACTION_UP:
+                    case android.view.MotionEvent.ACTION_CANCEL: {
+                        if (isDraggingPages) {
+                            settleDrag(lastDragDx);
+                            isDraggingPages = false;
+                            return true;
+                        }
+                        return false; }
+                }
+                return false;
+            });
+            if (volume != null) { volume.setOnTouchListener((vv,e) -> false); }
+        } catch (Exception ignore) {}
+    }
+
+    // 关闭全屏播放器覆盖层
+    private void closeFullPlayer() {
+        if (!isFullPlayerVisible || fullPlayerOverlay == null) return;
+        fullPlayerOverlay.animate()
+                .translationY(fullPlayerOverlay.getHeight())
+                .setDuration(200)
+                .setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> {
+                    fullPlayerOverlay.setVisibility(View.GONE);
+                    isFullPlayerVisible = false;
+                })
+                .start();
+    }
+
+    private void initFullPlayerViews(View root) {
+        if (root == null) return;
+        btnPrevFull = root.findViewById(R.id.btn_prev_full);
+        btnPlayPauseFull = root.findViewById(R.id.btn_play_pause_full);
+        btnNextFull = root.findViewById(R.id.btn_next_full);
+        btnPlayModeFull = root.findViewById(R.id.btn_play_mode_full);
+        fullSeekBar = root.findViewById(R.id.full_seekbar);
+        fullProgress = root.findViewById(R.id.full_progress);
+        fullSongTitle = root.findViewById(R.id.full_song_title);
+        fullSongArtist = root.findViewById(R.id.full_song_artist);
+        		btnVolumeToggle = root.findViewById(R.id.btn_volume_toggle);
+		volumeOverlay = root.findViewById(R.id.volume_overlay);
+        volumeSeek = root.findViewById(R.id.volume_seek);
+        fullBgImage = root.findViewById(R.id.bg_album_blur);
+        // 应用一次背景
+        applyFullPlayerBackground();
+        // 音量接入与按钮切换
+        try {
+            audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null && volumeSeek != null) {
+                int maxVol = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                int curVol = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC);
+                volumeSeek.setMax(maxVol);
+                volumeSeek.setProgress(curVol);
+                volumeSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                    @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                        if (!fromUser) return;
+                        try { audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, progress, 0); } catch (Exception ignore) {}
+                    }
+                    @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                    @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+                });
+            }
+        } catch (Exception ignore) {}
+        		if (btnVolumeToggle != null) {
+			btnVolumeToggle.setOnClickListener(v -> toggleVolumeOverlay());
+		}
+		if (volumeOverlay != null) {
+			volumeOverlay.setOnClickListener(v -> toggleVolumeOverlay());
+		}
+        if (btnPrevFull != null) {
+            btnPrevFull.setOnClickListener(v -> {
+                if (bound && playerService != null) {
+                    playerService.previous();
+                }
+            });
+        }
+        if (btnPlayPauseFull != null) {
+            btnPlayPauseFull.setOnClickListener(v -> {
+                if (!bound) {
+                    pendingStartPlayOnBind = !isPlayingSafely();
+                    bindService();
+                    return;
+                }
+                if (playerService.isPlaying()) {
+                    playerService.pause();
+                    btnPlayPauseFull.setImageResource(R.drawable.ic_play_rounded);
+                } else {
+                    playerService.play();
+                    btnPlayPauseFull.setImageResource(R.drawable.ic_pause_rounded);
+                }
+            });
+        }
+        if (btnNextFull != null) {
+            btnNextFull.setOnClickListener(v -> {
+                if (bound && playerService != null) {
+                    playerService.next();
+                }
+            });
+        }
+        if (btnPlayModeFull != null) {
+            btnPlayModeFull.setOnClickListener(v -> {
+                if (bound && playerService != null) {
+                    playerService.togglePlaybackMode();
+                    updateFullPlaybackModeButton();
+                }
+            });
+        }
+        if (fullSeekBar != null) {
+            fullSeekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    if (fromUser) {
+                        if (fullProgress != null) fullProgress.setProgress(progress);
+                        if (bound && playerService != null) {
+                            long dur = playerService.getDuration();
+                            long fb = 0L;
+                            if (dur <= 0) {
+                                try {
+                                    SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+                                    String sid = sp.getString("last_song_id", null);
+                                    if (sid != null) {
+                                        com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(MainActivity.this).songDao().getSongById(sid);
+                                        if (se != null && se.getDuration() > 0) fb = (long) se.getDuration() * 1000L;
+                                    }
+                                } catch (Exception ignore) {}
+                            }
+                            long useDur = dur > 0 ? dur : fb;
+                            if (fullSongArtist != null) fullSongArtist.setText(formatTime(progress) + " / " + (useDur > 0 ? formatTime(useDur) : "--:--"));
+                        }
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) { userIsSeeking = true; }
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                    userIsSeeking = false;
+                    if (bound && playerService != null) {
+                        int progress = seekBar.getProgress();
+                        if (fullSeekBar != null && fullSeekBar.getMax() > 0) {
+                            playerService.seekTo(progress);
+                            if (fullProgress != null) fullProgress.setProgress(progress);
+                        } else {
+                            // 时长未定：记录一次待执行 seek
+                            pendingSeekMs = progress;
+                            Toast.makeText(MainActivity.this, "正在获取时长，稍后将跳转", Toast.LENGTH_SHORT).show();
+                        }
+                        suppressProgressFromBroadcast = true;
+                        suppressUntilMs = System.currentTimeMillis() + 600L;
+                    }
+                    if (fullSongArtist != null && bound && playerService != null) {
+                        fullSongArtist.setText(playerService.getCurrentArtist());
+                    }
+                }
+            });
+        }
+    }
+
+    private boolean isPlayingSafely() {
+        try { return bound && playerService != null && playerService.isPlaying(); } catch (Exception ignore) { return false; }
+    }
+
+    private void trySyncFullPlayerUi() {
+        if (!bound || playerService == null) return;
+        boolean isPlaying = playerService.isPlaying();
+        if (btnPlayPauseFull != null) {
+            btnPlayPauseFull.setImageResource(isPlaying ? R.drawable.ic_pause_rounded : R.drawable.ic_play_rounded);
+        }
+        long dur = playerService.getDuration();
+        int max;
+        if (dur <= 0) {
+            long fb = 0L;
+            try {
+                String sid = playerService.getCurrentSong() != null ? playerService.getCurrentSong().getId() : null;
+                if (sid == null) {
+                    SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+                    sid = sp.getString("last_song_id", null);
+                }
+                if (sid != null) {
+                    com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(MainActivity.this).songDao().getSongById(sid);
+                    if (se != null && se.getDuration() > 0) fb = (long) se.getDuration() * 1000L;
+                }
+            } catch (Exception ignore) {}
+            max = (int) Math.max(0, fb);
+        } else {
+            max = (int) Math.max(0, dur);
+        }
+        if (fullSeekBar != null) fullSeekBar.setMax(max);
+        if (fullProgress != null) fullProgress.setMax(max);
+        if (fullProgress != null) fullProgress.setVisibility(View.VISIBLE);
+        int pos = (int) playerService.getCurrentPosition();
+        if (!userIsSeeking) {
+            if (fullSeekBar != null) fullSeekBar.setProgress(pos);
+            if (fullProgress != null) fullProgress.setProgress(pos);
+        }
+        if (fullSongTitle != null) fullSongTitle.setText(playerService.getCurrentTitle());
+        if (fullSongArtist != null) fullSongArtist.setText(playerService.getCurrentArtist());
+        updateFullPlaybackModeButton();
+        // 同步歌词（若在歌词页）
+        if (lyricsController != null) lyricsController.onPlaybackTick();
+    }
+
+    private void updateFullPlaybackModeButton() {
+        if (btnPlayModeFull == null || !bound || playerService == null) return;
+        int mode = playerService.getPlaybackMode();
+        int iconRes;
+        switch (mode) {
+            case PlayerService.PLAYBACK_MODE_REPEAT_ALL:
+                iconRes = R.drawable.ic_repeat;
+                break;
+            case PlayerService.PLAYBACK_MODE_REPEAT_ONE:
+                iconRes = R.drawable.ic_repeat_one;
+                break;
+            case PlayerService.PLAYBACK_MODE_SHUFFLE:
+                iconRes = R.drawable.ic_shuffle;
+                break;
+            default:
+                iconRes = R.drawable.ic_repeat_off;
+                break;
+        }
+        btnPlayModeFull.setImageResource(iconRes);
+    }
+
+    private boolean isLowPowerEnabled() {
+        try {
+            SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+            return sp.getBoolean("low_power_mode_enabled", false);
+        } catch (Exception e) { return false; }
+    }
+
+    private void applyFullPlayerBackground() {
+        try {
+            if (fullBgImage == null) return;
+            SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+            boolean lowPower = sp.getBoolean("low_power_mode_enabled", false);
+            boolean blurEnabled = sp.getBoolean("bg_blur_enabled", true);
+            int intensity = sp.getInt("bg_blur_intensity", 50);
+            float intensity01 = Math.max(0f, Math.min(1f, (float) intensity / 100f));
+            if (lowPower) {
+                // 省电模式：黑色背景
+                BlurUtils.clearEffect(fullBgImage);
+                fullBgImage.setImageDrawable(null);
+                fullBgImage.setBackgroundColor(getResources().getColor(R.color.background));
+                return;
+            }
+            String albumId = null;
+            String key = null;
+            if (playerService != null && playerService.getCurrentSong() != null) {
+                albumId = playerService.getCurrentSong().getAlbumId();
+                key = (albumId != null && !albumId.isEmpty()) ? albumId : playerService.getCurrentSong().getCoverArtUrl();
+            }
+            // 回退：未绑定服务时使用上次歌曲ID从DB取专辑
+            if (key == null) {
+                try {
+                    String sid = sp.getString("last_song_id", null);
+                    if (sid != null) {
+                        com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getSongById(sid);
+                        if (se != null) {
+                            albumId = se.getAlbumId();
+                            key = (albumId != null && !albumId.isEmpty()) ? albumId : se.getCoverArt();
+                        }
+                    }
+                } catch (Exception ignore) {}
+            }
+            String localCover = (albumId != null && !albumId.isEmpty()) ? localFileDetector.getDownloadedAlbumCoverPath(albumId) : null;
+            String coverArtUrl = (localCover != null) ? ("file://" + localCover) : (key != null ? NavidromeApi.getInstance(this).getCoverArtUrl(key) : null);
+            if (coverArtUrl == null) {
+                // 无可用封面，置黑背景
+                BlurUtils.clearEffect(fullBgImage);
+                fullBgImage.setImageDrawable(null);
+                fullBgImage.setBackgroundColor(getResources().getColor(R.color.background));
+                return;
+            }
+            if (!blurEnabled) {
+                BlurUtils.clearEffect(fullBgImage);
+                Glide.with(this).load(coverArtUrl).diskCacheStrategy(localCover != null ? DiskCacheStrategy.NONE : DiskCacheStrategy.AUTOMATIC).into(fullBgImage);
+                return;
+            }
+            final String finalKey = key; final float finalIntensity01 = intensity01; com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap> target = new com.bumptech.glide.request.target.CustomTarget<android.graphics.Bitmap>() {
+                @Override public void onResourceReady(android.graphics.Bitmap resource, com.bumptech.glide.request.transition.Transition<? super android.graphics.Bitmap> transition) {
+                    if (android.os.Build.VERSION.SDK_INT >= 31) {
+                        BlurUtils.applyBlurTo(fullBgImage, resource, intensity01);
+                    } else {
+                        try {
+                            android.graphics.Bitmap blurred = BlurUtils.getOrCreateBlur(finalKey, resource, finalIntensity01);
+                            fullBgImage.setImageBitmap(blurred);
+                        } catch (Exception e) {
+                            fullBgImage.setImageBitmap(resource);
+                        }
+                    }
+                }
+                @Override public void onLoadCleared(android.graphics.drawable.Drawable placeholder) {}
+            };
+            Glide.with(this)
+                .asBitmap()
+                .load(coverArtUrl)
+                .diskCacheStrategy(localCover != null ? DiskCacheStrategy.NONE : DiskCacheStrategy.AUTOMATIC)
+                .into(target);
+        } catch (Exception ignore) {}
+    }
+
+    private void recordAlbumsScrollPosition() {
+        try {
+            if (!"albums".equals(currentView)) return;
+            if (recyclerView != null && recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                int pos = lm.findFirstVisibleItemPosition();
+                android.view.View v = lm.findViewByPosition(pos);
+                int offset = v != null ? v.getTop() : 0;
+                albumsScrollPos = Math.max(0, pos);
+                albumsScrollOffset = offset;
+            }
+        } catch (Exception ignore) {}
+    }
+
+    private void restoreAlbumsScrollPosition() {
+        try {
+            if (recyclerView == null) return;
+            recyclerView.post(() -> {
+                try {
+                    if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                        androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                        lm.scrollToPositionWithOffset(Math.max(0, albumsScrollPos), albumsScrollOffset);
+                    } else {
+                        recyclerView.scrollToPosition(Math.max(0, albumsScrollPos));
+                    }
+                } catch (Exception ignore) {}
+            });
+        } catch (Exception ignore) {}
+    }
+
+    private void ensureLyricsController() {
+        if (lyricsController == null && fullPlayerOverlay != null) {
+            lyricsController = new com.watch.limusic.LyricsController(this, new com.watch.limusic.LyricsController.PlayerBridge() {
+                @Override public long getCurrentPosition() { return bound && playerService != null ? playerService.getCurrentPosition() : 0; }
+                @Override public long getDuration() { return bound && playerService != null ? playerService.getDuration() : 0; }
+                @Override public boolean isPlaying() { return bound && playerService != null && playerService.isPlaying(); }
+                @Override public void seekTo(long positionMs) { if (bound && playerService != null) playerService.seekTo(positionMs); }
+                @Override public String getCurrentSongId() { return bound && playerService != null && playerService.getCurrentSong() != null ? playerService.getCurrentSong().getId() : null; }
+                @Override public String getCurrentArtist() { return bound && playerService != null ? playerService.getCurrentArtist() : null; }
+                @Override public String getCurrentTitle() { return bound && playerService != null ? playerService.getCurrentTitle() : null; }
+            });
+            lyricsController.setUiBridge(() -> switchFullPage(0));
+            lyricsController.ensureInflated(fullPlayerOverlay);
+            lyricsController.loadLyricsIfNeeded();
+        } else if (lyricsController != null) {
+            // 已初始化则不重复触发加载，避免切页时抖动
+        }
+    }
+
+    private void switchFullPage(int page) {
+        if (page < 0) page = 0; if (page > 1) page = 1;
+        if (currentFullPage == page) return;
+        int from = currentFullPage;
+        currentFullPage = page;
+        View container = fullPlayerOverlay;
+        // 顶部条目标权重：歌词页固定 0.5/0.5，主控页固定 1/0
+        try { updateTopBarProgress(page == 1 ? 1f : 0f); } catch (Exception ignore) {}
+        if (container != null) {
+            float width = container.getWidth();
+            float toX = (page == 1) ? -width * 0.12f : width * 0.12f;
+            container.animate()
+                .translationX(toX)
+                .setDuration(120)
+                .withEndAction(() -> {
+                    container.setTranslationX(0f);
+                    applyFullPageVisibility();
+                    updatePageIndicator();
+                })
+                .start();
+        } else {
+            applyFullPageVisibility();
+            updatePageIndicator();
+        }
+        if (page == 1) ensureLyricsController();
+    }
+
+    private void applyFullPageVisibility() {
+        if (fullPlayerOverlay == null) return;
+        View center = fullPlayerOverlay.findViewById(R.id.center_controls);
+        View seek = findViewByIdName(fullPlayerOverlay, "full_seek_container");
+        View bottom = fullPlayerOverlay.findViewById(R.id.bottom_row);
+        View info = findViewByIdName(fullPlayerOverlay, "full_info_container");
+        View lyricsContainer = fullPlayerOverlay.findViewById(R.id.lyrics_container);
+        View lyricsStub = fullPlayerOverlay.findViewById(R.id.lyrics_stub);
+        View returnPlayer = fullPlayerOverlay.findViewById(R.id.btn_return_player);
+        if (currentFullPage == 0) {
+            if (center != null) center.setVisibility(View.VISIBLE);
+            if (seek != null) seek.setVisibility(View.VISIBLE);
+            if (bottom != null) bottom.setVisibility(View.VISIBLE);
+            if (info != null) info.setVisibility(View.VISIBLE);
+            if (lyricsContainer != null) lyricsContainer.setVisibility(View.GONE);
+            if (lyricsStub != null) lyricsStub.setVisibility(View.GONE);
+            if (returnPlayer != null) returnPlayer.setVisibility(View.GONE);
+            // 主控页可见时暂停歌词刷新，完全零开销
+            if (lyricsController != null) lyricsController.pause();
+        } else {
+            if (center != null) center.setVisibility(View.GONE);
+            if (seek != null) seek.setVisibility(View.GONE);
+            if (bottom != null) bottom.setVisibility(View.GONE);
+            if (info != null) info.setVisibility(View.GONE);
+            // 确保歌词视图已经inflate并显示
+            ensureLyricsController();
+            View lc = fullPlayerOverlay.findViewById(R.id.lyrics_container);
+            if (lc != null) lc.setVisibility(View.VISIBLE);
+            if (returnPlayer != null) returnPlayer.setVisibility(View.VISIBLE);
+            // 歌词页可见时恢复刷新
+            if (lyricsController != null) lyricsController.resume();
+        }
+    }
+
+    private void updatePageIndicator() {
+        if (dotMain == null || dotLyrics == null) return;
+        boolean lowPower = isLowPowerEnabled();
+        dotLyrics.setVisibility(lowPower ? View.GONE : View.VISIBLE);
+        if (currentFullPage == 1 && lowPower) currentFullPage = 0;
+        if (currentFullPage == 0) {
+            dotMain.setImageResource(R.drawable.indicator_dot_selected);
+            dotLyrics.setImageResource(R.drawable.indicator_dot_unselected);
+        } else {
+            dotMain.setImageResource(R.drawable.indicator_dot_unselected);
+            dotLyrics.setImageResource(R.drawable.indicator_dot_selected);
+        }
+    }
+
+    private boolean isPointInsideView(android.view.MotionEvent ev, View target) {
+        if (target == null || target.getVisibility() != View.VISIBLE) return false;
+        int[] loc = new int[2];
+        target.getLocationOnScreen(loc);
+        float x = ev.getRawX();
+        float y = ev.getRawY();
+        return x >= loc[0] && x <= loc[0] + target.getWidth() && y >= loc[1] && y <= loc[1] + target.getHeight();
+    }
+
+    private void applyDragOffset(float dx) {
+        if (fullPlayerOverlay == null) return;
+        View center = fullPlayerOverlay.findViewById(R.id.center_controls);
+        View seek = findViewByIdName(fullPlayerOverlay, "full_seek_container");
+        View bottom = fullPlayerOverlay.findViewById(R.id.bottom_row);
+        View info = findViewByIdName(fullPlayerOverlay, "full_info_container");
+        View lyricsContainer = fullPlayerOverlay.findViewById(R.id.lyrics_container);
+        int w = fullPlayerOverlay.getWidth();
+        if (w <= 0) return;
+        float f = Math.max(-1f, Math.min(1f, -dx / w)); // 向左为正，允许右滑到 -1
+        // 确保歌词容器可见参与滑动
+        if (lyricsContainer != null) lyricsContainer.setVisibility(View.VISIBLE);
+        // 主控组往左推，歌词从右侧滑入（右滑回主控时降低跟随比例，留出可感知的返回动画距离）
+        float factor = (f < 0f) ? 0.7f : 0.9f;
+        float mainTx = -f * w * factor;
+        float lyricTx = (1f - f) * w * factor;
+        if (center != null) center.setTranslationX(mainTx);
+        if (seek != null) seek.setTranslationX(mainTx);
+        if (bottom != null) bottom.setTranslationX(mainTx);
+        if (info != null) info.setTranslationX(mainTx);
+        if (lyricsContainer != null) lyricsContainer.setTranslationX(lyricTx);
+        // 顶部绿/蓝条宽度联动：f∈[0,1] 映射为进度
+        float progress = Math.max(0f, Math.min(1f, f));
+        updateTopBarProgress(progress);
+    }
+
+    // 根据切页进度调整顶部绿/蓝条的权重：0=绿满屏，1=蓝满屏
+    private void updateTopBarProgress(float progress) {
+        if (fullPlayerOverlay == null) return;
+        View left = fullPlayerOverlay.findViewById(R.id.btn_collapse_left);
+        View right = fullPlayerOverlay.findViewById(R.id.btn_return_player);
+        if (left == null || right == null) return;
+        try {
+            android.widget.LinearLayout.LayoutParams lpL = (android.widget.LinearLayout.LayoutParams) left.getLayoutParams();
+            android.widget.LinearLayout.LayoutParams lpR = (android.widget.LinearLayout.LayoutParams) right.getLayoutParams();
+            float p = Math.max(0f, Math.min(1f, progress));
+            float wl = 1f - 0.5f * p;
+            float wr = 0.5f * p;
+            // 保证宽度为0dp，由权重控制占比
+            lpL.width = 0; lpR.width = 0;
+            if (lpL.weight != wl || lpR.weight != wr) {
+                lpL.weight = wl;
+                lpR.weight = wr;
+                left.setLayoutParams(lpL);
+                right.setLayoutParams(lpR);
+                // 始终可见，但当权重为0时宽度为0等效隐藏
+                if (left.getVisibility() != View.VISIBLE) left.setVisibility(View.VISIBLE);
+                if (right.getVisibility() != View.VISIBLE) right.setVisibility(View.VISIBLE);
+            }
+        } catch (Exception ignore) {}
+    }
+
+    private void settleDrag(float dx) {
+        if (fullPlayerOverlay == null) return;
+        int w = fullPlayerOverlay.getWidth();
+        if (w <= 0) return;
+        float f = Math.max(-1f, Math.min(1f, -dx / w));
+        boolean goLyrics = f >= 0.4f;
+        View center = fullPlayerOverlay.findViewById(R.id.center_controls);
+        View seek = findViewByIdName(fullPlayerOverlay, "full_seek_container");
+        View bottom = fullPlayerOverlay.findViewById(R.id.bottom_row);
+        View info = findViewByIdName(fullPlayerOverlay, "full_info_container");
+        View lyricsContainer = fullPlayerOverlay.findViewById(R.id.lyrics_container);
+        if (lyricsContainer == null) return;
+        isSettling = true;
+        if (goLyrics) ensureLyricsController();
+        float mainTarget = goLyrics ? -w : 0f;
+        float lyricTarget = goLyrics ? 0f : w * 0.25f; // 返回主控时保留25%路程由动画完成，避免瞬跳
+        android.animation.TimeInterpolator interp = new android.view.animation.DecelerateInterpolator();
+        long dur = 200L;
+        // 切到主控页前，确保主控区可见参与动画
+        if (!goLyrics) {
+            if (center != null) center.setVisibility(View.VISIBLE);
+            if (seek != null) seek.setVisibility(View.VISIBLE);
+            if (bottom != null) bottom.setVisibility(View.VISIBLE);
+            if (info != null) info.setVisibility(View.VISIBLE);
+        }
+        // 顶部条权重动画（与切页同步）
+        try {
+            float start = Math.max(0f, Math.min(1f, f));
+            float end = goLyrics ? 1f : 0f;
+            android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(start, end);
+            va.setDuration(dur);
+            va.setInterpolator(interp);
+            va.addUpdateListener(a -> updateTopBarProgress((Float) a.getAnimatedValue()));
+            va.start();
+        } catch (Exception ignore) {}
+        // 暂停歌词刷新，避免动画期间列表重新定位造成抽搐
+        if (lyricsController != null) lyricsController.pause();
+        // 开启硬件图层以提升动画流畅度
+        if (center != null) center.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (seek != null) seek.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (bottom != null) bottom.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (info != null) info.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (lyricsContainer != null) lyricsContainer.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        if (center != null) center.animate().translationX(mainTarget).setDuration(dur).setInterpolator(interp).start();
+        if (seek != null) seek.animate().translationX(mainTarget).setDuration(dur).setInterpolator(interp).start();
+        if (bottom != null) bottom.animate().translationX(mainTarget).setDuration(dur).setInterpolator(interp).start();
+        if (info != null) info.animate().translationX(mainTarget).setDuration(dur).setInterpolator(interp).start();
+        if (goLyrics) {
+            lyricsContainer.setVisibility(View.VISIBLE);
+            lyricsContainer.animate().translationX(lyricTarget).setDuration(dur).setInterpolator(interp).withEndAction(() -> {
+                // 归位并设置可见性
+                if (center != null) center.setTranslationX(0f);
+                if (seek != null) seek.setTranslationX(0f);
+                if (bottom != null) bottom.setTranslationX(0f);
+                if (info != null) info.setTranslationX(0f);
+                lyricsContainer.setTranslationX(0f);
+                currentFullPage = 1;
+                applyFullPageVisibility();
+                updatePageIndicator();
+                // 关闭硬件图层，恢复歌词刷新并对齐一次
+                if (center != null) center.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (seek != null) seek.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (bottom != null) bottom.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (info != null) info.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (lyricsContainer != null) lyricsContainer.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (lyricsController != null) { lyricsController.resume(); }
+                isSettling = false;
+            }).start();
+        } else {
+            // 未达阈值：立即隐藏歌词容器，避免短暂闪现
+            lyricsContainer.clearAnimation();
+            lyricsContainer.setVisibility(View.GONE);
+            lyricsContainer.setTranslationX(w);
+            // 在主控动画完成时收尾
+            fullPlayerOverlay.postDelayed(() -> {
+                if (center != null) center.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (seek != null) seek.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (bottom != null) bottom.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (info != null) info.setLayerType(View.LAYER_TYPE_NONE, null);
+                if (lyricsController != null) { lyricsController.resume(); }
+                currentFullPage = 0;
+                applyFullPageVisibility();
+                updatePageIndicator();
+                isSettling = false;
+            }, dur);
+        }
+    }
+
+    	private void toggleVolumeOverlay() {
+		if (volumeOverlay == null || volumeSeek == null) return;
+		boolean showing = volumeOverlay.getVisibility() == View.VISIBLE;
+		if (showing) {
+			volumeOverlay.setVisibility(View.GONE);
+		} else {
+			volumeOverlay.setVisibility(View.VISIBLE);
+		}
+    }
+
+	private void animateReturnToMain() {
+		if (fullPlayerOverlay == null) return;
+		View center = fullPlayerOverlay.findViewById(R.id.center_controls);
+		View seek = findViewByIdName(fullPlayerOverlay, "full_seek_container");
+		View bottom = fullPlayerOverlay.findViewById(R.id.bottom_row);
+		View info = findViewByIdName(fullPlayerOverlay, "full_info_container");
+		View lyricsContainer = fullPlayerOverlay.findViewById(R.id.lyrics_container);
+		if (lyricsContainer == null) return;
+		int w = fullPlayerOverlay.getWidth(); if (w <= 0) w = fullPlayerOverlay.getMeasuredWidth(); if (w <= 0) w = 360;
+		// 准备：确保歌词可见参与动画
+		lyricsContainer.setVisibility(View.VISIBLE);
+		// 暂停歌词刷新，避免动画期间抽搐
+		if (lyricsController != null) lyricsController.pause();
+		// 开启硬件图层提升流畅度
+		if (center != null) center.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+		if (seek != null) seek.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+		if (bottom != null) bottom.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+		if (info != null) info.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+		lyricsContainer.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+		// 初始：主控在左侧不可见位置，歌词在0
+		float mainStart = -w;
+		if (center != null) center.setTranslationX(mainStart);
+		if (seek != null) seek.setTranslationX(mainStart);
+		if (bottom != null) bottom.setTranslationX(mainStart);
+		if (info != null) info.setTranslationX(mainStart);
+		// 顶部条：从1 -> 0 的权重动画
+		try {
+			android.animation.ValueAnimator va = android.animation.ValueAnimator.ofFloat(1f, 0f);
+			va.setDuration(220L);
+			va.setInterpolator(new android.view.animation.DecelerateInterpolator());
+			va.addUpdateListener(a -> updateTopBarProgress((Float) a.getAnimatedValue()));
+			va.start();
+		} catch (Exception ignore) {}
+		// 动画：主控回到0，歌词滑到右侧 w
+		android.animation.TimeInterpolator interp = new android.view.animation.DecelerateInterpolator();
+		long dur = 220L;
+		if (center != null) center.animate().translationX(0f).setDuration(dur).setInterpolator(interp).start();
+		if (seek != null) seek.animate().translationX(0f).setDuration(dur).setInterpolator(interp).start();
+		if (bottom != null) bottom.animate().translationX(0f).setDuration(dur).setInterpolator(interp).start();
+		if (info != null) info.animate().translationX(0f).setDuration(dur).setInterpolator(interp).start();
+		lyricsContainer.animate().translationX(w).setDuration(dur).setInterpolator(interp).withEndAction(() -> {
+			// 恢复常态
+			if (center != null) center.setLayerType(View.LAYER_TYPE_NONE, null);
+			if (seek != null) seek.setLayerType(View.LAYER_TYPE_NONE, null);
+			if (bottom != null) bottom.setLayerType(View.LAYER_TYPE_NONE, null);
+			if (info != null) info.setLayerType(View.LAYER_TYPE_NONE, null);
+			lyricsContainer.setLayerType(View.LAYER_TYPE_NONE, null);
+			currentFullPage = 0;
+			applyFullPageVisibility();
+			updatePageIndicator();
+		}).start();
     }
 }

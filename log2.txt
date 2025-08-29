@@ -1,0 +1,85 @@
+WARNING: Logcat was not cleared on the device itself because 'logcat -c' timed out.
+2025-08-29 17:37:07.425 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=027d342440b40e9a5d8215c08637be34&s=880245558&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320
+2025-08-29 17:37:07.700 21975-21975 PlayerService           com.watch.limusic                    D  播放器空闲
+2025-08-29 17:37:07.706 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:07.753 21975-21975 PlayerService           com.watch.limusic                    D  切换到歌曲: 03 除三害, 索引: 7
+2025-08-29 17:37:07.753 21975-21975 PlayerService           com.watch.limusic                    D  原因: 播放列表改变
+2025-08-29 17:37:07.757 21975-21975 PlayerService           com.watch.limusic                    D  正在缓冲
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=f7bf58ab9fbc9aa981366231d4c71360&s=297709943&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  诊断[STATE_BUFFERING]: state=2, isPlaying=false
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  歌曲: 03 除三害 - 三无Marblue, 索引=7/283
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  进度: pos=0ms, dur=-9223372036854775807ms, bufPos=0ms(0%)
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=4868 kbps
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=f7bf58ab9fbc9aa981366231d4c71360&s=297709943&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320, 已缓存=false
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  缓存: used=2011/73400320 bytes
+2025-08-29 17:37:07.766 21975-21975 PlayerService           com.watch.limusic                    D  设置播放模式: 全局随机（自定义）
+2025-08-29 17:37:07.768 21975-21975 PlayerService           com.watch.limusic                    D  获得音频焦点
+2025-08-29 17:37:07.777 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:07.801 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=95a43c8d5f5105986b3fcbb3bf7a3697&s=986865140&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320
+2025-08-29 17:37:07.801 21975-21975 PlayerService           com.watch.limusic                    D  诊断[play()]: state=2, isPlaying=false
+2025-08-29 17:37:07.801 21975-21975 PlayerService           com.watch.limusic                    D  歌曲: 03 除三害 - 三无Marblue, 索引=7/283
+2025-08-29 17:37:07.801 21975-21975 PlayerService           com.watch.limusic                    D  进度: pos=0ms, dur=-9223372036854775807ms, bufPos=0ms(0%)
+2025-08-29 17:37:07.801 21975-21975 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=4868 kbps
+2025-08-29 17:37:07.802 21975-21975 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=95a43c8d5f5105986b3fcbb3bf7a3697&s=986865140&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320, 已缓存=false
+2025-08-29 17:37:07.802 21975-21975 PlayerService           com.watch.limusic                    D  缓存: used=2011/73400320 bytes
+2025-08-29 17:37:07.803 21975-21975 PlayerService           com.watch.limusic                    D  全局所有歌曲：初始化窗口[0,60]，中心=7, 总数=283
+2025-08-29 17:37:07.991 21975-21986 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 150433(5MB) AllocSpace objects, 80(5MB) LOS objects, 29% free, 14MB/20MB, paused 1.148ms total 230.410ms
+2025-08-29 17:37:08.142 21975-21975 PlayerService           com.watch.limusic                    D  带宽估计: bitrate=1037 kbps, bytes=5247674, timeMs=40459
+2025-08-29 17:37:08.282 21975-22175 XingSeeker              com.watch.limusic                    W  XING data size mismatch: 8267774, 8267646
+2025-08-29 17:37:08.308 21975-22177 OMXClient               com.watch.limusic                    I  Treble IOmx obtained
+2025-08-29 17:37:08.314 21975-22177 ACodec                  com.watch.limusic                    I  codec does not support config priority (err -2147483648)
+2025-08-29 17:37:08.316 21975-22177 ACodec                  com.watch.limusic                    I  codec does not support config priority (err -2147483648)
+2025-08-29 17:37:08.318 21975-22177 ExtendedACodec          com.watch.limusic                    W  Failed to get extension for extradata parameter
+2025-08-29 17:37:08.355 21975-22025 AudioTrack              com.watch.limusic                    D  Client defaulted notificationFrames to 4714 for frameCount 14144
+2025-08-29 17:37:08.377 21975-21975 PlayerService           com.watch.limusic                    D  播放器就绪
+2025-08-29 17:37:08.385 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=ee27596dcde25f181b3a54ee6822ee9f&s=352952790&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  诊断[STATE_READY]: state=3, isPlaying=true
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  歌曲: 03 除三害 - 三无Marblue, 索引=7/283
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  进度: pos=0ms, dur=201508ms, bufPos=3787ms(1%)
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=1037 kbps
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=ee27596dcde25f181b3a54ee6822ee9f&s=352952790&v=1.16.1&c=LiMusic&id=uVee2gMtGJED9hyyG8K71s&format=mp3&maxBitRate=320, 已缓存=false
+2025-08-29 17:37:08.404 21975-21975 PlayerService           com.watch.limusic                    D  缓存: used=2011/73400320 bytes
+2025-08-29 17:37:08.412 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:13.058 21975-21986 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 12927(1700KB) AllocSpace objects, 21(1128KB) LOS objects, 25% free, 17MB/23MB, paused 173us total 154.795ms
+2025-08-29 17:37:15.076 21975-21975 PlayerService           com.watch.limusic                    D  播放下一首: 索引 268
+2025-08-29 17:37:15.083 21975-21975 PlayerService           com.watch.limusic                    D  播放器空闲
+2025-08-29 17:37:15.091 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:15.123 21975-21975 PlayerService           com.watch.limusic                    D  切换到歌曲: 燕归亭, 索引: 268
+2025-08-29 17:37:15.123 21975-21975 PlayerService           com.watch.limusic                    D  原因: 播放列表改变
+2025-08-29 17:37:15.127 21975-21975 PlayerService           com.watch.limusic                    D  正在缓冲
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=3e88a9fd0fbba2e72a84d53424652cd3&s=511816289&v=1.16.1&c=LiMusic&id=vHRYtr0MMoLUQ7GtSXXWkh&format=mp3&maxBitRate=320
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  诊断[STATE_BUFFERING]: state=2, isPlaying=false
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  歌曲: 燕归亭 - 金南玲, 索引=268/283
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  进度: pos=0ms, dur=-9223372036854775807ms, bufPos=0ms(0%)
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=1037 kbps
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=3e88a9fd0fbba2e72a84d53424652cd3&s=511816289&v=1.16.1&c=LiMusic&id=vHRYtr0MMoLUQ7GtSXXWkh&format=mp3&maxBitRate=320, 已缓存=false
+2025-08-29 17:37:15.135 21975-21975 PlayerService           com.watch.limusic                    D  缓存: used=5244891/73400320 bytes
+2025-08-29 17:37:15.138 21975-21980 zygote                  com.watch.limusic                    I  Do full code cache collection, code=1010KB, data=747KB
+2025-08-29 17:37:15.138 21975-21975 PlayerService           com.watch.limusic                    D  获得音频焦点
+2025-08-29 17:37:15.143 21975-21980 zygote                  com.watch.limusic                    I  After code cache collection, code=1002KB, data=654KB
+2025-08-29 17:37:15.157 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:15.171 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=b51ce17173f2f793f75fbc56d5c5a7c6&s=296986691&v=1.16.1&c=LiMusic&id=vHRYtr0MMoLUQ7GtSXXWkh&format=mp3&maxBitRate=320
+2025-08-29 17:37:15.312 21975-21975 PlayerService           com.watch.limusic                    D  诊断[play()]: state=2, isPlaying=false
+2025-08-29 17:37:15.312 21975-21975 PlayerService           com.watch.limusic                    D  歌曲: 燕归亭 - 金南玲, 索引=268/283
+2025-08-29 17:37:15.312 21975-21975 PlayerService           com.watch.limusic                    D  进度: pos=0ms, dur=-9223372036854775807ms, bufPos=0ms(0%)
+2025-08-29 17:37:15.312 21975-21975 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=1037 kbps
+2025-08-29 17:37:15.313 21975-21975 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=b51ce17173f2f793f75fbc56d5c5a7c6&s=296986691&v=1.16.1&c=LiMusic&id=vHRYtr0MMoLUQ7GtSXXWkh&format=mp3&maxBitRate=320, 已缓存=false
+2025-08-29 17:37:15.313 21975-21975 PlayerService           com.watch.limusic                    D  缓存: used=5651143/73400320 bytes
+2025-08-29 17:37:15.340 21975-21975 PlayerService           com.watch.limusic                    D  带宽估计: bitrate=6331 kbps, bytes=5649132, timeMs=7138
+2025-08-29 17:37:15.594 21975-22189 OMXClient               com.watch.limusic                    I  Treble IOmx obtained
+2025-08-29 17:37:15.599 21975-22189 ACodec                  com.watch.limusic                    I  codec does not support config priority (err -2147483648)
+2025-08-29 17:37:15.600 21975-22189 ACodec                  com.watch.limusic                    I  codec does not support config priority (err -2147483648)
+2025-08-29 17:37:15.603 21975-22189 ExtendedACodec          com.watch.limusic                    W  Failed to get extension for extradata parameter
+2025-08-29 17:37:15.637 21975-22025 AudioTrack              com.watch.limusic                    D  Client defaulted notificationFrames to 4714 for frameCount 14144
+2025-08-29 17:37:15.672 21975-21975 PlayerService           com.watch.limusic                    D  播放器就绪
+2025-08-29 17:37:15.677 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=786046e9f0227ee4d45e85c20f9c4bcc&s=884396178&v=1.16.1&c=LiMusic&id=vHRYtr0MMoLUQ7GtSXXWkh&format=mp3&maxBitRate=320
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  诊断[STATE_READY]: state=3, isPlaying=true
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  歌曲: 燕归亭 - 金南玲, 索引=268/283
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  进度: pos=0ms, dur=-9223372036854775807ms, bufPos=1097ms(0%)
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=6331 kbps
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=786046e9f0227ee4d45e85c20f9c4bcc&s=884396178&v=1.16.1&c=LiMusic&id=vHRYtr0MMoLUQ7GtSXXWkh&format=mp3&maxBitRate=320, 已缓存=false
+2025-08-29 17:37:15.689 21975-21975 PlayerService           com.watch.limusic                    D  缓存: used=5651143/73400320 bytes
+2025-08-29 17:37:15.696 21975-21975 MediaButtonReceiver     com.watch.limusic                    W  A unique media button receiver could not be found in the given context, so couldn't build a pending intent.
+2025-08-29 17:37:16.049 21975-21986 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 96896(3MB) AllocSpace objects, 103(6MB) LOS objects, 30% free, 13MB/19MB, paused 193us total 168.142ms

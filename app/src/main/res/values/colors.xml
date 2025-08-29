@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- 基础系统颜色 -->
-    <color name="colorPrimary">#4285F4</color>
+    <color name="colorPrimary">#58D36B</color>
     <color name="colorPrimaryDark">#3367D6</color>
     <color name="colorAccent">#A142F4</color>
     
@@ -34,7 +34,7 @@
     <color name="divider">#1FFFFFFF</color> <!-- 12% 白色 -->
     
     <!-- 强调色和状态颜色 -->
-    <color name="accent">#4285F4</color>
+    <color name="accent">#58D36B</color>
     <color name="accent_secondary">#A142F4</color>
     <color name="playing_indicator">#4285F4</color>
     <color name="ripple">#33FFFFFF</color> <!-- 20% 白色 -->
@@ -59,4 +59,10 @@
     <color name="black">#000000</color>
     <color name="white">#FFFFFF</color>
     <color name="ic_launcher_background">#FF6B8E</color>
+
+    <!-- V2 UI tokens (lightweight, no behavior change) -->
+    <color name="colorPrimaryV2">#58D36B</color>
+    <color name="colorPrimaryDarkV2">#35B65A</color>
+    <color name="colorPrimaryLightV2">#CFF4D8</color>
+    <color name="colorStrokeV2">#1F2A24</color>
 </resources>

@@ -51,6 +51,18 @@
             android:parentActivityName=".MainActivity" />
         
         <activity
+            android:name=".GeneralSettingsActivity"
+            android:label="通用"
+            android:exported="false"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
+            android:name=".PlayerSettingsActivity"
+            android:label="播放器设置"
+            android:exported="false"
+            android:parentActivityName=".SettingsActivity" />
+        
+        <activity
             android:name=".NavidromeSettingsActivity"
             android:label="@string/server_settings"
             android:exported="false"

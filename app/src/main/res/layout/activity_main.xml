@@ -152,6 +152,7 @@
                     android:contentDescription="@string/album_art_description" />
 
                 <LinearLayout
+                    android:id="@+id/mini_player_info_container"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_marginStart="6dp"
@@ -207,7 +208,7 @@
                         android:layout_height="32dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@drawable/ic_repeat_off"
-                        android:tint="@color/player_controls"
+                        android:tint="@color/white"
                         android:contentDescription="@string/repeat_mode_description"
                         android:padding="4dp" />
 
@@ -218,7 +219,7 @@
                         android:layout_marginStart="12dp"
                         android:background="?attr/selectableItemBackgroundBorderless"
                         android:src="@drawable/ic_play"
-                        android:tint="@color/accent"
+                        android:tint="@color/white"
                         android:contentDescription="@string/play_pause_description" />
                 </LinearLayout>
             </LinearLayout>
@@ -263,6 +264,15 @@
             </FrameLayout>
 
         </LinearLayout>
+
+        <!-- 全屏播放器覆盖层：懒加载 ViewStub -->
+        <ViewStub
+            android:id="@+id/full_player_stub"
+            android:inflatedId="@+id/full_player_overlay"
+            android:layout="@layout/layout_full_player_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone" />
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 

@@ -26,11 +26,14 @@
             android:orientation="vertical"
             android:padding="12dp">
 
+            <!-- 服务器设置入口 -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/card_navidrome"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/background_elevated"
+                app:cardBackgroundColor="@color/background"
+                app:strokeColor="@color/colorStrokeV2"
+                app:strokeWidth="1dp"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="2dp"
                 android:layout_marginBottom="12dp">
@@ -58,46 +61,14 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 一键清理缓存 -->
+            <!-- 通用设置入口 -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_clear_cache"
+                android:id="@+id/card_general_settings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/background_elevated"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:id="@+id/txt_cache_summary"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="清理缓存"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:tint="@color/text_primary"
-                        android:src="@drawable/ic_delete" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- 缓存详细设置 -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_cache_settings"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/background_elevated"
+                app:cardBackgroundColor="@color/background"
+                app:strokeColor="@color/colorStrokeV2"
+                app:strokeWidth="1dp"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="2dp"
                 android:layout_marginBottom="12dp">
@@ -112,7 +83,7 @@
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
-                        android:text="缓存详情设置"
+                        android:text="通用"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
@@ -125,12 +96,14 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- 强制转码设置 -->
+            <!-- 播放器设置入口 -->
             <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_transcoding"
+                android:id="@+id/card_player_settings"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/background_elevated"
+                app:cardBackgroundColor="@color/background"
+                app:strokeColor="@color/colorStrokeV2"
+                app:strokeWidth="1dp"
                 app:cardCornerRadius="8dp"
                 app:cardElevation="2dp"
                 android:layout_marginBottom="12dp">
@@ -138,62 +111,23 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical"
+                    android:orientation="horizontal"
                     android:padding="12dp">
 
                     <TextView
-                        android:id="@+id/txt_transcoding_title"
-                        android:layout_width="match_parent"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:text="解码兼容模式（强制转码）（如设备播放异常可尝试开启）"
+                        android:layout_weight="1"
+                        android:text="播放器设置"
                         android:textColor="@color/text_primary"
                         android:textSize="14sp"
                         android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/txt_transcoding_summary"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="关闭"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
-                        android:layout_marginTop="4dp" />
-                </LinearLayout>
-            </com.google.android.material.card.MaterialCardView>
-
-            <!-- 下载强制转码设置 -->
-            <com.google.android.material.card.MaterialCardView
-                android:id="@+id/card_download_transcoding"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                app:cardBackgroundColor="@color/background_elevated"
-                app:cardCornerRadius="8dp"
-                app:cardElevation="2dp"
-                android:layout_marginBottom="12dp">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:padding="12dp">
-
-                    <TextView
-                        android:id="@+id/txt_download_transcoding_title"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="下载强制转码（非MP3 → 320kbps）"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/txt_download_transcoding_summary"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="关闭"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp"
-                        android:layout_marginTop="4dp" />
+                    <ImageView
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:tint="@color/text_primary"
+                        android:src="@drawable/ic_next" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

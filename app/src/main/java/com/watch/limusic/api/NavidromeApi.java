@@ -107,11 +107,15 @@ public class NavidromeApi {
     }
 
     private HttpUrl.Builder getBaseUrlBuilder() {
-        // 每次构建请求前刷新一次配置，确保使用最新服务器设置
-        loadCredentials();
+        // 使用内存中的最新配置（通过构造与广播刷新）
+        String hostOnly = serverUrl == null ? "" : serverUrl.replace("http://", "").replace("https://", "");
+        int slashIdx = hostOnly.indexOf('/');
+        if (slashIdx >= 0) hostOnly = hostOnly.substring(0, slashIdx);
+        int colonIdx = hostOnly.indexOf(':');
+        if (colonIdx >= 0) hostOnly = hostOnly.substring(0, colonIdx);
         return new HttpUrl.Builder()
-                .scheme(serverUrl.startsWith("https") ? "https" : "http")
-                .host(serverUrl.replace("http://", "").replace("https://", ""))
+                .scheme(serverUrl != null && serverUrl.startsWith("https") ? "https" : "http")
+                .host(hostOnly)
                 .port(serverPort)
                 .addPathSegment("rest");
     }
@@ -309,6 +313,69 @@ public class NavidromeApi {
                 .addQueryParameter("id", songId)
                 .build()
                 .toString();
+    }
+
+    /**
+     * 获取歌词（Subsonic: getLyrics）
+     * 注意：Navidrome 兼容实现通常只支持按 artist+title 查询
+     */
+    public String getLyrics(String artist, String title) throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl.Builder b = getBaseUrlBuilder()
+                .addPathSegment("getLyrics")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json");
+        if (artist != null && !artist.isEmpty()) b.addQueryParameter("artist", artist);
+        if (title != null && !title.isEmpty()) b.addQueryParameter("title", title);
+        Request request = new Request.Builder().url(b.build()).build();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) return null;
+            String json = response.body().string();
+            try {
+                com.google.gson.JsonObject root = parseJsonObjectCompat(json);
+                if (root == null) return null;
+                com.google.gson.JsonObject sr = root.has("subsonic-response") && root.get("subsonic-response").isJsonObject()
+                        ? root.getAsJsonObject("subsonic-response") : null;
+                if (sr == null) return null;
+                if (sr.has("lyrics")) {
+                    com.google.gson.JsonElement le = sr.get("lyrics");
+                    if (le.isJsonPrimitive()) {
+                        String val = le.getAsString();
+                        return (val != null && !val.trim().isEmpty()) ? val : null;
+                    } else if (le.isJsonObject()) {
+                        com.google.gson.JsonObject lo = le.getAsJsonObject();
+                        // 尽量宽松：优先 value，其次 lyrics；否则取第一个字符串字段
+                        if (lo.has("value") && lo.get("value").isJsonPrimitive()) {
+                            String val = lo.get("value").getAsString();
+                            if (val != null && !val.trim().isEmpty()) return val;
+                        }
+                        if (lo.has("lyrics") && lo.get("lyrics").isJsonPrimitive()) {
+                            String val = lo.get("lyrics").getAsString();
+                            if (val != null && !val.trim().isEmpty()) return val;
+                        }
+                        for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : lo.entrySet()) {
+                            if (e.getValue() != null && e.getValue().isJsonPrimitive()) {
+                                String val = e.getValue().getAsString();
+                                if (val != null && !val.trim().isEmpty()) return val;
+                            }
+                        }
+                    }
+                }
+                // 宽松回退：尝试直接取 sr 下的任意字符串字段
+                for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : sr.entrySet()) {
+                    if (e.getValue() != null && e.getValue().isJsonPrimitive()) {
+                        String val = e.getValue().getAsString();
+                        if (val != null && !val.trim().isEmpty()) return val;
+                    }
+                }
+            } catch (Exception ignore) {}
+            return null;
+        }
     }
 
     public String getTranscodedStreamUrl(String songId, String format, int maxBitRateKbps) {
@@ -671,5 +738,46 @@ public class NavidromeApi {
         private List<Song> songs;
         public String getId() { return id; }
         public List<Song> getSongs() { return songs != null ? songs : new ArrayList<>(); }
+    }
+
+    public Integer getSongDurationSeconds(String songId) throws IOException {
+        if (songId == null || songId.isEmpty()) return null;
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+        HttpUrl url = getBaseUrlBuilder()
+                .addPathSegment("getSong")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .addQueryParameter("id", songId)
+                .build();
+        Request request = new Request.Builder().url(url).build();
+        try (Response response = client.newCall(request).execute()) {
+            if (!response.isSuccessful()) return null;
+            String json = response.body().string();
+            try {
+                com.google.gson.JsonObject root = parseJsonObjectCompat(json);
+                if (root == null) return null;
+                com.google.gson.JsonObject sr = root.has("subsonic-response") && root.get("subsonic-response").isJsonObject()
+                        ? root.getAsJsonObject("subsonic-response") : null;
+                if (sr == null) return null;
+                if (sr.has("song") && sr.get("song").isJsonObject()) {
+                    com.google.gson.JsonObject so = sr.getAsJsonObject("song");
+                    if (so.has("duration") && so.get("duration").isJsonPrimitive()) {
+                        try { return so.get("duration").getAsInt(); } catch (Exception ignore) {}
+                    }
+                    // 宽松兜底：尝试读取任意整数字段名中包含"duration"的
+                    for (java.util.Map.Entry<String, com.google.gson.JsonElement> e : so.entrySet()) {
+                        if (e.getKey() != null && e.getKey().toLowerCase().contains("duration")) {
+                            try { return e.getValue().getAsInt(); } catch (Exception ignore) {}
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+            return null;
+        }
     }
 } 

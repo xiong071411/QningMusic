@@ -11,8 +11,8 @@ android {
         applicationId "com.watch.limusic"
         minSdk 27
         targetSdk 33
-        versionCode 14
-        versionName "2.4"
+        versionCode 17
+        versionName "3.0Beta2"
     }
 
     buildTypes {
@@ -63,3 +63,5 @@ dependencies {
     // 拼音库，用于中文首字母排序
     implementation 'com.belerweb:pinyin4j:2.5.1'\
 }
+
+
