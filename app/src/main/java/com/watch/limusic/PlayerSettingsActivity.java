@@ -14,9 +14,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
 public class PlayerSettingsActivity extends AppCompatActivity {
-	private static final String PREFS = "player_prefs";
-	private static final String KEY_BG_BLUR_ENABLED = "bg_blur_enabled";
-	private static final String KEY_BG_BLUR_INTENSITY = "bg_blur_intensity";
+    private static final String PREFS = "player_prefs";
+    private static final String KEY_BG_BLUR_ENABLED = "bg_blur_enabled";
+    private static final String KEY_BG_BLUR_INTENSITY = "bg_blur_intensity";
 	private static final String KEY_LYRIC_SIZE_CURRENT = "lyric_size_current_sp";
 	private static final String KEY_LYRIC_SIZE_OTHER = "lyric_size_other_sp";
 	private static final String KEY_CUSTOM_LYRICS_ENABLED = "custom_lyrics_enabled";
@@ -25,9 +25,9 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	// 新增：长句滚动显示
 	private static final String KEY_LYRIC_LONG_MARQUEE = "lyric_long_marquee_enabled";
 
-	private TextView txtBlurSummary;
-	private TextView txtIntensityValue;
-	private SeekBar seekIntensity;
+    private TextView txtBlurSummary;
+    private TextView txtIntensityValue;
+    private SeekBar seekIntensity;
 
 	private TextView txtLyricCur;
 	private TextView txtLyricOther;
@@ -39,19 +39,19 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	// 新增：长句滚动显示摘要
 	private TextView txtLyricLongSummary;
 
-	@Override
-	protected void onCreate(Bundle savedInstanceState) {
-		setTheme(R.style.Theme_LiMusic);
-		super.onCreate(savedInstanceState);
-		setContentView(R.layout.activity_player_settings);
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        setTheme(R.style.Theme_LiMusic);
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_player_settings);
 
-		Toolbar toolbar = findViewById(R.id.toolbar);
-		setSupportActionBar(toolbar);
-		if (getSupportActionBar() != null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        if (getSupportActionBar() != null) getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
-		txtBlurSummary = findViewById(R.id.txt_bg_blur_summary);
-		txtIntensityValue = findViewById(R.id.txt_bg_blur_intensity_value);
-		seekIntensity = findViewById(R.id.seek_bg_blur_intensity);
+        txtBlurSummary = findViewById(R.id.txt_bg_blur_summary);
+        txtIntensityValue = findViewById(R.id.txt_bg_blur_intensity_value);
+        seekIntensity = findViewById(R.id.seek_bg_blur_intensity);
 
 		txtLyricCur = findViewById(R.id.txt_lyric_current_size_value);
 		txtLyricOther = findViewById(R.id.txt_lyric_other_size_value);
@@ -63,21 +63,21 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		// 新增：长句滚动显示摘要
 		txtLyricLongSummary = findViewById(R.id.txt_lyric_long_marquee_summary);
 
-		updateBlurSummary();
-		updateIntensitySummary();
+        updateBlurSummary();
+        updateIntensitySummary();
 		initLyricSizeControls();
 		updateCustomLyricsSummary();
 		updateLyricSmoothSummary();
 		// 新增：初始化长句滚动显示摘要
 		updateLyricLongSummary();
 
-		findViewById(R.id.card_bg_blur).setOnClickListener(v -> {
-			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_BG_BLUR_ENABLED, true);
-			sp.edit().putBoolean(KEY_BG_BLUR_ENABLED, !enabled).apply();
-			updateBlurSummary();
-			notifyUi();
-		});
+        findViewById(R.id.card_bg_blur).setOnClickListener(v -> {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            boolean enabled = sp.getBoolean(KEY_BG_BLUR_ENABLED, true);
+            sp.edit().putBoolean(KEY_BG_BLUR_ENABLED, !enabled).apply();
+            updateBlurSummary();
+            notifyUi();
+        });
 
 
 		findViewById(R.id.card_custom_lyrics).setOnClickListener(v -> {
@@ -131,19 +131,19 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 			notifyUiLyric();
 		});
 
-		seekIntensity.setMax(100);
-		seekIntensity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-			@Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-				txtIntensityValue.setText(progress + "%");
-			}
-			@Override public void onStartTrackingTouch(SeekBar seekBar) {}
-			@Override public void onStopTrackingTouch(SeekBar seekBar) {
-				SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-				sp.edit().putInt(KEY_BG_BLUR_INTENSITY, seekBar.getProgress()).apply();
-				notifyUi();
-			}
-		});
-	}
+        seekIntensity.setMax(100);
+        seekIntensity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                txtIntensityValue.setText(progress + "%");
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                sp.edit().putInt(KEY_BG_BLUR_INTENSITY, seekBar.getProgress()).apply();
+                notifyUi();
+            }
+        });
+    }
 
 	private void initLyricSizeControls() {
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -186,18 +186,18 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		});
 	}
 
-	private void updateBlurSummary() {
-		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-		boolean enabled = sp.getBoolean(KEY_BG_BLUR_ENABLED, true);
-		txtBlurSummary.setText(enabled ? "已开启" : "关闭");
-	}
+    private void updateBlurSummary() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        boolean enabled = sp.getBoolean(KEY_BG_BLUR_ENABLED, true);
+        txtBlurSummary.setText(enabled ? "已开启" : "关闭");
+    }
 
-	private void updateIntensitySummary() {
-		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-		int v = sp.getInt(KEY_BG_BLUR_INTENSITY, 50);
-		txtIntensityValue.setText(v + "%");
-		seekIntensity.setProgress(v);
-	}
+    private void updateIntensitySummary() {
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        int v = sp.getInt(KEY_BG_BLUR_INTENSITY, 50);
+        txtIntensityValue.setText(v + "%");
+        seekIntensity.setProgress(v);
+    }
 
 
 	private void updateCustomLyricsSummary() {
@@ -223,10 +223,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		txtLyricLongSummary.setText(enabled ? "已开启（仅当前行，超过两行时在两行视窗内滚动）" : "关闭");
 	}
 
-	private void notifyUi() {
-		try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","player_bg"); sendBroadcast(i);} catch (Exception ignore) {}
-		try { sendBroadcast(new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED")); } catch (Exception ignore) {}
-	}
+    private void notifyUi() {
+        try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","player_bg"); sendBroadcast(i);} catch (Exception ignore) {}
+        try { sendBroadcast(new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED")); } catch (Exception ignore) {}
+    }
 
 	private void notifyUiLyric() {
 		try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","lyric_size"); sendBroadcast(i);} catch (Exception ignore) {}
@@ -236,9 +236,9 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","lyric_source"); sendBroadcast(i);} catch (Exception ignore) {}
 	}
 
-	@Override
-	public boolean onOptionsItemSelected(MenuItem item) {
-		if (item.getItemId() == android.R.id.home) { onBackPressed(); return true; }
-		return super.onOptionsItemSelected(item);
-	}
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) { onBackPressed(); return true; }
+        return super.onOptionsItemSelected(item);
+    }
 } 

@@ -107,4 +107,14 @@
     <!-- 歌词 -->
     <string name="no_lyrics">暂无歌词</string>
     <string name="lyrics_disabled_low_power">省电模式下已禁用歌词</string>
+
+    <!-- 定时暂停 -->
+    <string name="sleep_timer">定时暂停</string>
+    <string name="sleep_timer_value_off">已关闭</string>
+    <string name="sleep_timer_value_minutes">%1$d 分钟后暂停</string>
+    <string name="sleep_timer_value_less_minute">不到 1 分钟后暂停</string>
+    <string name="sleep_wait_finish_current">播完当前单曲再暂停</string>
+    <string name="sleep_toast_set_minutes">将在 %1$d 分钟后暂停</string>
+    <string name="sleep_toast_set_after_current">将在本首播放结束后暂停</string>
+    <string name="sleep_toast_cleared">已关闭定时暂停</string>
 </resources>

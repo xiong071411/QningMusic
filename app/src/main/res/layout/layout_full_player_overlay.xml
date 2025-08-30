@@ -260,4 +260,61 @@
         </LinearLayout>
     </FrameLayout>
 
+    <!-- 定时暂停覆盖页（点击空白关闭） -->
+    <FrameLayout
+        android:id="@+id/sleep_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="gone"
+        android:clickable="true">
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="#AA000000"/>
+        <LinearLayout
+            android:id="@+id/sleep_card"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="16dp"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:background="@drawable/card_background_v2">
+            <TextView
+                android:id="@+id/sleep_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/sleep_timer"
+                android:textColor="@android:color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/sleep_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:text="@string/sleep_timer_value_off"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"/>
+            <SeekBar
+                android:id="@+id/sleep_seek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:max="60"
+                android:thumbOffset="0dp"
+                android:progressDrawable="@drawable/progress_bar_rounded"
+                android:thumb="@drawable/seekbar_thumb"
+                android:splitTrack="false"/>
+            <CheckBox
+                android:id="@+id/sleep_after_current"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/sleep_wait_finish_current"
+                android:textColor="@android:color/white"/>
+        </LinearLayout>
+    </FrameLayout>
+
 </FrameLayout> 

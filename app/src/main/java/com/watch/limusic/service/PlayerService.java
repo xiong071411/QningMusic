@@ -156,6 +156,23 @@ public class PlayerService extends Service {
 	private static final int BUFFER_FOR_PLAYBACK_MS = 700; // 起播保持快速
 	private static final int BUFFER_FOR_PLAYBACK_AFTER_REBUFFER_MS = 5_000; // 重缓冲后多攒一些再播，减少再卡顿
 
+    // 睡眠定时（低开销）
+    public enum SleepType { NONE, AFTER_MS, AFTER_CURRENT }
+    private SleepType sleepType = SleepType.NONE;
+    private Runnable sleepRunnable = null;
+    private long sleepDeadlineElapsedMs = 0L;
+    private boolean sleepWaitFinishOnExpire = false;
+    public static final String ACTION_SLEEP_TIMER_CHANGED = "com.watch.limusic.SLEEP_TIMER_CHANGED";
+    private static final String ACTION_SLEEP_ALARM = "com.watch.limusic.SLEEP_ALARM";
+    private android.app.AlarmManager alarmManager;
+    private android.app.PendingIntent sleepAlarmIntent;
+    private final android.content.BroadcastReceiver sleepAlarmReceiver = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(Context ctx, Intent intent) {
+            if (intent == null || !ACTION_SLEEP_ALARM.equals(intent.getAction())) return;
+            onSleepAlarmFired();
+        }
+    };
+
     public class LocalBinder extends Binder {
         public PlayerService getService() {
             return PlayerService.this;
@@ -198,6 +215,14 @@ public class PlayerService extends Service {
         
         // 初始化音频管理器
         initializeAudioManager();
+        
+        // 初始化闹钟管理与注册接收器
+        try {
+            alarmManager = (android.app.AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            Intent i = new Intent(ACTION_SLEEP_ALARM).setPackage(getPackageName());
+            sleepAlarmIntent = android.app.PendingIntent.getBroadcast(this, 1001, i, android.os.Build.VERSION.SDK_INT >= 31 ? android.app.PendingIntent.FLAG_UPDATE_CURRENT | android.app.PendingIntent.FLAG_MUTABLE : android.app.PendingIntent.FLAG_UPDATE_CURRENT);
+            registerReceiver(sleepAlarmReceiver, new IntentFilter(ACTION_SLEEP_ALARM));
+        } catch (Throwable ignore) {}
         
         // 获取唤醒锁
         PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
@@ -268,7 +293,19 @@ public class PlayerService extends Service {
                         // 补发一次心跳广播，确保前台/未绑定场景也能拿到正确的时长与进度
                         sendPlaybackStateBroadcast();
                         // 额外延迟补发一帧，增大拿到有效duration的概率（轻量，不影响性能）
-                        handler.postDelayed(new Runnable() { @Override public void run() { sendPlaybackStateBroadcast(); } }, 250);
+                        handler.postDelayed(new Runnable() { @Override public void run() { sendPlaybackStateBroadcast();
+                            // 若处于"播完本首后暂停"，且此前时长未知，这里重算一次剩余并覆盖定时
+                            if (sleepType == SleepType.AFTER_CURRENT) {
+                                try {
+                                    long remain = computeRemainMsSafe();
+                                    if (sleepRunnable != null) {
+                                        handler.removeCallbacks(sleepRunnable);
+                                        sleepDeadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + Math.max(0, remain);
+                                        handler.postDelayed(sleepRunnable, Math.max(0, sleepDeadlineElapsedMs - android.os.SystemClock.elapsedRealtime()));
+                                    }
+                                } catch (Throwable ignore) {}
+                            }
+                        } }, 250);
                         break;
                     case Player.STATE_BUFFERING:
                         Log.d(TAG, "正在缓冲");
@@ -398,6 +435,13 @@ public class PlayerService extends Service {
                         }
                         // 切歌时补发一次广播，避免未绑定场景下UI停在0:00
                         sendPlaybackStateBroadcast();
+                        // AFTER_CURRENT：自动切曲或单曲重复时立即暂停
+                        if (sleepType == SleepType.AFTER_CURRENT) {
+                            if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+                                pauseAndClearSleep();
+                                return;
+                            }
+                        }
                         // 额外延迟补发一帧，增大拿到有效duration的概率（轻量，不影响性能）
                         handler.postDelayed(new Runnable() { @Override public void run() { sendPlaybackStateBroadcast(); } }, 250);
                         // 全局模式：在临界处按需扩边
@@ -604,8 +648,8 @@ public class PlayerService extends Service {
                         } catch (Throwable ignore) {}
                         // 2) 数据库
                         if (fallback <= 0) {
-                            try {
-                                com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getSongById(sid);
+                    try {
+                        com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getSongById(sid);
                                 if (se != null && se.getDuration() > 0) fallback = Math.max(fallback, (long) se.getDuration() * 1000L);
                             } catch (Throwable ignore) {}
                         }
@@ -618,27 +662,27 @@ public class PlayerService extends Service {
                         }
                     } catch (Throwable ignore) {}
                     if (fallback > 0) {
-                        synchronized (durationCacheMs) { durationCacheMs.put(sid, fallback); }
+                            synchronized (durationCacheMs) { durationCacheMs.put(sid, fallback); }
                         // 补发一次包含 fallback 的广播（切回主线程读取 player 状态）
                         final long fb = fallback;
                         handler.post(new Runnable() { @Override public void run() {
                             try {
-                                Intent fix = new Intent(ACTION_PLAYBACK_STATE_CHANGED);
-                                fix.putExtra("isPlaying", player != null && player.isPlaying());
-                                fix.putExtra("position", player != null ? player.getCurrentPosition() : 0);
-                                fix.putExtra("duration", player != null ? player.getDuration() : 0);
-                                fix.putExtra("playbackMode", playbackMode);
+                            Intent fix = new Intent(ACTION_PLAYBACK_STATE_CHANGED);
+                            fix.putExtra("isPlaying", player != null && player.isPlaying());
+                            fix.putExtra("position", player != null ? player.getCurrentPosition() : 0);
+                            fix.putExtra("duration", player != null ? player.getDuration() : 0);
+                            fix.putExtra("playbackMode", playbackMode);
                                 fix.putExtra("fallbackDurationMs", fb);
-                                if (currentSong != null) {
-                                    fix.putExtra("songId", currentSong.getId());
-                                    fix.putExtra("title", currentSong.getTitle());
-                                    fix.putExtra("artist", currentSong.getArtist());
-                                    fix.putExtra("albumId", currentSong.getAlbumId());
-                                }
-                                sendBroadcast(fix);
+                            if (currentSong != null) {
+                                fix.putExtra("songId", currentSong.getId());
+                                fix.putExtra("title", currentSong.getTitle());
+                                fix.putExtra("artist", currentSong.getArtist());
+                                fix.putExtra("albumId", currentSong.getAlbumId());
+                            }
+                            sendBroadcast(fix);
                             } catch (Throwable ignore) {}
                         }});
-                    }
+                }
                 });
             }
         }
@@ -1685,6 +1729,151 @@ public class PlayerService extends Service {
             // 记录历史，便于未来做"上一首"在随机模式下回退
             if (shuffleHistory.size() >= 64) shuffleHistory.pollFirst();
             shuffleHistory.addLast(t);
+        }
+    }
+
+    // ========== 睡眠定时 API ==========
+    public void setSleepTimerMinutes(int minutes, boolean waitFinishCurrent) {
+        if (minutes <= 0) { cancelSleepTimer(); return; }
+        try { if (sleepRunnable != null) handler.removeCallbacks(sleepRunnable); } catch (Throwable ignore) {}
+        cancelSleepAlarmSafe();
+        sleepType = SleepType.AFTER_MS;
+        sleepWaitFinishOnExpire = waitFinishCurrent;
+        long delayMs = Math.max(0, minutes) * 60_000L;
+        sleepDeadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + delayMs;
+        sleepRunnable = new Runnable() { @Override public void run() {
+            if (sleepWaitFinishOnExpire) {
+                // 到点转为"播完当前后暂停"
+                sleepType = SleepType.AFTER_CURRENT;
+                long remain = computeRemainMsSafe();
+                try { if (player != null && player.getRepeatMode() == Player.REPEAT_MODE_ONE) player.setRepeatMode(Player.REPEAT_MODE_OFF); } catch (Throwable ignore) {}
+                sleepRunnable = new Runnable() { @Override public void run() { pauseAndClearSleep(); } };
+                sleepDeadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + Math.max(0, remain);
+                handler.postDelayed(sleepRunnable, Math.max(0, sleepDeadlineElapsedMs - android.os.SystemClock.elapsedRealtime()));
+                broadcastSleepChanged(remain);
+            } else {
+                pauseAndClearSleep();
+            }
+        } };
+        handler.postDelayed(sleepRunnable, Math.max(0, sleepDeadlineElapsedMs - android.os.SystemClock.elapsedRealtime()));
+        // AlarmManager 兜底：到点触发 onSleepAlarmFired，避免个别设备延迟Handler执行
+        scheduleSleepAlarmAt(sleepDeadlineElapsedMs);
+        broadcastSleepChanged(delayMs);
+    }
+
+    public void setSleepStopAfterCurrent() {
+        try { if (sleepRunnable != null) handler.removeCallbacks(sleepRunnable); } catch (Throwable ignore) {}
+        cancelSleepAlarmSafe();
+        sleepType = SleepType.AFTER_CURRENT;
+        // 基于剩余时长挂起一次回调，额外 +500ms 余量
+        long remain = computeRemainMsSafe();
+        sleepRunnable = new Runnable() { @Override public void run() { pauseAndClearSleep(); } };
+        sleepDeadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + Math.max(0, remain);
+        handler.postDelayed(sleepRunnable, Math.max(0, sleepDeadlineElapsedMs - android.os.SystemClock.elapsedRealtime()));
+        // AFTER_CURRENT 依赖切曲事件触发暂停，这里不安排闹钟直接pause以免提前暂停
+        broadcastSleepChanged(remain);
+    }
+
+    public void cancelSleepTimer() {
+        try { if (sleepRunnable != null) handler.removeCallbacks(sleepRunnable); } catch (Throwable ignore) {}
+        sleepRunnable = null;
+        sleepType = SleepType.NONE;
+        sleepWaitFinishOnExpire = false;
+        sleepDeadlineElapsedMs = 0L;
+        cancelSleepAlarmSafe();
+        broadcastSleepChanged(0);
+    }
+
+    public SleepType getSleepType() { return sleepType; }
+
+    public long getSleepRemainMs() {
+        if (sleepType == SleepType.NONE) return 0L;
+        long now = android.os.SystemClock.elapsedRealtime();
+        return Math.max(0, sleepDeadlineElapsedMs - now);
+    }
+
+    public static class SleepTimerState {
+        public final SleepType type;
+        public final long remainMs;
+        public final boolean waitFinishOnExpire;
+        public SleepTimerState(SleepType t, long r, boolean w) { this.type = t; this.remainMs = r; this.waitFinishOnExpire = w; }
+    }
+
+    public SleepTimerState getSleepTimerState() {
+        return new SleepTimerState(sleepType, getSleepRemainMs(), sleepWaitFinishOnExpire);
+    }
+
+    private void pauseAndClearSleep() {
+        try { if (player != null) player.pause(); } catch (Throwable ignore) {}
+        try { if (sleepRunnable != null) handler.removeCallbacks(sleepRunnable); } catch (Throwable ignore) {}
+        sleepRunnable = null;
+        sleepType = SleepType.NONE;
+        sleepWaitFinishOnExpire = false;
+        sleepDeadlineElapsedMs = 0L;
+        cancelSleepAlarmSafe();
+        broadcastSleepChanged(0);
+    }
+
+    private void broadcastSleepChanged(long remainMs) {
+        try {
+            Intent i = new Intent(ACTION_SLEEP_TIMER_CHANGED);
+            i.putExtra("type", sleepType.name());
+            i.putExtra("remainMs", Math.max(0, remainMs));
+            sendBroadcast(i);
+        } catch (Throwable ignore) {}
+    }
+
+    private long computeRemainMsSafe() {
+        long pos = 0L, dur = 0L;
+        try { if (player != null) pos = Math.max(0, player.getCurrentPosition()); } catch (Throwable ignore) {}
+        try { if (player != null) dur = Math.max(0, player.getDuration()); } catch (Throwable ignore) {}
+        if (dur <= 0) {
+            // 尝试读取数据库缓存时长
+            try {
+                SharedPreferences sp = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
+                String sid = sp.getString(KEY_SONG_ID, null);
+                if (sid != null) {
+                    SongEntity se = MusicDatabase.getInstance(this).songDao().getSongById(sid);
+                    if (se != null && se.getDuration() > 0) dur = (long) se.getDuration() * 1000L;
+                }
+            } catch (Throwable ignore) {}
+        }
+        return Math.max(0, dur - pos) + 500L; // 余量
+    }
+
+    private void scheduleSleepAlarmAt(long elapsedDeadlineMs) {
+        try {
+            if (alarmManager == null || sleepAlarmIntent == null) return;
+            long triggerAt = Math.max(elapsedDeadlineMs, android.os.SystemClock.elapsedRealtime());
+            if (android.os.Build.VERSION.SDK_INT >= 23) {
+                alarmManager.setExactAndAllowWhileIdle(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, sleepAlarmIntent);
+            } else if (android.os.Build.VERSION.SDK_INT >= 19) {
+                alarmManager.setExact(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, sleepAlarmIntent);
+            } else {
+                alarmManager.set(android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP, triggerAt, sleepAlarmIntent);
+            }
+        } catch (Throwable ignore) {}
+    }
+
+    private void cancelSleepAlarmSafe() {
+        try { if (alarmManager != null && sleepAlarmIntent != null) alarmManager.cancel(sleepAlarmIntent); } catch (Throwable ignore) {}
+    }
+
+    private void onSleepAlarmFired() {
+        // 若普通定时：直接暂停；若需要"播完当前再暂停"，则转换为AFTER_CURRENT并挂一次剩余
+        if (sleepType == SleepType.AFTER_MS) {
+            if (sleepWaitFinishOnExpire) {
+                sleepType = SleepType.AFTER_CURRENT;
+                long remain = computeRemainMsSafe();
+                try { if (player != null && player.getRepeatMode() == Player.REPEAT_MODE_ONE) player.setRepeatMode(Player.REPEAT_MODE_OFF); } catch (Throwable ignore) {}
+                try { if (sleepRunnable != null) handler.removeCallbacks(sleepRunnable); } catch (Throwable ignore) {}
+                sleepRunnable = new Runnable() { @Override public void run() { pauseAndClearSleep(); } };
+                sleepDeadlineElapsedMs = android.os.SystemClock.elapsedRealtime() + Math.max(0, remain);
+                handler.postDelayed(sleepRunnable, Math.max(0, sleepDeadlineElapsedMs - android.os.SystemClock.elapsedRealtime()));
+                // AFTER_CURRENT 不再保留闹钟，依赖切曲与挂起回调
+            } else {
+                pauseAndClearSleep();
+            }
         }
     }
 } 

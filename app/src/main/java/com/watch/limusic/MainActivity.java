@@ -609,8 +609,12 @@ public class MainActivity extends AppCompatActivity
     private TextView fullSongTitle;
     private TextView fullSongArtist;
     private ImageButton btnVolumeToggle;
-    	private View volumeOverlay;
+    private ImageButton btnMore;
+    private View volumeOverlay;
     private SeekBar volumeSeek;
+    private View sleepOverlay;
+    private SeekBar sleepSeek;
+    private android.widget.CheckBox sleepAfterCurrentCheck;
     private AudioManager audioManager;
     private ImageView fullBgImage;
 
@@ -3361,6 +3365,9 @@ public class MainActivity extends AppCompatActivity
         		btnVolumeToggle = root.findViewById(R.id.btn_volume_toggle);
 		volumeOverlay = root.findViewById(R.id.volume_overlay);
         volumeSeek = root.findViewById(R.id.volume_seek);
+        sleepOverlay = root.findViewById(R.id.sleep_overlay);
+        sleepSeek = root.findViewById(R.id.sleep_seek);
+        sleepAfterCurrentCheck = root.findViewById(R.id.sleep_after_current);
         fullBgImage = root.findViewById(R.id.bg_album_blur);
         // 应用一次背景
         applyFullPlayerBackground();
@@ -3468,6 +3475,57 @@ public class MainActivity extends AppCompatActivity
                     if (fullSongArtist != null && bound && playerService != null) {
                         fullSongArtist.setText(playerService.getCurrentArtist());
                     }
+                }
+            });
+        }
+        btnMore = root.findViewById(R.id.btn_more);
+        if (btnMore != null) {
+            btnMore.setOnClickListener(v -> toggleSleepOverlay());
+        }
+        if (sleepOverlay != null) {
+            sleepOverlay.setOnClickListener(v -> toggleSleepOverlay());
+            // 阻止点击卡片内部冒泡关闭
+            View card = sleepOverlay.findViewById(R.id.sleep_card);
+            if (card != null) { card.setOnClickListener(v -> {}); }
+        }
+        if (sleepSeek != null) {
+            // 0 表示关闭，1-60 表示分钟
+            sleepSeek.setMax(60);
+            sleepSeek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar sb, int progress, boolean fromUser) {
+                    TextView tv = root.findViewById(R.id.sleep_value);
+                    if (tv != null) {
+                        if (progress <= 0) {
+                            tv.setText(getString(R.string.sleep_timer_value_off));
+                        } else {
+                            tv.setText(getString(R.string.sleep_timer_value_minutes, progress));
+                        }
+                    }
+                    if (fromUser && bound && playerService != null) {
+                        boolean waitFinish = sleepAfterCurrentCheck != null && sleepAfterCurrentCheck.isChecked();
+                        if (progress <= 0) {
+                            playerService.cancelSleepTimer();
+                        } else {
+                            playerService.setSleepTimerMinutes(progress, waitFinish);
+                        }
+                    }
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+            });
+        }
+        if (sleepAfterCurrentCheck != null) {
+            sleepAfterCurrentCheck.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                int minutes = sleepSeek != null ? sleepSeek.getProgress() : 0;
+                if (!bound || playerService == null) return;
+                if (minutes <= 0 && isChecked) {
+                    // 仅勾选，不设分钟 -> 纯"播完本首"模式
+                    playerService.setSleepStopAfterCurrent();
+                } else if (minutes > 0) {
+                    // 覆盖设置：分钟 + 播完当前
+                    playerService.setSleepTimerMinutes(minutes, true);
+                } else {
+                    playerService.cancelSleepTimer();
                 }
             });
         }
@@ -3949,6 +4007,40 @@ public class MainActivity extends AppCompatActivity
 			currentFullPage = 0;
 			applyFullPageVisibility();
 			updatePageIndicator();
-		}).start();
+		        }).start();
+    }
+
+    private void toggleSleepOverlay() {
+        if (sleepOverlay == null) return;
+        boolean showing = sleepOverlay.getVisibility() == View.VISIBLE;
+        if (showing) {
+            sleepOverlay.setVisibility(View.GONE);
+        } else {
+            // 打开前从服务端读取状态并回显
+            try {
+                if (bound && playerService != null) {
+                    com.watch.limusic.service.PlayerService.SleepTimerState st = playerService.getSleepTimerState();
+                    int minutes = 0;
+                    if (st != null && st.remainMs > 0) {
+                        minutes = (int) Math.max(0, Math.round(st.remainMs / 60000.0));
+                    }
+                    if (sleepSeek != null) sleepSeek.setProgress(minutes);
+                    if (sleepAfterCurrentCheck != null) sleepAfterCurrentCheck.setChecked(st != null && st.waitFinishOnExpire || (st != null && st.type == com.watch.limusic.service.PlayerService.SleepType.AFTER_CURRENT));
+                    TextView tv = sleepOverlay.findViewById(R.id.sleep_value);
+                    if (tv != null) {
+                        if (st != null && st.type == com.watch.limusic.service.PlayerService.SleepType.AFTER_CURRENT && minutes == 0) {
+                            tv.setText(getString(R.string.sleep_wait_finish_current));
+                        } else if (minutes <= 0) {
+                            tv.setText(getString(R.string.sleep_timer_value_off));
+                        } else if (minutes == 1 && st != null && st.remainMs < 60_000L) {
+                            tv.setText(getString(R.string.sleep_timer_value_less_minute));
+                        } else {
+                            tv.setText(getString(R.string.sleep_timer_value_minutes, minutes));
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+            sleepOverlay.setVisibility(View.VISIBLE);
+        }
     }
 }
