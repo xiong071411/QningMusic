@@ -54,4 +54,19 @@ public interface PlaylistDao {
 	// 新增：清理本地孤儿歌单（无服务端ID、未删除、且没有任何歌曲关联）
 	@Query("DELETE FROM playlists WHERE (serverId IS NULL OR serverId = '') AND isDeleted = 0 AND localId NOT IN (SELECT DISTINCT playlistLocalId FROM playlist_songs)")
 	int deleteOrphanLocalPlaylists();
+
+	@Query("UPDATE playlists SET isDeleted = 1, syncDirty = 1, changedAt = :changedAt WHERE name = :name AND (serverId IS NULL OR serverId = '') AND isDeleted = 0")
+	int softDeleteLocalDuplicatesByName(String name, long changedAt);
+
+	@Query("SELECT * FROM playlists WHERE isDeleted = 0 AND (serverId IS NULL OR serverId = '') ORDER BY changedAt DESC")
+	List<PlaylistEntity> getLocalOnlyActive();
+
+	@Query("UPDATE playlists SET serverId = :serverId, syncDirty = 0 WHERE localId = :localId")
+	int bindServerId(long localId, String serverId);
+
+	@Query("SELECT * FROM playlists WHERE name = :name AND (serverId IS NULL OR serverId = '') AND isDeleted = 0 ORDER BY changedAt DESC LIMIT 1")
+	PlaylistEntity findLocalOnlyByName(String name);
+
+	@Query("SELECT * FROM playlists WHERE isDeleted = 0 AND (serverId IS NOT NULL AND serverId != '') AND syncDirty = 1 ORDER BY changedAt DESC")
+	List<PlaylistEntity> getBoundDirtyActive();
 } 

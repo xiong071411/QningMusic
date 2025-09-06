@@ -265,6 +265,20 @@
 
         </LinearLayout>
 
+        <!-- 定位当前播放 悬浮按钮（默认隐藏；不遮挡底部播放器） -->
+        <ImageButton
+            android:id="@+id/btn_locate_current"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:layout_gravity="bottom|end"
+            android:layout_marginEnd="10dp"
+            android:layout_marginBottom="92dp"
+            android:background="@drawable/btn_circle_bg"
+            android:src="@drawable/ic_locate"
+            android:tint="@color/white"
+            android:contentDescription="定位当前播放"
+            android:visibility="gone"/>
+
         <!-- 全屏播放器覆盖层：懒加载 ViewStub -->
         <ViewStub
             android:id="@+id/full_player_stub"

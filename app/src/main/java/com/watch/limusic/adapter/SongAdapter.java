@@ -15,6 +15,8 @@ import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.FrameLayout;
 import android.graphics.Color;
+import android.graphics.Typeface;
+import android.view.animation.AlphaAnimation;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.DecodeFormat;
@@ -57,6 +59,11 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
     private DownloadManager downloadManager;
     private LocalFileDetector localFileDetector;
     private boolean isPlaylistDetail = false;
+
+    // 正在播放状态
+    private String currentPlayingSongId = null;
+    private boolean isCurrentlyPlaying = false;
+    private int lastPlayingPosition = RecyclerView.NO_POSITION;
 
     public interface OnStartDragListener { void onStartDrag(RecyclerView.ViewHolder vh); }
     private boolean showDragHandle = false;
@@ -173,6 +180,26 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         List<String> sortedLetters = new ArrayList<>(simplifiedLetters);
         Collections.sort(sortedLetters);
         return sortedLetters;
+    }
+
+    public void setCurrentPlaying(String songId, boolean isPlaying) {
+        if (Objects.equals(this.currentPlayingSongId, songId) && this.isCurrentlyPlaying == isPlaying) return;
+        int oldPos = getPositionBySongId(this.currentPlayingSongId);
+        this.currentPlayingSongId = songId;
+        this.isCurrentlyPlaying = isPlaying;
+        int newPos = getPositionBySongId(songId);
+        if (oldPos >= 0) notifyItemChanged(oldPos);
+        if (newPos >= 0) notifyItemChanged(newPos);
+        lastPlayingPosition = newPos;
+    }
+
+    public int getPositionBySongId(String songId) {
+        if (songId == null) return -1;
+        for (int i = 0; i < getItemCount(); i++) {
+            SongWithIndex it = getItem(i);
+            if (it != null && songId.equals(it.getId())) return i;
+        }
+        return -1;
     }
 
     @NonNull
@@ -308,6 +335,16 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
 
         holder.downloadContainer.setOnClickListener(v -> {});
         holder.downloadContainer.setOnLongClickListener(v -> true);
+
+        // 正在播放指示器渲染
+        boolean isPlayingItem = currentPlayingSongId != null && currentPlayingSongId.equals(song.getId());
+        holder.playingBar.setVisibility(isPlayingItem ? View.VISIBLE : View.GONE);
+        holder.playingIcon.setVisibility(View.GONE);
+        if (!selectionMode) {
+            holder.songTitle.setTypeface(null, isPlayingItem ? Typeface.BOLD : Typeface.NORMAL);
+        }
+        // 不再显示三角图标与动画
+        holder.playingIcon.clearAnimation();
     }
 
     private void setupDownloadUI(ViewHolder holder, Song song) {
@@ -566,6 +603,23 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         submitList(new java.util.ArrayList<>(backingList));
     }
 
+    private void applyOrClearBreath(View v, boolean enable) {
+        if (v == null) return;
+        if (!enable) { v.clearAnimation(); return; }
+        AlphaAnimation anim = new AlphaAnimation(0.85f, 1.0f);
+        anim.setDuration(1200);
+        anim.setRepeatMode(android.view.animation.Animation.REVERSE);
+        anim.setRepeatCount(android.view.animation.Animation.INFINITE);
+        v.startAnimation(anim);
+    }
+
+    private boolean isLowPowerEnabled() {
+        try {
+            android.content.SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
+            return sp.getBoolean("low_power_mode_enabled", false);
+        } catch (Exception e) { return false; }
+    }
+
     static class ViewHolder extends RecyclerView.ViewHolder {
         final ImageView albumArt;
         final TextView songTitle;
@@ -581,6 +635,9 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         final ImageView downloadComplete;
         final ImageView downloadFailed;
         final ImageView dragHandle;
+
+        final View playingBar;
+        final ImageView playingIcon;
 
         ViewHolder(View itemView) {
             super(itemView);
@@ -598,6 +655,9 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
             downloadComplete = itemView.findViewById(R.id.download_complete);
             downloadFailed = itemView.findViewById(R.id.download_failed);
             dragHandle = itemView.findViewById(R.id.drag_handle);
+
+            playingBar = itemView.findViewById(R.id.playing_indicator_bar);
+            playingIcon = itemView.findViewById(R.id.playing_icon);
         }
     }
 

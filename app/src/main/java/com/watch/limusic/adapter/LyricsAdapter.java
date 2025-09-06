@@ -184,6 +184,10 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 		if (!smoothEnabled || becomingCurrent == null) {
 			h.text.setTextSize(TypedValue.COMPLEX_UNIT_SP, isCurrent ? sizeCurrentSp : sizeOtherSp);
 			h.text.setMinHeight(minItemHeightPx);
+			// 确保复用时不保留缩放状态，左对齐枢轴
+			h.text.setPivotX(0f);
+			h.text.setScaleX(1f);
+			h.text.setScaleY(1f);
 			if (isCurrent) {
 				int extra = Math.max(0, currentLineHeightPx - baseLineHeightPx);
 				int half = (extra + 1) / 2;
@@ -194,28 +198,28 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 				h.text.setPadding(h.text.getPaddingLeft(), basePadPx, h.text.getPaddingRight(), basePadPx);
 			}
 		} else {
-			float startSp = becomingCurrent ? sizeOtherSp : sizeCurrentSp;
-			float endSp = becomingCurrent ? sizeCurrentSp : sizeOtherSp;
-			final float total = Math.max(1f, (float) (sizeCurrentSp - sizeOtherSp));
-			android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofFloat(startSp, endSp);
-			anim.setDuration(180);
-			anim.setInterpolator(decel);
-			anim.addUpdateListener(a -> {
-				float sp = (float) a.getAnimatedValue();
-				h.text.setTextSize(TypedValue.COMPLEX_UNIT_SP, sp);
-				float raw = Math.max(0f, Math.min(1f, (sp - sizeOtherSp) / total));
-				// 0~0.4 不改padding；0.4~1 按比例进入，避免开头突变
-				float f = raw <= 0.4f ? 0f : (raw - 0.4f) / 0.6f;
-				int extra = Math.max(0, currentLineHeightPx - baseLineHeightPx);
-				int half = Math.round(extra * 0.5f * f);
-				int top = basePadPx + half;
-				int bottom = basePadPx + half;
-				h.text.setPadding(h.text.getPaddingLeft(), top, h.text.getPaddingRight(), bottom);
-			});
-			anim.start();
-			// 动画场景下，成为当前后也尝试启动水平跑马灯（延迟一帧）
+			// 平滑模式：不再动画 textSize，改为整体缩放，避免长句出现“从左到右依次放大”的违和感
+			h.text.animate().cancel();
 			if (Boolean.TRUE.equals(becomingCurrent)) {
+				// 成为当前：立即设置目标字号与内边距，再做细微缩放过渡 0.96 -> 1.0（以左侧为枢轴，避免左边缘“外凸/回弹”）
+				h.text.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeCurrentSp);
+				int extra = Math.max(0, currentLineHeightPx - baseLineHeightPx);
+				int half = (extra + 1) / 2;
+				h.text.setPadding(h.text.getPaddingLeft(), basePadPx + half, h.text.getPaddingRight(), basePadPx + half);
+				h.text.setPivotX(0f);
+				h.text.setScaleX(0.96f);
+				h.text.setScaleY(0.96f);
+				h.text.animate().scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(decel).start();
+				// 动画结束后再尝试水平跑马灯（下一帧），避免干扰观感
 				h.text.postDelayed(() -> maybeStartHorizontalMarquee(h), 16);
+			} else {
+				// 退出当前：立即恢复字号与内边距，做 1.0 -> 0.96 的轻缩放（以左侧为枢轴）
+				h.text.setTextSize(TypedValue.COMPLEX_UNIT_SP, sizeOtherSp);
+				h.text.setPadding(h.text.getPaddingLeft(), basePadPx, h.text.getPaddingRight(), basePadPx);
+				h.text.setPivotX(0f);
+				h.text.setScaleX(1f);
+				h.text.setScaleY(1f);
+				h.text.animate().scaleX(0.96f).scaleY(0.96f).setDuration(120).setInterpolator(decel).start();
 			}
 		}
 		h.itemView.setOnClickListener(v -> { if (listener != null) listener.onLineClick(position, line.startMs); });

@@ -90,6 +90,18 @@ public class LyricsController {
 					@Override public void onLongPress() {}
 				});
 			} catch (Exception ignore) {}
+			// 监听滚动状态，用户手势期间暂停自动居中
+			list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+				@Override public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+					if (newState == RecyclerView.SCROLL_STATE_DRAGGING || newState == RecyclerView.SCROLL_STATE_SETTLING) {
+						userBrowsing = true;
+						lastUserInteractAt = System.currentTimeMillis();
+					} else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+						// 空闲时不立即抢回控制，交由tickRunnable在超时后恢复
+						lastUserInteractAt = System.currentTimeMillis();
+					}
+				}
+			});
 		}
 		try {
 			root.setOnTouchListener(new com.watch.limusic.util.SwipeGestureListener(parent.getContext()) {
@@ -139,9 +151,20 @@ public class LyricsController {
 		adapter = new com.watch.limusic.adapter.LyricsAdapter(context, lines);
 		adapter.setOnLineClickListener((pos, start) -> {
 			if (start >= 0 && player != null) {
-				player.seekTo(start);
-				userBrowsing = false;
-				scheduleNextTick();
+				long dur = 0L;
+				boolean allow = true;
+				try { dur = Math.max(0, player.getDuration()); } catch (Throwable ignore) {}
+				// 当时长未知或不可寻址时，放弃立即seek（交给UI的pending逻辑或提示）
+				if (dur <= 0) {
+					allow = false;
+				}
+				if (allow) {
+					player.seekTo(start);
+					userBrowsing = false;
+					scheduleNextTick();
+				} else {
+					try { android.widget.Toast.makeText(context, "当前曲目暂不支持拖动", android.widget.Toast.LENGTH_SHORT).show(); } catch (Exception ignore) {}
+				}
 			}
 		});
 		if (list != null) list.setAdapter(adapter);
@@ -194,7 +217,10 @@ public class LyricsController {
 		if (idx != currentIndex) {
 			currentIndex = idx;
 			adapter.setCurrentIndex(idx);
-			centerTo(idx);
+			// 用户正在浏览时不自动回中，避免打断手势
+			if (!userBrowsing) {
+				centerTo(idx);
+			}
 		}
 		long heartbeat = 500L;
 		handler.postDelayed(tickRunnable, Math.min(heartbeat, nextDelay));

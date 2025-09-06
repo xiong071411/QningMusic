@@ -93,18 +93,32 @@
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
         android:paddingTop="44dp">
-        <TextView
-            android:id="@+id/full_song_title"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="@android:color/white"
-            android:textSize="22sp"
-            android:textStyle="bold"
-            android:ellipsize="marquee"
-            android:singleLine="true"
-            android:focusable="true"
-            android:focusableInTouchMode="true"
-            android:marqueeRepeatLimit="marquee_forever"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+            <com.watch.limusic.view.SeamlessMarqueeTextView
+                android:id="@+id/full_song_title"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="@android:color/white"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:singleLine="true"/>
+            <TextView
+                android:id="@+id/full_audio_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="MP3"
+                android:textStyle="bold"
+                android:textColor="@android:color/white"
+                android:textSize="12sp"
+                android:background="@drawable/badge_audio_type"
+                android:visibility="gone"/>
+        </LinearLayout>
         <TextView
             android:id="@+id/full_song_artist"
             android:layout_width="match_parent"

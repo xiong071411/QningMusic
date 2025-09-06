@@ -86,4 +86,11 @@ public interface SongDao {
     // 轻量方案新增：统计总数（与 getSongCount 相同，保留以语义清晰）
     @Query("SELECT COUNT(*) FROM songs")
     int getTotalSongCount();
+
+    // 新增：精确计算某首歌在全局排序中的索引（之前的行数）
+    @Query("SELECT COUNT(*) FROM songs WHERE " +
+           "(CASE WHEN initial = '#' THEN 0 WHEN initial BETWEEN '0' AND '9' THEN 1 ELSE 2 END) < :cat " +
+           "OR ((CASE WHEN initial = '#' THEN 0 WHEN initial BETWEEN '0' AND '9' THEN 1 ELSE 2 END) = :cat AND (initial < :ini)) " +
+           "OR ((CASE WHEN initial = '#' THEN 0 WHEN initial BETWEEN '0' AND '9' THEN 1 ELSE 2 END) = :cat AND (initial = :ini) AND (title COLLATE NOCASE < :title))")
+    int getGlobalIndex(int cat, String ini, String title);
 } 

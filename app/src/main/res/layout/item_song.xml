@@ -10,6 +10,14 @@
     android:clickable="true"
     android:focusable="true">
 
+    <!-- 正在播放：左侧竖条指示器（默认隐藏） -->
+    <View
+        android:id="@+id/playing_indicator_bar"
+        android:layout_width="3dp"
+        android:layout_height="match_parent"
+        android:background="@color/playing_indicator"
+        android:visibility="gone"/>
+
     <ImageView
         android:id="@+id/checkbox"
         android:layout_width="30dp"
@@ -43,15 +51,29 @@
         android:layout_weight="1"
         android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/song_title"
+        <!-- 标题行：包含微型播放图标 + 标题文本（保持原ID为 song_title） -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:textColor="@color/text_primary"
-            android:textSize="14sp"
-            tools:text="Song Title" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <ImageView
+                android:id="@+id/playing_icon"
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:visibility="gone"/>
+
+            <TextView
+                android:id="@+id/song_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                tools:text="Song Title" />
+        </LinearLayout>
 
         <TextView
             android:id="@+id/song_artist"

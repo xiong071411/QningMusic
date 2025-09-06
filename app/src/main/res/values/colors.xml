@@ -36,7 +36,7 @@
     <!-- 强调色和状态颜色 -->
     <color name="accent">#58D36B</color>
     <color name="accent_secondary">#A142F4</color>
-    <color name="playing_indicator">#4285F4</color>
+    <color name="playing_indicator">#58D36B</color>
     <color name="ripple">#33FFFFFF</color> <!-- 20% 白色 -->
     <color name="icons">#FFFFFF</color>
     

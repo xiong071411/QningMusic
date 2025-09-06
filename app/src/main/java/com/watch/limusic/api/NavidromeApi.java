@@ -46,6 +46,9 @@ public class NavidromeApi {
         return instance;
     }
 
+    // 新增：暴露当前用户名，供仓库在筛选远端歌单 owner 时使用
+    public String getCurrentUsername() { return username; }
+
     private NavidromeApi(Context context) {
         this.context = context.getApplicationContext();
         this.gson = new Gson();

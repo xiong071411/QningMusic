@@ -39,6 +39,8 @@ import com.google.android.exoplayer2.DefaultLoadControl;
 import com.watch.limusic.cache.SmartDataSourceFactory;
 import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.util.MimeTypes;
+import com.google.android.exoplayer2.Tracks;
+import com.google.android.exoplayer2.Format;
 
 import com.watch.limusic.MainActivity;
 import com.watch.limusic.R;
@@ -69,8 +71,10 @@ import com.watch.limusic.database.MusicRepository;
 public class PlayerService extends Service {
 	private android.content.BroadcastReceiver configUpdatedReceiver;
     private static final String TAG = "PlayerService";
+    private static final boolean DEBUG_VERBOSE = false; // 设为true可观察详细窗口/随机日志
     private static final String CHANNEL_ID = "music_playback_channel";
     private static final int NOTIFICATION_ID = 1;
+    private static final int FULL_INJECT_THRESHOLD = 120; // 小列表全量注入阈值，扩大随机范围
     public static final int PLAYBACK_MODE_REPEAT_ALL = 0;
     public static final int PLAYBACK_MODE_REPEAT_ONE = 1;
     public static final int PLAYBACK_MODE_SHUFFLE = 2;
@@ -172,6 +176,14 @@ public class PlayerService extends Service {
             onSleepAlarmFired();
         }
     };
+
+    // 非全局列表：随机"回到起点自动重洗"支持
+    private String shuffleAnchorSongId = null;
+    private boolean shuffleVisitedNonAnchor = false;
+
+    // 非全局列表：窗口化扩边与首尾环绕支持（不修改 dataset，仅操作播放器队列）
+    private int localBaseLenAtHeadAppend = -1;
+    private int localAppendedHeadCount = 0;
 
     public class LocalBinder extends Binder {
         public PlayerService getService() {
@@ -343,7 +355,7 @@ public class PlayerService extends Service {
                         if (!transcodingFallbackTried.contains(songId)) {
                             transcodingFallbackTried.add(songId);
                             long resumePos = player != null ? Math.max(player.getCurrentPosition(), 0) : 0;
-                            String fallback = navidromeApi.getTranscodedStreamUrl(songId, "mp3", 192);
+                            String fallback = navidromeApi.getTranscodedStreamUrl(songId, "mp3", 320);
                             MediaItem item = buildStreamingMediaItem(songId, fallback);
                             int idx = player.getCurrentMediaItemIndex();
                             if (idx >= 0 && idx < player.getMediaItemCount()) {
@@ -444,6 +456,30 @@ public class PlayerService extends Service {
                         }
                         // 额外延迟补发一帧，增大拿到有效duration的概率（轻量，不影响性能）
                         handler.postDelayed(new Runnable() { @Override public void run() { sendPlaybackStateBroadcast(); } }, 250);
+                        // 非全局 + 随机：回到起点自动重洗
+                        if (!useGlobalAllSongsMode && playbackMode == PLAYBACK_MODE_SHUFFLE) {
+                            try {
+                                String curId = currentSong != null ? currentSong.getId() : null;
+                                if (shuffleAnchorSongId == null) {
+                                    shuffleAnchorSongId = curId;
+                                    shuffleVisitedNonAnchor = false;
+                                } else {
+                                    if (curId != null && !curId.equals(shuffleAnchorSongId)) {
+                                        shuffleVisitedNonAnchor = true;
+                                    } else if (curId != null && curId.equals(shuffleAnchorSongId) && shuffleVisitedNonAnchor) {
+                                        // 命中"回到起点"：重洗一次，但保持当前项不变
+                                        int keep = player.getCurrentMediaItemIndex();
+                                        long pos = Math.max(0, player.getCurrentPosition());
+                                                                               // 强制重置随机顺序
+                                       rerollLocalShuffleOrderKeepingCurrent();
+                                       // 重置新一轮的锚点
+                                       shuffleAnchorSongId = curId;
+                                       shuffleVisitedNonAnchor = false;
+                                        if (DEBUG_VERBOSE) Log.d(TAG, "随机：回到起点，已自动重洗并保持当前曲目");
+                                    }
+                                }
+                            } catch (Throwable ignore) {}
+                        }
                         // 全局模式：在临界处按需扩边
                         if (useGlobalAllSongsMode) {
                             try {
@@ -618,6 +654,28 @@ public class PlayerService extends Service {
         intent.putExtra("duration", dur);
         intent.putExtra("isDurationUnset", (dur <= 0 || dur == com.google.android.exoplayer2.C.TIME_UNSET));
         intent.putExtra("playbackMode", playbackMode);
+        intent.putExtra("isSeekable", player.isCurrentMediaItemSeekable());
+        // 音频类型（优先用Tracks.sampleMimeType识别）
+        try {
+            String audioType = detectCurrentAudioType();
+            if (audioType == null) {
+                com.google.android.exoplayer2.MediaItem ci = player.getCurrentMediaItem();
+                if (ci != null && ci.localConfiguration != null) {
+                    String mime = ci.localConfiguration.mimeType;
+                    if (mime != null) {
+                        String m = mime.toLowerCase();
+                        if (m.contains("flac")) audioType = "FLAC"; else if (m.contains("mpeg") || m.contains("mp3")) audioType = "MP3";
+                    }
+                    if (audioType == null) {
+                        String key = ci.localConfiguration.customCacheKey;
+                        if (key != null) {
+                            if (key.contains("_flac_")) audioType = "FLAC"; else if (key.contains("_mp3_")) audioType = "MP3";
+                        }
+                    }
+                }
+            }
+            if (audioType != null) intent.putExtra("audioType", audioType);
+        } catch (Throwable ignore) {}
         if (currentSong != null) {
             intent.putExtra("songId", currentSong.getId());
             intent.putExtra("title", currentSong.getTitle());
@@ -673,6 +731,28 @@ public class PlayerService extends Service {
                             fix.putExtra("duration", player != null ? player.getDuration() : 0);
                             fix.putExtra("playbackMode", playbackMode);
                                 fix.putExtra("fallbackDurationMs", fb);
+                                fix.putExtra("isSeekable", player != null && player.isCurrentMediaItemSeekable());
+                                // 附带一次audioType
+                                try {
+                                    String audioType2 = detectCurrentAudioType();
+                                    if (audioType2 == null) {
+                                        com.google.android.exoplayer2.MediaItem ci2 = player != null ? player.getCurrentMediaItem() : null;
+                                        if (ci2 != null && ci2.localConfiguration != null) {
+                                            String mime2 = ci2.localConfiguration.mimeType;
+                                            if (mime2 != null) {
+                                                String m2 = mime2.toLowerCase();
+                                                if (m2.contains("flac")) audioType2 = "FLAC"; else if (m2.contains("mpeg") || m2.contains("mp3")) audioType2 = "MP3";
+                                            }
+                                            if (audioType2 == null) {
+                                                String key2 = ci2.localConfiguration.customCacheKey;
+                                                if (key2 != null) {
+                                                    if (key2.contains("_flac_")) audioType2 = "FLAC"; else if (key2.contains("_mp3_")) audioType2 = "MP3";
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if (audioType2 != null) fix.putExtra("audioType", audioType2);
+                                } catch (Throwable ignore2) {}
                             if (currentSong != null) {
                                 fix.putExtra("songId", currentSong.getId());
                                 fix.putExtra("title", currentSong.getTitle());
@@ -866,9 +946,35 @@ public class PlayerService extends Service {
             return;
         }
         
+        // 若目标不在当前窗口内，则按"前5/后15"重建窗口
+        int mediaCount = Math.max(0, player.getMediaItemCount());
+        int rel = currentIndex - mediaBasePlaylistIndex;
+        boolean outOfWindow = (rel < 0 || rel >= mediaCount);
+        if (outOfWindow) {
+            final int PREV_CHUNK = 5;
+            final int NEXT_CHUNK = 15;
+            int wStart = Math.max(0, currentIndex - PREV_CHUNK);
+            int wEnd = Math.min(playlist.size(), currentIndex + NEXT_CHUNK + 1);
+            mediaBasePlaylistIndex = wStart;
+            List<MediaItem> windowItems = new ArrayList<>();
+            for (int i = wStart; i < wEnd; i++) {
+                Song s = playlist.get(i);
+                String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                String optimalUrl = getOptimalPlayUrl(s, streamUrl);
+                windowItems.add(buildStreamingMediaItem(s.getId(), optimalUrl));
+            }
+            int startIdxInWindow = Math.max(0, currentIndex - wStart);
+            try {
+                player.setMediaItems(windowItems, startIdxInWindow, 0);
+                // 维持当前播放模式（含随机/循环）
+                applyPlaybackMode();
+                player.prepare();
+            } catch (Throwable ignore) {}
+        } else {
         int targetMediaIndex = Math.max(0, currentIndex - mediaBasePlaylistIndex);
         targetMediaIndex = Math.min(Math.max(0, targetMediaIndex), Math.max(0, player.getMediaItemCount() - 1));
         player.seekTo(targetMediaIndex, 0);
+        }
         Log.d(TAG, "播放下一首: 索引 " + currentIndex);
         sendPlaybackStateBroadcast();
     }
@@ -920,9 +1026,34 @@ public class PlayerService extends Service {
             return;
         }
         
+        // 若目标不在当前窗口内，则重建窗口
+        int mediaCount = Math.max(0, player.getMediaItemCount());
+        int rel = currentIndex - mediaBasePlaylistIndex;
+        boolean outOfWindow = (rel < 0 || rel >= mediaCount);
+        if (outOfWindow) {
+            final int PREV_CHUNK = 5;
+            final int NEXT_CHUNK = 15;
+            int wStart = Math.max(0, currentIndex - PREV_CHUNK);
+            int wEnd = Math.min(playlist.size(), currentIndex + NEXT_CHUNK + 1);
+            mediaBasePlaylistIndex = wStart;
+            List<MediaItem> windowItems = new ArrayList<>();
+            for (int i = wStart; i < wEnd; i++) {
+                Song s = playlist.get(i);
+                String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                String optimalUrl = getOptimalPlayUrl(s, streamUrl);
+                windowItems.add(buildStreamingMediaItem(s.getId(), optimalUrl));
+            }
+            int startIdxInWindow = Math.max(0, currentIndex - wStart);
+            try {
+                player.setMediaItems(windowItems, startIdxInWindow, 0);
+                applyPlaybackMode();
+                player.prepare();
+            } catch (Throwable ignore) {}
+        } else {
         int targetMediaIndex = Math.max(0, currentIndex - mediaBasePlaylistIndex);
         targetMediaIndex = Math.min(Math.max(0, targetMediaIndex), Math.max(0, player.getMediaItemCount() - 1));
         player.seekTo(targetMediaIndex, 0);
+        }
         Log.d(TAG, "播放上一首: 索引 " + currentIndex + (forceToPrevious ? " (forced)" : ""));
         sendPlaybackStateBroadcast();
     }
@@ -992,7 +1123,7 @@ public class PlayerService extends Service {
             }
         } catch (Exception ignore) {}
 
-        // 针对手表端FLAC硬解码器不稳定：为FLAC优先构造转码URL回退
+        // FLAC 原始优先：如果是 FLAC，不再提前改为mp3，保留原始URL，失败时在 onPlayerError 中回退
         try {
             boolean looksLikeFlac = false;
             if (streamUrl != null) {
@@ -1000,11 +1131,10 @@ public class PlayerService extends Service {
                 looksLikeFlac = lower.contains("format=flac") || lower.endsWith(".flac") || lower.contains("audio/flac");
             }
             if (looksLikeFlac) {
-                String transcoded = navidromeApi.getTranscodedStreamUrl(song.getId(), "mp3", 192);
                 if (isCurrentSong(song)) {
-                    Log.d(TAG, "FLAC回退为转码MP3播放: " + song.getTitle() + " -> " + transcoded);
+                    Log.d(TAG, "检测到FLAC，优先播放原始FLAC: " + song.getTitle());
                 }
-                return transcoded;
+                return streamUrl;
             }
         } catch (Exception ignore) {}
 
@@ -1019,6 +1149,11 @@ public class PlayerService extends Service {
     public void setPlaylist(List<Song> songs, int startIndex) {
         // 普通模式：使用传入列表。若此前处于全局模式，退出之。
         useGlobalAllSongsMode = false;
+        // 重置本地窗口扩边与随机锚点状态
+        localBaseLenAtHeadAppend = -1;
+        localAppendedHeadCount = 0;
+        shuffleAnchorSongId = null;
+        shuffleVisitedNonAnchor = false;
         if (songs == null || songs.isEmpty()) {
             return;
         }
@@ -1164,12 +1299,47 @@ public class PlayerService extends Service {
                     player.setShuffleModeEnabled(false);
                     Log.d(TAG, "设置播放模式: 全局随机（自定义）");
                 } else {
-                    int currentItemIndex = player.getCurrentMediaItemIndex();
+                    // 非全局随机：小列表全量注入，扩大随机覆盖范围
+                    try {
+                        int currentItemIndex = Math.max(0, player.getCurrentMediaItemIndex());
+                        long curPos = Math.max(0, player.getCurrentPosition());
+                        int mediaCount = Math.max(0, player.getMediaItemCount());
+                        int listSize = (playlist != null ? playlist.size() : 0);
+                        if (listSize > 0 && listSize <= FULL_INJECT_THRESHOLD && mediaCount != listSize) {
+                            // 以当前歌曲为基准，重建全量媒体项
+                            List<MediaItem> items = new ArrayList<>(listSize);
+                            for (int i = 0; i < listSize; i++) {
+                                Song s = playlist.get(i);
+                                String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                                items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
+                            }
+                            // 定位当前曲在全量列表中的索引
+                            int keep = 0;
+                            if (currentSong != null) {
+                                for (int i = 0; i < listSize; i++) { if (currentSong.getId().equals(playlist.get(i).getId())) { keep = i; break; } }
+                            } else {
+                                // 退化：按原 mediaIndex 映射回全量
+                                keep = Math.min(Math.max(0, currentIndex), Math.max(0, listSize - 1));
+                            }
+                            mediaBasePlaylistIndex = 0;
+                            player.setMediaItems(items, keep, curPos);
+                            player.prepare();
+                            player.setShuffleModeEnabled(true);
+                            player.seekTo(keep, curPos);
+                        } else {
                     player.setShuffleModeEnabled(true);
                     if (player.getPlaybackState() == Player.STATE_READY) {
-                        player.seekTo(currentItemIndex, Math.max(0, player.getCurrentPosition()));
+                                player.seekTo(currentItemIndex, curPos);
+                            }
+                        }
+                    } catch (Throwable t) {
+                        // 安全兜底
+                        player.setShuffleModeEnabled(true);
                     }
-                    Log.d(TAG, "设置播放模式: 随机播放（本地列表） 保持索引:" + currentItemIndex);
+                     // 记录随机锚点：以当前歌曲为一轮起点
+                     shuffleAnchorSongId = (currentSong != null ? currentSong.getId() : null);
+                     shuffleVisitedNonAnchor = false;
+                    Log.d(TAG, "设置播放模式: 随机播放（本地列表） 保持索引:" + (player != null ? Math.max(0, player.getCurrentMediaItemIndex()) : 0));
                 }
                 break;
         }
@@ -1256,6 +1426,14 @@ public class PlayerService extends Service {
 
     public void seekTo(long position) {
         if (player != null) {
+            boolean seekable = false;
+            long dur = 0L;
+            try { seekable = player.isCurrentMediaItemSeekable(); } catch (Throwable ignore) {}
+            try { dur = player.getDuration(); } catch (Throwable ignore) {}
+            if (!seekable || dur <= 0) {
+                Log.d(TAG, "忽略 seek: 不可定位或时长未知 (seekable=" + seekable + ", dur=" + dur + ")");
+                return;
+            }
             player.seekTo(position);
             updatePlaybackState();
         }
@@ -1487,9 +1665,12 @@ public class PlayerService extends Service {
         MediaItem.Builder b = new MediaItem.Builder().setUri(url);
         // 根据URL是否为转码MP3设置MIME与自定义缓存键，避免与原始FLAC缓存混用
         String lower = url != null ? url.toLowerCase() : "";
-        if (lower.contains("format=mp3")) {
+        if (lower.contains("format=mp3") || lower.endsWith(".mp3")) {
             b.setMimeType(MimeTypes.AUDIO_MPEG)
              .setCustomCacheKey("stream_mp3_" + songId);
+        } else if (lower.contains("format=flac") || lower.endsWith(".flac") || lower.contains("audio/flac")) {
+            b.setMimeType(MimeTypes.AUDIO_FLAC)
+             .setCustomCacheKey("stream_flac_" + songId);
         } else {
             b.setCustomCacheKey("stream_raw_" + songId);
         }
@@ -1874,6 +2055,153 @@ public class PlayerService extends Service {
             } else {
                 pauseAndClearSleep();
             }
+        }
+    }
+
+    // 基于当前选择的音轨格式检测音频类型
+    private String detectCurrentAudioType() {
+        try {
+            if (player == null) return null;
+            Tracks tracks = player.getCurrentTracks();
+            if (tracks == null) return null;
+            for (int gi = 0; gi < tracks.getGroups().size(); gi++) {
+                Tracks.Group g = tracks.getGroups().get(gi);
+                if (g == null) continue;
+                if (g.getType() != C.TRACK_TYPE_AUDIO) continue;
+                for (int ti = 0; ti < g.length; ti++) {
+                    if (!g.isTrackSelected(ti)) continue;
+                    Format f = g.getTrackFormat(ti);
+                    if (f == null) continue;
+                    String sm = f.sampleMimeType;
+                    if (sm == null) continue;
+                    String m = sm.toLowerCase();
+                    if (m.contains("flac")) return "FLAC";
+                    if (m.contains("mpeg") || m.contains("mp3")) return "MP3";
+                    if (m.contains("aac")) return "AAC";
+                    if (m.contains("vorbis")) return "OGG";
+                    if (m.contains("opus")) return "OPUS";
+                }
+            }
+        } catch (Throwable ignore) {}
+        return null;
+    }
+
+    public String getCurrentAudioType() {
+        String t = detectCurrentAudioType();
+        if (t != null) return t;
+        try {
+            MediaItem ci = player != null ? player.getCurrentMediaItem() : null;
+            if (ci != null && ci.localConfiguration != null) {
+                String mime = ci.localConfiguration.mimeType;
+                if (mime != null) {
+                    String m = mime.toLowerCase();
+                    if (m.contains("flac")) return "FLAC"; else if (m.contains("mpeg") || m.contains("mp3")) return "MP3";
+                }
+                String key = ci.localConfiguration.customCacheKey;
+                if (key != null) {
+                    if (key.contains("_flac_")) return "FLAC"; else if (key.contains("_mp3_")) return "MP3";
+                }
+            }
+        } catch (Throwable ignore) {}
+        return null;
+    }
+
+    // 非全局歌单列表：根据播放器 media 索引在临界处按需扩边（重建窗口）
+    private void expandLocalWindowIfNeeded(int playerIndex) {
+        try {
+            if (useGlobalAllSongsMode) return;
+            int mediaCount = player != null ? player.getMediaItemCount() : 0;
+            if (mediaCount <= 0 || playlist == null || playlist.isEmpty()) return;
+            final int PREV_CHUNK = 5;
+            final int NEXT_CHUNK = 15;
+            // 近尾部：向后扩一段（通过重建窗口替代直接追加，保持实现简单稳定）
+            if (playerIndex >= Math.max(0, mediaCount - 1 - WINDOW_GUARD)) {
+                int target = mediaBasePlaylistIndex + playerIndex + 1; // 预计下一首的全量索引
+                if (target < playlist.size()) {
+                    int wStart = Math.max(0, target - PREV_CHUNK);
+                    int wEnd = Math.min(playlist.size(), target + NEXT_CHUNK + 1);
+                    mediaBasePlaylistIndex = wStart;
+                    List<MediaItem> items = new ArrayList<>();
+                    for (int i = wStart; i < wEnd; i++) {
+                        Song s = playlist.get(i);
+                        String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                        items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
+                    }
+                    int keep = Math.max(0, player.getCurrentMediaItemIndex());
+                    long pos = Math.max(0, player.getCurrentPosition());
+                    handler.post(() -> {
+                        try {
+                            player.setMediaItems(items, Math.max(0, (mediaBasePlaylistIndex + keep) - wStart), pos);
+                            applyPlaybackMode();
+                            player.prepare();
+                            //Log.d(TAG, "本地窗口扩边：重建到[" + wStart + "," + wEnd + "] 保持当前项");
+                        } catch (Throwable ignore) {}
+                    });
+                }
+            }
+            // 近头部：向前扩一段
+            if (playerIndex <= WINDOW_GUARD) {
+                int target = mediaBasePlaylistIndex + playerIndex - 1;
+                if (target >= 0) {
+                    int wStart = Math.max(0, Math.min(target - PREV_CHUNK, Math.max(0, playlist.size() - 1)));
+                    int wEnd = Math.min(playlist.size(), wStart + (PREV_CHUNK + NEXT_CHUNK + 1));
+                    mediaBasePlaylistIndex = wStart;
+                    List<MediaItem> items = new ArrayList<>();
+                    for (int i = wStart; i < wEnd; i++) {
+                        Song s = playlist.get(i);
+                        String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                        items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
+                    }
+                    int keep = Math.max(0, player.getCurrentMediaItemIndex());
+                    long pos = Math.max(0, player.getCurrentPosition());
+                    handler.post(() -> {
+                        try {
+                            player.setMediaItems(items, Math.max(0, (mediaBasePlaylistIndex + keep) - wStart), pos);
+                            applyPlaybackMode();
+                            player.prepare();
+                            //Log.d(TAG, "本地窗口扩边：前向重建到[" + wStart + "," + wEnd + "] 保持当前项");
+                        } catch (Throwable ignore) {}
+                    });
+                }
+            }
+        } catch (Throwable t) {
+            Log.w(TAG, "expandLocalWindowIfNeeded 异常", t);
+        }
+    }
+
+    // 强制刷新本地随机顺序（优先使用 DefaultShuffleOrder；失败则回退为重新设置媒体项）
+    private void rerollLocalShuffleOrderKeepingCurrent() {
+        try {
+            if (player == null) return;
+            int count = player.getMediaItemCount();
+            if (count <= 1) return;
+            int keep = Math.max(0, player.getCurrentMediaItemIndex());
+            long pos = Math.max(0, player.getCurrentPosition());
+            // 优先使用 DefaultShuffleOrder
+            try {
+                Class<?> orderClz = Class.forName("com.google.android.exoplayer2.source.DefaultShuffleOrder");
+                java.lang.reflect.Constructor<?> ctor = orderClz.getConstructor(int.class, long.class);
+                Object order = ctor.newInstance(count, new java.util.Random().nextLong());
+                Class<?> iface = Class.forName("com.google.android.exoplayer2.source.ShuffleOrder");
+                java.lang.reflect.Method m = player.getClass().getMethod("setShuffleOrder", iface);
+                m.invoke(player, order);
+                if (DEBUG_VERBOSE) Log.d(TAG, "已通过 DefaultShuffleOrder 重置随机顺序");
+                return;
+            } catch (Throwable reflectFail) {
+                if (DEBUG_VERBOSE) Log.d(TAG, "DefaultShuffleOrder 不可用，回退为重设媒体项");
+            }
+            // 回退：重设媒体项以促使内部重建随机序列
+            List<MediaItem> items = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                try { items.add(player.getMediaItemAt(i)); } catch (Throwable ignore) {}
+            }
+            player.setShuffleModeEnabled(false);
+            player.setMediaItems(items, keep, pos);
+            player.prepare();
+            player.setShuffleModeEnabled(true);
+            player.seekTo(keep, pos);
+        } catch (Throwable e) {
+            Log.w(TAG, "重置本地随机顺序失败", e);
         }
     }
 } 

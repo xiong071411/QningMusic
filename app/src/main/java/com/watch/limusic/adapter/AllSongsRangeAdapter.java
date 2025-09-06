@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 
 import android.util.SparseArray;
+import android.graphics.Typeface;
 
 // 新增：后台执行器与下载/缓存状态内存集合
 import java.util.concurrent.ExecutorService;
@@ -72,6 +73,11 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 	public interface OnItemLongClickListener { void onItemLongClick(int position); }
 	private OnItemLongClickListener longClickListener;
 
+	// 正在播放状态
+	private String currentPlayingSongId = null;
+	private boolean isCurrentlyPlaying = false;
+	private int lastPlayingPosition = RecyclerView.NO_POSITION;
+
 	public AllSongsRangeAdapter(Context context, MusicRepository repository, SongAdapter.OnSongClickListener listener) {
 		this.context = context;
 		this.musicRepository = repository;
@@ -105,6 +111,27 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 
 	public void setShowCoverArt(boolean show) { this.showCoverArt = show; notifyDataSetChanged(); }
 	public void setShowDownloadStatus(boolean show) { this.showDownloadStatus = show; notifyDataSetChanged(); }
+
+	public void setCurrentPlaying(String songId, boolean isPlaying) {
+		if ((currentPlayingSongId == null && songId == null) || (currentPlayingSongId != null && currentPlayingSongId.equals(songId) && isCurrentlyPlaying == isPlaying)) return;
+		int oldPos = getPositionBySongId(currentPlayingSongId);
+		currentPlayingSongId = songId;
+		isCurrentlyPlaying = isPlaying;
+		int newPos = getPositionBySongId(songId);
+		if (oldPos >= 0) notifyItemChanged(oldPos);
+		if (newPos >= 0) notifyItemChanged(newPos);
+		lastPlayingPosition = newPos;
+	}
+
+	public int getPositionBySongId(String songId) {
+		if (songId == null) return -1;
+		for (int i = 0; i < loaded.size(); i++) {
+			int key = loaded.keyAt(i);
+			SongWithIndex item = loaded.valueAt(i);
+			if (item != null && songId.equals(item.getId())) return key;
+		}
+		return -1;
+	}
 
 	public void setTotalCount(int total) {
 		this.totalCount = Math.max(0, total);
@@ -198,6 +225,8 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		holder.itemView.setBackgroundResource(R.drawable.item_background);
 		holder.itemView.setAlpha(0.6f);
 		holder.downloadContainer.setVisibility(View.GONE);
+		holder.playingBar.setVisibility(View.GONE);
+		holder.playingIcon.setVisibility(View.GONE);
 	}
 
 	private void bindActual(@NonNull ViewHolder holder, SongWithIndex songItem, int adapterPosition) {
@@ -258,6 +287,14 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		// 防止点击下载区域触发整行播放
 		holder.downloadContainer.setOnClickListener(v -> {});
 		holder.downloadContainer.setOnLongClickListener(v -> true);
+
+		// 正在播放指示器渲染（无动画）
+		boolean isPlayingItem = currentPlayingSongId != null && currentPlayingSongId.equals(song.getId());
+		holder.playingBar.setVisibility(isPlayingItem ? View.VISIBLE : View.GONE);
+		        holder.playingIcon.setVisibility(View.GONE);
+        if (!selectionMode) {
+            holder.songTitle.setTypeface(null, isPlayingItem ? Typeface.BOLD : Typeface.NORMAL);
+        }
 	}
 
 	private void setupDownloadUI(ViewHolder holder, Song song) {
@@ -429,6 +466,8 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 		final TextView downloadPercent;
 		final ImageView downloadComplete;
 		final ImageView downloadFailed;
+		final View playingBar;
+		final ImageView playingIcon;
 
 		ViewHolder(View itemView) {
 			super(itemView);
@@ -444,6 +483,8 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 			downloadPercent = itemView.findViewById(R.id.download_percent);
 			downloadComplete = itemView.findViewById(R.id.download_complete);
 			downloadFailed = itemView.findViewById(R.id.download_failed);
+			playingBar = itemView.findViewById(R.id.playing_indicator_bar);
+			playingIcon = itemView.findViewById(R.id.playing_icon);
 		}
 	}
 } 

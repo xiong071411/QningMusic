@@ -53,6 +53,188 @@ public class PlaylistRepository {
 		void onResult(List<String> skippedTitles, boolean serverOk);
 	}
 
+	// 新增：手动同步回调
+	public interface SyncCallback {
+		void onDone(boolean ok, String message);
+	}
+
+	// 新增：手动绑定并同步指定歌单
+	public void manualBindAndSync(long playlistLocalId, SyncCallback callback) {
+		new Thread(() -> {
+			try {
+				PlaylistEntity p = playlistDao.getByLocalId(playlistLocalId);
+				if (p == null) { if (callback != null) callback.onDone(false, "歌单不存在"); return; }
+				boolean bound = p.getServerId() != null && !p.getServerId().isEmpty();
+				String sid = p.getServerId();
+				// 若未绑定，先尝试按名称+owner 匹配，然后必要时创建远端再绑定
+				if (!bound) {
+					try {
+						NavidromeApi.PlaylistsEnvelope env = api.getPlaylists();
+						NavidromeApi.PlaylistsResponse r = env != null ? env.getResponse() : null;
+						List<NavidromeApi.Playlist> remote = r != null && r.getPlaylists() != null ? r.getPlaylists().getList() : new ArrayList<>();
+						String owner = api.getCurrentUsername();
+						NavidromeApi.Playlist matched = null;
+						long newest = -1L;
+						for (NavidromeApi.Playlist rp : remote) {
+							if (rp.getName() != null && rp.getName().equals(p.getName())) {
+								if (owner == null || owner.isEmpty() || owner.equals(rp.getOwner())) {
+									if (rp.getChanged() >= newest) { newest = rp.getChanged(); matched = rp; }
+								}
+							}
+						}
+						if (matched == null) {
+							// 尝试创建远端歌单
+							boolean ok = api.createPlaylist(p.getName(), p.isPublic());
+							if (ok) {
+								NavidromeApi.PlaylistsEnvelope env2 = api.getPlaylists();
+								NavidromeApi.PlaylistsResponse r2 = env2 != null ? env2.getResponse() : null;
+								List<NavidromeApi.Playlist> remote2 = r2 != null && r2.getPlaylists() != null ? r2.getPlaylists().getList() : new ArrayList<>();
+								for (NavidromeApi.Playlist rp : remote2) {
+									if (rp.getName() != null && rp.getName().equals(p.getName())) {
+										if (owner == null || owner.isEmpty() || owner.equals(rp.getOwner())) {
+											matched = rp; break;
+										}
+									}
+								}
+							} else {
+								if (callback != null) callback.onDone(false, "服务器创建失败");
+								return;
+							}
+						}
+						if (matched != null) {
+							sid = matched.getId();
+							playlistDao.bindServerId(p.getLocalId(), sid);
+							p.setServerId(sid);
+							p.setSongCount(matched.getSongCount());
+							p.setChangedAt(matched.getChanged());
+							p.setOwner(matched.getOwner());
+							p.setSyncDirty(false);
+							playlistDao.update(p);
+							bound = true;
+						}
+					} catch (Exception e) {
+						if (callback != null) callback.onDone(false, "网络错误，无法绑定远端");
+						return;
+					}
+				}
+				if (!bound) { if (callback != null) callback.onDone(false, "未绑定远端，稍后重试"); return; }
+				// 差集推送
+				try {
+					List<String> localIds = playlistSongDao.getSongIdsOrdered(p.getLocalId());
+					NavidromeApi.PlaylistEnvelope detail = api.getPlaylist(sid);
+					NavidromeApi.RemotePlaylist remotePl = detail != null && detail.getResponse() != null ? detail.getResponse().getPlaylist() : null;
+					java.util.HashSet<String> remoteSet = new java.util.HashSet<>();
+					if (remotePl != null && remotePl.getEntries() != null) {
+						for (com.watch.limusic.model.Song s : remotePl.getEntries()) remoteSet.add(s.getId());
+					}
+					java.util.ArrayList<String> diff = new java.util.ArrayList<>();
+					if (localIds != null) {
+						for (String id : localIds) if (!remoteSet.contains(id)) diff.add(id);
+					}
+					if (!diff.isEmpty()) {
+						boolean ok = api.updatePlaylist(sid, null, null, diff, null);
+						if (!ok) { if (callback != null) callback.onDone(false, "服务器拒绝同步"); return; }
+						playlistDao.updateStats(p.getLocalId(), playlistSongDao.getCount(p.getLocalId()), System.currentTimeMillis(), false);
+					}
+					sendPlaylistsUpdatedBroadcast();
+					if (callback != null) callback.onDone(true, diff.isEmpty() ? "已与服务器一致" : "同步成功");
+					return;
+				} catch (Exception e) {
+					if (callback != null) callback.onDone(false, "同步失败: " + e.getMessage());
+					return;
+				}
+			} catch (Exception e) {
+				if (callback != null) callback.onDone(false, "同步异常: " + e.getMessage());
+			}
+		}).start();
+	}
+
+	// 新增：创建歌单并立即添加歌曲（服务器优先，失败则本地暂存，回调给UI）
+	public void createPlaylistAndAddSongs(String name, boolean isPublic, List<String> orderedSongIds, AddCallback callback) {
+		if (name == null || name.trim().isEmpty()) {
+			if (callback != null) callback.onResult(new ArrayList<>(), false);
+			return;
+		}
+		final String finalName = name.trim();
+		new Thread(() -> {
+			PlaylistEntity local = null;
+			boolean serverCreated = false;
+			String boundServerId = null;
+			try {
+				// 1) 先请求服务端创建，拿到最新服务端列表做绑定（Navidrome 不返回 ID，只能通过 getPlaylists 匹配）
+				try {
+					serverCreated = api.createPlaylist(finalName, isPublic);
+				} catch (IOException ioe) {
+					serverCreated = false;
+				}
+				if (serverCreated) {
+					// 拉取列表，并尝试找到属于当前用户、名称匹配，且 changed 较新的记录
+					NavidromeApi.PlaylistsEnvelope env = null;
+					try { env = api.getPlaylists(); } catch (IOException ignore) {}
+					List<NavidromeApi.Playlist> remote = env != null && env.getResponse() != null && env.getResponse().getPlaylists() != null
+						? env.getResponse().getPlaylists().getList() : new ArrayList<>();
+					String owner = api.getCurrentUsername();
+					long newestChanged = -1L;
+					for (NavidromeApi.Playlist rp : remote) {
+						if (rp == null) continue;
+						if (rp.getName() != null && rp.getName().equals(finalName)) {
+							// 若服务器返回 owner，用 owner 过滤；否则仅按名称匹配
+							if (owner == null || owner.isEmpty() || owner.equals(rp.getOwner())) {
+								long ch = rp.getChanged();
+								if (ch >= newestChanged) {
+									newestChanged = ch;
+									boundServerId = rp.getId();
+								}
+							}
+						}
+					}
+					// 立即在本地头部对账，创建或更新带 serverId 的头
+					try { syncPlaylistsHeader(); } catch (Exception ignore) {}
+				}
+
+				// 2) 若没匹配到 serverId，则先创建本地占位
+				if (boundServerId == null || boundServerId.isEmpty()) {
+					local = new PlaylistEntity(finalName, isPublic);
+					local.setDeleted(false);
+					local.setSyncDirty(true);
+					long lid = playlistDao.insert(local);
+					local.setLocalId(lid);
+				} else {
+					// 确保存在对应本地记录
+					long lid = ensureLocalFromRemoteHeader(boundServerId, finalName, isPublic, 0, System.currentTimeMillis());
+					local = playlistDao.getByLocalId(lid);
+				}
+
+				// 3) 添加歌曲：本地先写，再尝试服务器同步（若已绑定）
+				List<String> ordered = orderedSongIds != null ? new ArrayList<>(orderedSongIds) : new ArrayList<>();
+				List<String> existing = playlistSongDao.getExistingIds(local.getLocalId(), ordered);
+				List<String> toAdd = new ArrayList<>();
+				for (String id : ordered) if (!existing.contains(id)) toAdd.add(id);
+				List<String> skippedTitles = existing != null && !existing.isEmpty() ? db.songDao().getTitlesByIds(existing) : new ArrayList<>();
+				if (!toAdd.isEmpty()) {
+					playlistSongDao.insertAtTailKeepingOrder(local.getLocalId(), toAdd);
+				}
+				int count = playlistSongDao.getCount(local.getLocalId());
+				playlistDao.updateStats(local.getLocalId(), count, System.currentTimeMillis(), true);
+				sendPlaylistChangedBroadcast(local.getLocalId());
+
+				boolean serverOk = false;
+				try {
+					PlaylistEntity p = playlistDao.getByLocalId(local.getLocalId());
+					if (p != null && p.getServerId() != null && !p.getServerId().isEmpty()) {
+						serverOk = api.updatePlaylist(p.getServerId(), null, null, toAdd, null);
+						if (serverOk) playlistDao.updateStats(local.getLocalId(), count, System.currentTimeMillis(), false);
+					}
+				} catch (Exception e) { Log.w(TAG, "创建并添加歌曲：服务器同步失败: " + e.getMessage()); }
+
+				if (callback != null) callback.onResult(skippedTitles, serverOk);
+			} catch (Exception e) {
+				Log.w(TAG, "创建歌单并添加歌曲失败: " + e.getMessage());
+				if (callback != null) callback.onResult(new ArrayList<>(), false);
+			}
+		}).start();
+	}
+
 	// 创建歌单（允许重名）
 	public PlaylistEntity createPlaylist(String name, boolean isPublic) throws Exception {
 		if (name == null || name.trim().isEmpty()) throw new IllegalArgumentException("歌单名不能为空");
@@ -108,21 +290,30 @@ public class PlaylistRepository {
 		java.util.HashSet<String> serverIds = new java.util.HashSet<>();
 		for (NavidromeApi.Playlist rp : remote) { serverIds.add(rp.getId()); }
 		// 清理本地：凡是本地存在 serverId 但服务端不存在的，标记软删除；
-		// 对于本地新建但尚未同步（serverId 为空）的记录，进一步清理“无歌曲关联”的本地孤儿项
+		// 对于本地新建但尚未同步（serverId 为空）的记录，不在这里删除（保留以待绑定）
 		List<PlaylistEntity> locals = playlistDao.getAllIncludingDeleted();
 		for (PlaylistEntity pl : locals) {
 			String sid = pl.getServerId();
-			if (sid == null || sid.isEmpty()) continue; // 本地新建待同步，跳过软删
+			if (sid == null || sid.isEmpty()) continue; // 本地新建待同步，保留
 			if (!serverIds.contains(sid)) {
 				playlistDao.softDelete(pl.getLocalId(), System.currentTimeMillis());
 			}
 		}
-		// 二次清理：删除无服务端ID且无歌曲关联的本地孤儿
-		try { playlistDao.deleteOrphanLocalPlaylists(); } catch (Exception ignore) {}
-		// 对齐/新增现存项
+		// 对齐/新增现存项：优先尝试与同名本地-only 歌单合并（绑定 serverId），避免重复
 		for (NavidromeApi.Playlist rp : remote) {
 			PlaylistEntity exist = playlistDao.getByServerId(rp.getId());
 			if (exist == null) {
+				// 尝试寻找同名的本地-only 歌单进行绑定
+				PlaylistEntity localOnly = playlistDao.findLocalOnlyByName(rp.getName());
+				if (localOnly != null) {
+					playlistDao.bindServerId(localOnly.getLocalId(), rp.getId());
+					localOnly.setServerId(rp.getId());
+					localOnly.setSongCount(rp.getSongCount());
+					localOnly.setChangedAt(rp.getChanged());
+					localOnly.setOwner(rp.getOwner());
+					localOnly.setSyncDirty(false);
+					playlistDao.update(localOnly);
+				} else {
 				String name = ensureUniqueName(rp.getName());
 				PlaylistEntity add = new PlaylistEntity(name, rp.isPublic());
 				add.setServerId(rp.getId());
@@ -132,6 +323,7 @@ public class PlaylistRepository {
 				add.setSyncDirty(false);
 				long id = playlistDao.insert(add);
 				add.setLocalId(id);
+				}
 			} else {
 				// 远端存在则强制取消软删除，确保可见
 				exist.setDeleted(false);
@@ -144,6 +336,84 @@ public class PlaylistRepository {
 				playlistDao.update(exist);
 			}
 		}
+	}
+
+	// 新增：自动绑定与同步本地未绑定的歌单（在列表加载时调用）
+	public void autoBindAndSyncPending() {
+		new Thread(() -> {
+			try {
+				NavidromeApi.PlaylistsEnvelope env = api.getPlaylists();
+				NavidromeApi.PlaylistsResponse r = env != null ? env.getResponse() : null;
+				List<NavidromeApi.Playlist> remote = r != null && r.getPlaylists() != null ? r.getPlaylists().getList() : new ArrayList<>();
+				if (remote == null) remote = new ArrayList<>();
+				List<PlaylistEntity> localsOnly = playlistDao.getLocalOnlyActive();
+				String owner = api.getCurrentUsername();
+				if (localsOnly != null) {
+					for (PlaylistEntity local : localsOnly) {
+						NavidromeApi.Playlist matched = null;
+						long newest = -1L;
+						for (NavidromeApi.Playlist rp : remote) {
+							if (rp.getName() != null && rp.getName().equals(local.getName())) {
+								if (owner == null || owner.isEmpty() || owner.equals(rp.getOwner())) {
+									if (rp.getChanged() >= newest) { newest = rp.getChanged(); matched = rp; }
+								}
+							}
+						}
+						if (matched != null) {
+							playlistDao.bindServerId(local.getLocalId(), matched.getId());
+							local.setServerId(matched.getId());
+							local.setSongCount(matched.getSongCount());
+							local.setChangedAt(matched.getChanged());
+							local.setOwner(matched.getOwner());
+							local.setSyncDirty(false);
+							playlistDao.update(local);
+							// 推送差集
+							try {
+								List<String> localIds = playlistSongDao.getSongIdsOrdered(local.getLocalId());
+								NavidromeApi.PlaylistEnvelope detail = api.getPlaylist(matched.getId());
+								NavidromeApi.RemotePlaylist remotePl = detail != null && detail.getResponse() != null ? detail.getResponse().getPlaylist() : null;
+								java.util.HashSet<String> remoteSet = new java.util.HashSet<>();
+								if (remotePl != null && remotePl.getEntries() != null) {
+									for (com.watch.limusic.model.Song s : remotePl.getEntries()) remoteSet.add(s.getId());
+								}
+								java.util.ArrayList<String> diff = new java.util.ArrayList<>();
+								if (localIds != null) {
+									for (String id : localIds) if (!remoteSet.contains(id)) diff.add(id);
+								}
+								if (!diff.isEmpty()) {
+									api.updatePlaylist(matched.getId(), null, null, diff, null);
+								}
+							} catch (Exception ignore) {}
+						}
+					}
+				}
+				// 对已绑定但标记为脏数据(syncDirty=1)的歌单也进行差集补推
+				List<PlaylistEntity> boundDirty = playlistDao.getBoundDirtyActive();
+				if (boundDirty != null) {
+					for (PlaylistEntity p : boundDirty) {
+						try {
+							List<String> localIds = playlistSongDao.getSongIdsOrdered(p.getLocalId());
+							NavidromeApi.PlaylistEnvelope detail = api.getPlaylist(p.getServerId());
+							NavidromeApi.RemotePlaylist remotePl = detail != null && detail.getResponse() != null ? detail.getResponse().getPlaylist() : null;
+							java.util.HashSet<String> remoteSet = new java.util.HashSet<>();
+							if (remotePl != null && remotePl.getEntries() != null) {
+								for (com.watch.limusic.model.Song s : remotePl.getEntries()) remoteSet.add(s.getId());
+							}
+							java.util.ArrayList<String> diff = new java.util.ArrayList<>();
+							if (localIds != null) {
+								for (String id : localIds) if (!remoteSet.contains(id)) diff.add(id);
+							}
+							if (!diff.isEmpty()) {
+								boolean ok = api.updatePlaylist(p.getServerId(), null, null, diff, null);
+								if (ok) playlistDao.updateStats(p.getLocalId(), playlistSongDao.getCount(p.getLocalId()), System.currentTimeMillis(), false);
+							}
+						} catch (Exception ignore) {}
+					}
+				}
+			} catch (Exception e) {
+				Log.w(TAG, "autoBindAndSyncPending 失败: " + e.getMessage());
+			}
+		}).start();
 	}
 
 	private String ensureUniqueName(String base) {
@@ -178,12 +448,14 @@ public class PlaylistRepository {
 		final int countFinal = count;
 		final List<String> toAddFinal = new ArrayList<>(toAdd);
 		new Thread(() -> {
-			boolean ok = true;
+			boolean ok = false; // 默认 false，只有确实调用了服务器并成功才置 true
 			try {
 				PlaylistEntity p = playlistDao.getByLocalId(playlistLocalId);
 				if (p != null && p.getServerId() != null && !p.getServerId().isEmpty()) {
 					ok = api.updatePlaylist(p.getServerId(), null, null, toAddFinal, null);
 					if (ok) playlistDao.updateStats(playlistLocalId, countFinal, System.currentTimeMillis(), false);
+				} else {
+					ok = false;
 				}
 			} catch (Exception e) {
 				Log.w(TAG, "添加歌曲服务器同步失败: " + e.getMessage());
@@ -299,9 +571,14 @@ public class PlaylistRepository {
 				if (p != null && p.getServerId() != null && !p.getServerId().isEmpty()) {
 					boolean ok = api.deletePlaylist(p.getServerId());
 					if (!ok) Log.w(TAG, "服务器删除歌单失败");
+					// 同名本地无serverId重复项一并软删除，避免多选弹窗里残留
+					try { playlistDao.softDeleteLocalDuplicatesByName(p.getName(), System.currentTimeMillis()); } catch (Exception ignore) {}
 					// 无论成功失败，都再触发一次对账以避免脏显
 					try { syncPlaylistsHeader(); } catch (Exception ignore) {}
 					sendPlaylistsUpdatedBroadcast();
+				} else if (p != null) {
+					// 删除的是本地占位：清理同名其他占位，防止残留
+					try { playlistDao.softDeleteLocalDuplicatesByName(p.getName(), System.currentTimeMillis()); } catch (Exception ignore) {}
 				}
 			} catch (Exception e) { Log.w(TAG, "删除歌单服务器同步失败: " + e.getMessage()); }
 		}).start();

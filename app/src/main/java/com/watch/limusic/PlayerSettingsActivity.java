@@ -24,6 +24,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private static final String KEY_LYRIC_SMOOTH = "lyric_smooth_enabled";
 	// 新增：长句滚动显示
 	private static final String KEY_LYRIC_LONG_MARQUEE = "lyric_long_marquee_enabled";
+	// 新增：显示音频类型徽标
+	private static final String KEY_SHOW_AUDIO_TYPE = "show_audio_type_badge";
+    // 新增：点击播放后自动打开全屏播放器
+    private static final String KEY_AUTO_OPEN_FULL_PLAYER = "auto_open_full_player";
 
     private TextView txtBlurSummary;
     private TextView txtIntensityValue;
@@ -38,6 +42,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private TextView txtLyricSmoothSummary;
 	// 新增：长句滚动显示摘要
 	private TextView txtLyricLongSummary;
+	// 新增：显示音频类型摘要
+	private TextView txtShowAudioTypeSummary;
+    // 新增：自动打开全屏播放器摘要
+    private TextView txtAutoOpenFullPlayerSummary;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -62,6 +70,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		txtLyricSmoothSummary = findViewById(R.id.txt_lyric_smooth_summary);
 		// 新增：长句滚动显示摘要
 		txtLyricLongSummary = findViewById(R.id.txt_lyric_long_marquee_summary);
+		// 新增：显示音频类型摘要
+		initShowAudioTypeCard();
+        // 新增：初始化自动打开全屏播放器卡片
+        initAutoOpenFullPlayerCard();
 
         updateBlurSummary();
         updateIntensitySummary();
@@ -70,6 +82,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		updateLyricSmoothSummary();
 		// 新增：初始化长句滚动显示摘要
 		updateLyricLongSummary();
+		// 新增：初始化音频类型显示摘要
+		updateShowAudioTypeSummary();
+        // 新增：初始化自动打开全屏播放器摘要
+        updateAutoOpenFullPlayerSummary();
 
         findViewById(R.id.card_bg_blur).setOnClickListener(v -> {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -129,6 +145,23 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 			sp.edit().putBoolean(KEY_LYRIC_LONG_MARQUEE, !enabled).apply();
 			updateLyricLongSummary();
 			notifyUiLyric();
+		});
+
+		// 新增：显示音频类型开关
+		findViewById(R.id.card_show_audio_type).setOnClickListener(v -> {
+			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+			boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, false);
+			sp.edit().putBoolean(KEY_SHOW_AUDIO_TYPE, !enabled).apply();
+			updateShowAudioTypeSummary();
+			notifyUiBadge();
+		});
+
+        // 新增：自动打开全屏播放器开关
+        findViewById(R.id.card_auto_open_full_player).setOnClickListener(v -> {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            boolean enabled = sp.getBoolean(KEY_AUTO_OPEN_FULL_PLAYER, false);
+            sp.edit().putBoolean(KEY_AUTO_OPEN_FULL_PLAYER, !enabled).apply();
+            updateAutoOpenFullPlayerSummary();
 		});
 
         seekIntensity.setMax(100);
@@ -223,6 +256,30 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		txtLyricLongSummary.setText(enabled ? "已开启（仅当前行，超过两行时在两行视窗内滚动）" : "关闭");
 	}
 
+	private void initShowAudioTypeCard() {
+		try { txtShowAudioTypeSummary = findViewById(R.id.txt_show_audio_type_summary); } catch (Exception ignore) {}
+		updateShowAudioTypeSummary();
+	}
+
+    private void initAutoOpenFullPlayerCard() {
+        try { txtAutoOpenFullPlayerSummary = findViewById(R.id.txt_auto_open_full_player_summary); } catch (Exception ignore) {}
+        updateAutoOpenFullPlayerSummary();
+	}
+
+	private void updateShowAudioTypeSummary() {
+		if (txtShowAudioTypeSummary == null) return;
+		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+		boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, false);
+		txtShowAudioTypeSummary.setText(enabled ? "已开启" : "关闭");
+	}
+
+    private void updateAutoOpenFullPlayerSummary() {
+        if (txtAutoOpenFullPlayerSummary == null) return;
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        boolean enabled = sp.getBoolean(KEY_AUTO_OPEN_FULL_PLAYER, false);
+        txtAutoOpenFullPlayerSummary.setText(enabled ? "已开启" : "关闭");
+	}
+
     private void notifyUi() {
         try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","player_bg"); sendBroadcast(i);} catch (Exception ignore) {}
         try { sendBroadcast(new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED")); } catch (Exception ignore) {}
@@ -234,6 +291,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 
 	private void notifyUiLyricSource() {
 		try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","lyric_source"); sendBroadcast(i);} catch (Exception ignore) {}
+	}
+
+	private void notifyUiBadge() {
+		try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","audio_badge"); sendBroadcast(i);} catch (Exception ignore) {}
 	}
 
     @Override
