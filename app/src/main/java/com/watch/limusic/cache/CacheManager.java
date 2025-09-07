@@ -23,8 +23,8 @@ public class CacheManager {
     private static final String KEY_MAX_MB = "max_cache_mb";
     private static final long DEFAULT_MAX_BYTES = 70 * 1024 * 1024; // 70MB
 
-    private static SimpleCache cache;
-    private static DatabaseProvider databaseProvider;
+    private static volatile SimpleCache cache;
+    private static volatile DatabaseProvider databaseProvider;
     private static volatile CacheManager INSTANCE;
     private final Context context;
 
@@ -50,14 +50,30 @@ public class CacheManager {
         return context;
     }
     
-    // 获取缓存实例
+    // 获取缓存实例（线程安全，避免并发创建导致崩溃）
     public SimpleCache getCache() {
-        if (cache == null) {
-            long maxBytes = getMaxCacheBytes();
-            LeastRecentlyUsedCacheEvictor evictor = new LeastRecentlyUsedCacheEvictor(maxBytes);
-            databaseProvider = new StandaloneDatabaseProvider(context);
-            File dir = new File(context.getCacheDir(), "media");
-            cache = new SimpleCache(dir, evictor, databaseProvider);
+        if (cache != null) return cache;
+        synchronized (CacheManager.class) {
+            if (cache == null) {
+                long maxBytes = getMaxCacheBytes();
+                LeastRecentlyUsedCacheEvictor evictor = new LeastRecentlyUsedCacheEvictor(maxBytes);
+                if (databaseProvider == null) {
+                    databaseProvider = new StandaloneDatabaseProvider(context);
+                }
+                File dir = new File(context.getCacheDir(), "media");
+                try {
+                    cache = new SimpleCache(dir, evictor, databaseProvider);
+                } catch (IllegalStateException e) {
+                    // 若并发竞争仍触发（极小概率），等待已创建实例可见后复用
+                    Log.w(TAG, "Detected concurrent SimpleCache creation, reuse existing instance if available", e);
+                    // 自旋等待最多100ms以复用其他线程已创建的cache
+                    long deadline = System.currentTimeMillis() + 100;
+                    while (cache == null && System.currentTimeMillis() < deadline) {
+                        try { Thread.sleep(10); } catch (InterruptedException ignore) {}
+                    }
+                    if (cache == null) throw e;
+                }
+            }
         }
         return cache;
     }
