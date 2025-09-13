@@ -8,6 +8,7 @@ import com.watch.limusic.api.NavidromeApi;
 import com.watch.limusic.api.SubsonicResponse;
 import com.watch.limusic.model.Album;
 import com.watch.limusic.model.Song;
+import com.watch.limusic.model.ArtistItem;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -207,7 +208,7 @@ public class MusicRepository {
             
             return EntityConverter.toSongs(entities);
         } catch (Exception e) {
-            Log.e(TAG, "从数据库获取歌曲失败: " + e.getMessage(), e);
+            Log.e(TAG, "从数据库获取歌曲失败", e);
             return new ArrayList<>();
         }
     }
@@ -366,6 +367,17 @@ public class MusicRepository {
             return new ArrayList<>();
         }
     }
+
+    // 新增：分页搜索歌曲（本地数据库）
+    public List<Song> searchSongsPaged(String keyword, int limit, int offset) {
+        try {
+            List<SongEntity> entities = database.songDao().searchSongsPaged(keyword, limit, offset);
+            return EntityConverter.toSongs(entities);
+        } catch (Exception e) {
+            Log.e(TAG, "分页搜索歌曲失败", e);
+            return new ArrayList<>();
+        }
+    }
     
     /**
      * 获取数据库中的歌曲数量
@@ -400,7 +412,7 @@ public class MusicRepository {
             return new ArrayList<>();
         }
     }
-
+    
     // 轻量方案新增：范围加载（返回 UI 需要的模型）
     public List<Song> getSongsRange(int limit, int offset) {
         try {
@@ -487,5 +499,65 @@ public class MusicRepository {
      */
     public void shutdown() {
         executorService.shutdown();
+    }
+
+    // 新增：获取艺术家聚合并生成 UI 模型（一次性列表）
+    public List<ArtistItem> getArtists() {
+        List<ArtistItem> result = new ArrayList<>();
+        try {
+            List<ArtistCount> raw = database.songDao().getArtistCounts();
+            if (raw == null) return result;
+            // 归并（大小写、空白）
+            Map<String, Integer> agg = new HashMap<>();
+            Map<String, String> display = new HashMap<>();
+            for (ArtistCount ac : raw) {
+                String name = ac != null ? ac.name : null;
+                String norm = (name != null ? name.trim() : "").toLowerCase();
+                if (norm.isEmpty()) { norm = "(unknown)"; }
+                int cnt = ac != null ? Math.max(0, ac.songCount) : 0;
+                agg.put(norm, agg.getOrDefault(norm, 0) + cnt);
+                if (!display.containsKey(norm)) {
+                    display.put(norm, (name != null && !name.trim().isEmpty()) ? name.trim() : "(未知艺术家)");
+                }
+            }
+            // 构建 UI 项并排序
+            ArrayList<ArtistItem> items = new ArrayList<>();
+            for (Map.Entry<String,Integer> e : agg.entrySet()) {
+                String disp = display.get(e.getKey());
+                String letter;
+                try {
+                    letter = com.watch.limusic.util.PinyinUtil.getFirstLetter(disp);
+                } catch (Exception ex) { letter = "#"; }
+                if (letter == null || letter.isEmpty()) letter = "#";
+                // 统一数字归 #
+                char c = letter.charAt(0);
+                if (Character.isDigit(c)) letter = "#";
+                items.add(new ArtistItem(disp, e.getValue(), letter));
+            }
+            // 排序：组 0=#；组 2=A-Z；组内不区分大小写
+            items.sort((a,b) -> {
+                int ca = ("#".equals(a.getSortLetter())) ? 0 : 2;
+                int cb = ("#".equals(b.getSortLetter())) ? 0 : 2;
+                if (ca != cb) return Integer.compare(ca, cb);
+                int tl = a.getSortLetter().compareToIgnoreCase(b.getSortLetter());
+                if (tl != 0) return tl;
+                return a.getName().compareToIgnoreCase(b.getName());
+            });
+            result.addAll(items);
+        } catch (Exception e) {
+            Log.e(TAG, "获取艺术家聚合失败", e);
+        }
+        return result;
+    }
+
+    // 新增：按艺术家获取本地歌曲列表（忽略大小写与空白）
+    public List<Song> getSongsByArtist(String artistName) {
+        try {
+            List<SongEntity> entities = database.songDao().getSongsByArtist(artistName);
+            return EntityConverter.toSongs(entities);
+        } catch (Exception e) {
+            Log.e(TAG, "按艺术家取歌失败", e);
+            return new ArrayList<>();
+        }
     }
 } 

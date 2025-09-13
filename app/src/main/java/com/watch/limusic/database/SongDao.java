@@ -39,6 +39,20 @@ public interface SongDao {
     @Query("SELECT * FROM songs WHERE title LIKE '%' || :query || '%' OR artist LIKE '%' || :query || '%' ORDER BY title")
     List<SongEntity> searchSongs(String query);
     
+    // 新增：分页模糊搜索（标题/艺术家/专辑），前缀优先，其次按标题不区分大小写
+    @Query("SELECT * FROM songs \n" +
+           "WHERE (title LIKE '%' || :query || '%') OR (artist LIKE '%' || :query || '%') OR (album LIKE '%' || :query || '%')\n" +
+           "ORDER BY\n" +
+           "  CASE\n" +
+           "    WHEN title LIKE :query || '%' THEN 0\n" +
+           "    WHEN artist LIKE :query || '%' THEN 1\n" +
+           "    WHEN album LIKE :query || '%' THEN 2\n" +
+           "    ELSE 3\n" +
+           "  END,\n" +
+           "  title COLLATE NOCASE\n" +
+           "LIMIT :limit OFFSET :offset")
+    List<SongEntity> searchSongsPaged(String query, int limit, int offset);
+    
     @Query("UPDATE songs SET isCached = :isCached WHERE id = :songId")
     void updateCacheStatus(String songId, boolean isCached);
     
@@ -93,4 +107,12 @@ public interface SongDao {
            "OR ((CASE WHEN initial = '#' THEN 0 WHEN initial BETWEEN '0' AND '9' THEN 1 ELSE 2 END) = :cat AND (initial < :ini)) " +
            "OR ((CASE WHEN initial = '#' THEN 0 WHEN initial BETWEEN '0' AND '9' THEN 1 ELSE 2 END) = :cat AND (initial = :ini) AND (title COLLATE NOCASE < :title))")
     int getGlobalIndex(int cat, String ini, String title);
+
+    // 新增：按艺术家名称聚合统计（去除首尾空白），保留原始展示名
+    @Query("SELECT TRIM(artist) AS name, COUNT(*) AS songCount FROM songs GROUP BY TRIM(artist)")
+    List<ArtistCount> getArtistCounts();
+
+    // 新增：按艺术家精确（忽略大小写/空白）取歌，排序与列表一致
+    @Query("SELECT * FROM songs WHERE LOWER(TRIM(artist)) = LOWER(TRIM(:artistName)) ORDER BY title COLLATE NOCASE")
+    List<SongEntity> getSongsByArtist(String artistName);
 } 

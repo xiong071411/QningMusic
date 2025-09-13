@@ -381,8 +381,7 @@ public class AllSongsRangeAdapter extends RecyclerView.Adapter<AllSongsRangeAdap
 			for (int i = 0; i < songs.size(); i++) {
 				Song s = songs.get(i);
 				boolean isDownloaded = downloadedSongIds.contains(s.getId());
-				boolean cachedByKey = com.watch.limusic.cache.CacheManager.getInstance(context).isCachedByKey("stream_mp3_" + s.getId())
-					|| com.watch.limusic.cache.CacheManager.getInstance(context).isCachedByKey("stream_raw_" + s.getId());
+				boolean cachedByKey = com.watch.limusic.cache.CacheManager.getInstance(context).isCachedByAnyKey(s.getId());
 				boolean cached = isDownloaded || cachedByKey;
 				SongWithIndex swi = new SongWithIndex(s, aligned + i, cached);
 				items.add(swi);

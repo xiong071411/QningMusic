@@ -7,6 +7,11 @@
             android:title="@string/nav_all_songs" />
         
         <item
+            android:id="@+id/nav_search"
+            android:icon="@drawable/ic_search"
+            android:title="@string/nav_search" />
+        
+        <item
             android:id="@+id/nav_playlists"
             android:icon="@drawable/ic_playlist"
             android:title="@string/nav_playlists" />

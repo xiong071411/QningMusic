@@ -48,6 +48,15 @@ import android.util.Log;
 import java.util.LinkedHashMap;
 
 public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHolder> {
+    private String highlightKeyword = null; // 可选高亮关键字（用于搜索页）
+    // 高亮颜色与结果缓存，减少首次滚动时的分配与计算
+    private int highlightColorCached = 0;
+    private final java.util.LinkedHashMap<String, CharSequence> highlightCache = new java.util.LinkedHashMap<String, CharSequence>(64, 0.75f, true) {
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, CharSequence> eldest) {
+            return size() > 128; // 控制内存占用
+        }
+    };
     private static final String TAG = "SongAdapter";
     private final Context context;
     private final OnSongClickListener listener;
@@ -146,6 +155,14 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         notifyDataSetChanged();
     }
 
+    // 设置搜索高亮关键字
+    public void setHighlightKeyword(String keyword) {
+        this.highlightKeyword = (keyword != null && !keyword.isEmpty()) ? keyword.toLowerCase(Locale.getDefault()) : null;
+        // 关键字变化时清空缓存，避免使用旧结果
+        try { highlightCache.clear(); } catch (Exception ignore) {}
+        notifyDataSetChanged();
+    }
+
     public void setShowDragHandle(boolean show, OnStartDragListener l) {
         this.showDragHandle = show;
         this.dragListener = l;
@@ -219,8 +236,21 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         SongWithIndex songItem = shouldBindFromBackingList() && position < backingList.size() ? backingList.get(position) : getItem(position);
         Song song = songItem.getSong();
 
-        holder.songTitle.setText(song.getTitle());
-        holder.songArtist.setText(song.getArtist());
+        // 命中高亮（仅在设置了关键字时）
+        String title = song.getTitle() != null ? song.getTitle() : "";
+        String artist = song.getArtist() != null ? song.getArtist() : "";
+        if (highlightKeyword != null && !highlightKeyword.isEmpty()) {
+            try {
+                holder.songTitle.setText(applyHighlight(title, highlightKeyword));
+                holder.songArtist.setText(applyHighlight(artist, highlightKeyword));
+            } catch (Exception e) {
+                holder.songTitle.setText(title);
+                holder.songArtist.setText(artist);
+            }
+        } else {
+            holder.songTitle.setText(title);
+            holder.songArtist.setText(artist);
+        }
         holder.songNumber.setText(songItem.getDisplayNumber());
 
         int duration = song.getDuration();
@@ -563,6 +593,12 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
         backingList.clear();
         if (list != null) backingList.addAll(list);
     }
+    
+    public void submitList(java.util.List<SongWithIndex> list, Runnable commitCallback) {
+        super.submitList(list, commitCallback);
+        backingList.clear();
+        if (list != null) backingList.addAll(list);
+    }
 
     public java.util.List<Song> getSongList() {
         java.util.List<Song> songs = new java.util.ArrayList<>();
@@ -584,6 +620,21 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
                 songItems.add(swi);
             }
             new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> submitList(songItems));
+        }).start();
+    }
+
+    public void processAndSubmitListKeepOrder(List<Song> songs, Runnable commitCallback) {
+        new Thread(() -> {
+            List<Song> source = songs != null ? songs : Collections.emptyList();
+            ArrayList<SongWithIndex> songItems = new ArrayList<>();
+            for (int i = 0; i < source.size(); i++) {
+                Song song = source.get(i);
+                boolean isPlayableOffline = localFileDetector.isSongDownloaded(song) || cacheDetector.isSongCached(song.getId());
+                SongWithIndex swi = new SongWithIndex(song, i, isPlayableOffline);
+                swi.setPosition(i);
+                songItems.add(swi);
+            }
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> submitList(songItems, commitCallback));
         }).start();
     }
 
@@ -618,6 +669,49 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
             android.content.SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
             return sp.getBoolean("low_power_mode_enabled", false);
         } catch (Exception e) { return false; }
+    }
+
+    private CharSequence applyHighlight(String text, String lowerKeyword) {
+        if (text == null) return "";
+        if (lowerKeyword == null || lowerKeyword.isEmpty()) return text;
+        try {
+            // 先命中缓存（仅缓存命中场景），key 基于文本+关键字
+            String cacheKey = text + "\n#" + lowerKeyword;
+            CharSequence cached = highlightCache.get(cacheKey);
+            if (cached != null) return cached;
+
+            int start = indexOfIgnoreCase(text, lowerKeyword);
+            if (start < 0) {
+                // 未命中不缓存，直接返回原文，避免大量无命中缓存占用
+                return text;
+            }
+            int end = start + lowerKeyword.length();
+            if (highlightColorCached == 0) {
+                try { highlightColorCached = ContextCompat.getColor(context, R.color.accent); } catch (Exception ignore) { highlightColorCached = Color.GREEN; }
+            }
+            android.text.SpannableString ss = new android.text.SpannableString(text);
+            ss.setSpan(new android.text.style.ForegroundColorSpan(highlightColorCached), start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            ss.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), start, end, android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            highlightCache.put(cacheKey, ss);
+            return ss;
+        } catch (Exception e) {
+            return text;
+        }
+    }
+
+    // 忽略大小写的 indexOf，实现无需创建 lowerText 的轻量匹配
+    private static int indexOfIgnoreCase(String text, String lowerKeyword) {
+        if (text == null || lowerKeyword == null) return -1;
+        int n = text.length();
+        int m = lowerKeyword.length();
+        if (m == 0) return 0;
+        if (m > n) return -1;
+        for (int i = 0; i <= n - m; i++) {
+            if (text.regionMatches(true, i, lowerKeyword, 0, m)) {
+                return i;
+            }
+        }
+        return -1;
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {

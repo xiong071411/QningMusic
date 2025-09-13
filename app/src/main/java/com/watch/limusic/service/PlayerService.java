@@ -788,7 +788,7 @@ public class PlayerService extends Service {
 				fromFile = url != null && url.startsWith("file://");
 				if (!fromFile) {
 					// 以稳定的自定义缓存键(songId)判断是否已缓存
-					cached = CacheManager.getInstance(this).isCachedByKey(currentSong.getId());
+					cached = CacheManager.getInstance(this).isCachedByAnyKey(currentSong.getId());
 				}
 			}
 			long cacheUsed = CacheManager.getInstance(this).getCacheUsageBytes();
@@ -1181,8 +1181,8 @@ public class PlayerService extends Service {
                 if (localFileDetector.isSongDownloaded(song)) {
                     availableSongs.add(song);
                     Log.d(TAG, "离线模式：添加已下载歌曲到播放列表: " + song.getTitle());
-                } else if (CacheManager.getInstance(this).isCachedByKey("stream_mp3_" + song.getId()) || CacheManager.getInstance(this).isCachedByKey("stream_raw_" + song.getId())) {
-                    // 如果没有下载，检查是否已缓存（按自定义缓存键）
+                } else if (CacheManager.getInstance(this).isCachedByAnyKey(song.getId())) {
+                    // 如果没有下载，检查是否已缓存（按自定义缓存键，含mp3/raw/flac）
                     availableSongs.add(song);
                     Log.d(TAG, "离线模式：添加已缓存歌曲到播放列表: " + song.getTitle());
                 }

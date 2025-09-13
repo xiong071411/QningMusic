@@ -47,6 +47,8 @@
     <string name="nav_albums">专辑</string>
     <string name="nav_settings">设置</string>
     <string name="nav_about">关于</string>
+    <!-- 新增：搜索入口 -->
+    <string name="nav_search">搜索</string>
     
     <!-- 其他字符串 -->
     <string name="all_songs">所有歌曲</string>
@@ -117,4 +119,21 @@
     <string name="sleep_toast_set_minutes">将在 %1$d 分钟后暂停</string>
     <string name="sleep_toast_set_after_current">将在本首播放结束后暂停</string>
     <string name="sleep_toast_cleared">已关闭定时暂停</string>
+
+    <!-- 艺术家分区标题 -->
+    <string name="section_pinned">已顶置</string>
+    <string name="section_all_artists">全部艺术家</string>
+
+    <!-- 艺术家顶置操作 -->
+    <string name="pin_artist">顶置该艺术家</string>
+    <string name="unpin_artist">取消顶置</string>
+
+    <!-- 搜索（新增） -->
+    <string name="search_hint">搜索歌曲/艺术家/专辑</string>
+    <string name="search_clear">清空</string>
+    <string name="search_empty_prompt">输入关键词开始搜索</string>
+    <string name="search_no_result">没有匹配的歌曲</string>
+    <string name="search_loading">搜索中…</string>
+    <string name="loading_more">正在加载更多…</string>
+    <string name="no_more_results">我是有底线的</string>
 </resources>

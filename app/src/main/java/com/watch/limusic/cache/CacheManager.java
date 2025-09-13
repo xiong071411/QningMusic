@@ -131,6 +131,14 @@ public class CacheManager {
         }
     }
     
+    // 统一口径：按 songId 检查任意自定义缓存键（mp3/raw/flac）是否命中
+    public boolean isCachedByAnyKey(String songId) {
+        if (songId == null || songId.isEmpty()) return false;
+        return isCachedByKey("stream_mp3_" + songId)
+                || isCachedByKey("stream_raw_" + songId)
+                || isCachedByKey("stream_flac_" + songId);
+    }
+    
     // 构建缓存键
     private String buildCacheKey(String url) {
         return url;
