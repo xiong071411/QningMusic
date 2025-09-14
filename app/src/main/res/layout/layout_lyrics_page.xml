@@ -9,6 +9,16 @@
 	android:paddingEnd="16dp"
 	android:paddingBottom="32dp">
 
+	<!-- 音频可视化背景（不拦截触控） -->
+	<com.watch.limusic.view.AudioBarsVisualizerView
+		android:id="@+id/audio_bars_visualizer"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		android:clickable="false"
+		android:focusable="false"
+		android:importantForAccessibility="no"
+		android:visibility="gone"/>
+
 	<!-- 歌词显示区域（可下移/上移以微调整体位置） -->
 
 	<TextView

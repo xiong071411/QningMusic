@@ -131,6 +131,9 @@ public class NavidromeSettingsActivity extends AppCompatActivity {
         editor.putString("password", password);
         editor.apply();
 
+        // 先刷新进程内单例的凭据，避免竞态
+        try { com.watch.limusic.api.NavidromeApi.getInstance(this).reloadCredentials(); } catch (Exception ignore) {}
+
         // 发送配置更新广播
         try {
             android.content.Intent intent = new android.content.Intent(com.watch.limusic.api.NavidromeApi.ACTION_NAVIDROME_CONFIG_UPDATED);

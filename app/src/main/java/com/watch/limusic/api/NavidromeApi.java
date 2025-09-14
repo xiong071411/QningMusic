@@ -16,6 +16,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Random;
 import java.util.ArrayList;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
@@ -88,6 +89,18 @@ public class NavidromeApi {
     // 显式刷新凭据，供外部在配置更新广播到达时调用
     public synchronized void reloadCredentials() { loadCredentials(); }
 
+    // 新增：配置完整性判断
+    public synchronized boolean isConfigured() {
+        try {
+            if (serverUrl == null || serverUrl.trim().isEmpty()) return false;
+            if (username == null || username.trim().isEmpty()) return false;
+            if (password == null || password.trim().isEmpty()) return false;
+            return serverPort > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     private String generateSalt() {
         Random random = new Random();
         return String.valueOf(random.nextInt(900000000) + 100000000);
@@ -116,6 +129,18 @@ public class NavidromeApi {
         if (slashIdx >= 0) hostOnly = hostOnly.substring(0, slashIdx);
         int colonIdx = hostOnly.indexOf(':');
         if (colonIdx >= 0) hostOnly = hostOnly.substring(0, colonIdx);
+        if (hostOnly == null || hostOnly.isEmpty()) {
+            // 兜底再读一次
+            reloadCredentials();
+            hostOnly = serverUrl == null ? "" : serverUrl.replace("http://", "").replace("https://", "");
+            slashIdx = hostOnly.indexOf('/');
+            if (slashIdx >= 0) hostOnly = hostOnly.substring(0, slashIdx);
+            colonIdx = hostOnly.indexOf(':');
+            if (colonIdx >= 0) hostOnly = hostOnly.substring(0, colonIdx);
+            if (hostOnly == null || hostOnly.isEmpty()) {
+                throw new IllegalStateException("Navidrome server is not configured yet");
+            }
+        }
         return new HttpUrl.Builder()
                 .scheme(serverUrl != null && serverUrl.startsWith("https") ? "https" : "http")
                 .host(hostOnly)
@@ -425,6 +450,50 @@ public class NavidromeApi {
             SongsResponse songsResponse = gson.fromJson(
                 response.body().string(), 
                 new TypeToken<SongsResponse>(){}.getType()
+            );
+            if (songsResponse != null && 
+                songsResponse.getResponse() != null && 
+                songsResponse.getResponse().getSongs() != null) {
+                List<Song> songs = songsResponse.getResponse().getSongs();
+                return songs;
+            }
+            return new ArrayList<>();
+        }
+    }
+
+    public List<Song> getAllSongsQuick() throws IOException {
+        String salt = generateSalt();
+        String token = generateToken(password, salt);
+
+        HttpUrl url = getBaseUrlBuilder()
+                .addPathSegment("getRandomSongs")
+                .addQueryParameter("u", username)
+                .addQueryParameter("t", token)
+                .addQueryParameter("s", salt)
+                .addQueryParameter("v", API_VERSION)
+                .addQueryParameter("c", CLIENT_NAME)
+                .addQueryParameter("f", "json")
+                .addQueryParameter("size", "500")
+                .build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .build();
+
+        OkHttpClient quickClient = client.newBuilder()
+                .connectTimeout(2, TimeUnit.SECONDS)
+                .readTimeout(6, TimeUnit.SECONDS)
+                .writeTimeout(6, TimeUnit.SECONDS)
+                .callTimeout(8, TimeUnit.SECONDS)
+                .build();
+
+        try (Response response = quickClient.newCall(request).execute()) {
+            if (!response.isSuccessful()) {
+                throw new IOException("Unexpected response " + response);
+            }
+            SongsResponse songsResponse = gson.fromJson(
+                response.body().string(), 
+                new com.google.gson.reflect.TypeToken<SongsResponse>(){}.getType()
             );
             if (songsResponse != null && 
                 songsResponse.getResponse() != null && 

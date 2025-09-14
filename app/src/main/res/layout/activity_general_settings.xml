@@ -284,6 +284,69 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
+            <!-- 测试日志记录（仅测试版可用） -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/card_test_log_recorder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardBackgroundColor="@color/background"
+                app:strokeColor="@color/colorStrokeV2"
+                app:strokeWidth="1dp"
+                app:cardCornerRadius="8dp"
+                app:cardElevation="2dp"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="12dp">
+
+                    <TextView
+                        android:id="@+id/txt_logrecorder_title"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="测试日志记录（仅测试版）"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/txt_logrecorder_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="未在记录"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:layout_marginTop="4dp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
+
+                        <Button
+                            android:id="@+id/btn_log_start"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="开始记录" />
+
+                        <Space
+                            android:layout_width="8dp"
+                            android:layout_height="1dp" />
+
+                        <Button
+                            android:id="@+id/btn_log_stop"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="停止并保存" />
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
         </LinearLayout>
     </ScrollView>
 </LinearLayout> 

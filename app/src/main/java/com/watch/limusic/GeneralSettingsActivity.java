@@ -97,11 +97,47 @@ public class GeneralSettingsActivity extends AppCompatActivity {
         updateDownloadTranscodingSummary();
         updateLowPowerSummary();
         updateProgressSummary();
+
+        // 测试日志记录（仅测试版有效；release为占位实现）
+        View cardLog = findViewByIdName("card_test_log_recorder");
+        if (cardLog != null) {
+            if (!isDebuggable()) { cardLog.setVisibility(View.GONE); }
+            TextView status = findViewByIdNameAsText("txt_logrecorder_status");
+            View btnStart = findViewByIdName("btn_log_start");
+            View btnStop = findViewByIdName("btn_log_stop");
+            if (status != null) status.setText(com.watch.limusic.devtools.LogRecorder.isRecording() ? "正在记录…" : "未在记录");
+            if (btnStart != null) btnStart.setOnClickListener(v -> {
+                boolean ok = com.watch.limusic.devtools.LogRecorder.start(this);
+                Toast.makeText(this, ok ? "开始记录日志" : "无法开始（可能已在记录或不支持）", Toast.LENGTH_SHORT).show();
+                if (status != null) status.setText(com.watch.limusic.devtools.LogRecorder.isRecording() ? "正在记录…" : "未在记录");
+            });
+            if (btnStop != null) btnStop.setOnClickListener(v -> {
+                java.io.File f = com.watch.limusic.devtools.LogRecorder.stop(this);
+                if (f != null) {
+                    Toast.makeText(this, "日志已保存：" + f.getAbsolutePath(), Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(this, "未在记录或保存失败", Toast.LENGTH_SHORT).show();
+                }
+                if (status != null) status.setText(com.watch.limusic.devtools.LogRecorder.isRecording() ? "正在记录…" : "未在记录");
+            });
+        }
     }
 
     private View findViewByIdName(String idName) {
         int id = getResources().getIdentifier(idName, "id", getPackageName());
         return id == 0 ? null : findViewById(id);
+    }
+
+    private TextView findViewByIdNameAsText(String idName) {
+        View v = findViewByIdName(idName);
+        return (v instanceof TextView) ? (TextView) v : null;
+    }
+
+    private boolean isDebuggable() {
+        try {
+            int flags = getApplicationInfo().flags;
+            return (flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0;
+        } catch (Throwable ignore) { return false; }
     }
 
     private void triggerClearAllCache() {

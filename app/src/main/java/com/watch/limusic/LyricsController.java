@@ -27,6 +27,7 @@ public class LyricsController {
 		String getCurrentSongId();
 		String getCurrentArtist();
 		String getCurrentTitle();
+		int getAudioSessionId();
 	}
 
 	public interface UiBridge {
@@ -50,6 +51,12 @@ public class LyricsController {
 	private long lastUserInteractAt = 0L;
 	private boolean paused = false;
 
+	// 新增：可视化视图引用与设置缓存
+	private com.watch.limusic.view.AudioBarsVisualizerView visualizerView;
+	private boolean visualizerEnabled = false;
+	private int visualizerAlphaPercent = 40;
+	private boolean lowPowerMode = false;
+
 	private final android.content.BroadcastReceiver uiReceiver = new android.content.BroadcastReceiver() {
 		@Override public void onReceive(android.content.Context context, android.content.Intent intent) {
 			if (!"com.watch.limusic.UI_SETTINGS_CHANGED".equals(intent.getAction())) return;
@@ -60,6 +67,36 @@ public class LyricsController {
 			if (what != null && "lyric_source".equals(what)) {
 				loadLyricsIfNeeded();
 			}
+			// 音频可视化设置变化
+			if (what != null && ("visualizer".equals(what) || "player_bg".equals(what))) {
+				refreshVisualizerSettings();
+			}
+		}
+	};
+
+	// 新增：监听播放状态/会话ID广播（用于控制可视化视图）
+	private final android.content.BroadcastReceiver playbackReceiver = new android.content.BroadcastReceiver() {
+		@Override public void onReceive(android.content.Context ctx, android.content.Intent intent) {
+			String act = intent.getAction();
+			if ("com.watch.limusic.PLAYBACK_STATE_CHANGED".equals(act)) {
+				boolean isPlaying = intent.getBooleanExtra("isPlaying", false);
+				if (visualizerView != null) visualizerView.setPlaying(isPlaying);
+				// PCM抽头已提供数据，不再绑定Visualizer会话
+			} else if ("com.watch.limusic.AUDIO_SESSION_CHANGED".equals(act)) {
+				// 忽略：避免在不支持的设备上反复尝试初始化Visualizer
+			}
+		}
+	};
+
+	// 新增：订阅PCM抽头广播
+	private final android.content.BroadcastReceiver levelsReceiver = new android.content.BroadcastReceiver() {
+		@Override public void onReceive(android.content.Context ctx, android.content.Intent intent) {
+			if (!"com.watch.limusic.AUDIO_LEVELS".equals(intent.getAction())) return;
+			if (visualizerView == null || !visualizerEnabled) return;
+			float[] levels = intent.getFloatArrayExtra("levels");
+			if (levels != null) {
+				try { visualizerView.setLevels(levels); } catch (Throwable ignore) {}
+			}
 		}
 	};
 
@@ -68,6 +105,13 @@ public class LyricsController {
 		this.player = player;
 		this.repo = new LyricsRepository(ctx);
 		try { context.registerReceiver(uiReceiver, new android.content.IntentFilter("com.watch.limusic.UI_SETTINGS_CHANGED")); } catch (Exception ignore) {}
+		try {
+			android.content.IntentFilter f = new android.content.IntentFilter();
+			f.addAction("com.watch.limusic.PLAYBACK_STATE_CHANGED");
+			f.addAction("com.watch.limusic.AUDIO_SESSION_CHANGED");
+			context.registerReceiver(playbackReceiver, f);
+		} catch (Exception ignore) {}
+		try { context.registerReceiver(levelsReceiver, new android.content.IntentFilter("com.watch.limusic.AUDIO_LEVELS")); } catch (Exception ignore) {}
 	}
 
 	public void setUiBridge(UiBridge bridge) { this.uiBridge = bridge; }
@@ -79,10 +123,18 @@ public class LyricsController {
 		root = stub.inflate();
 		list = root.findViewById(R.id.lyrics_list);
 		placeholder = root.findViewById(R.id.lyrics_placeholder);
+		// 新增：获取可视化视图引用
+		try { visualizerView = root.findViewById(R.id.audio_bars_visualizer); } catch (Exception ignore) {}
+		refreshVisualizerSettings();
+		// 使用PCM抽头方案，不再主动绑定Visualizer会话（避免设备拒绝导致反复报错）
 		layoutManager = new LinearLayoutManager(parent.getContext());
 		if (list != null) {
 			list.setLayoutManager(layoutManager);
 			try { list.setItemAnimator(null); } catch (Exception ignore) {}
+			// 新增：固定大小与缓存以降低滚动CPU
+			try { list.setHasFixedSize(true); } catch (Exception ignore) {}
+			try { list.setItemViewCacheSize(8); } catch (Exception ignore) {}
+			try { list.getRecycledViewPool().setMaxRecycledViews(0, 32); } catch (Exception ignore) {}
 			try {
 				list.setOnTouchListener(new com.watch.limusic.util.SwipeGestureListener(parent.getContext()) {
 					@Override public void onSwipeRight() { if (uiBridge != null) uiBridge.requestSwitchToMainPage(); }
@@ -110,6 +162,23 @@ public class LyricsController {
 				@Override public void onLongPress() {}
 			});
 		} catch (Exception ignore) {}
+	}
+
+	private void refreshVisualizerSettings() {
+		SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
+		boolean enabled = sp.getBoolean("visualizer_enabled", false);
+		int alpha = sp.getInt("visualizer_alpha", 40);
+		boolean low = sp.getBoolean("low_power_mode_enabled", false);
+		visualizerEnabled = enabled && !low;
+		visualizerAlphaPercent = Math.max(0, Math.min(100, alpha));
+		lowPowerMode = low;
+		if (visualizerView != null) {
+			visualizerView.setEnabledBySetting(visualizerEnabled);
+			visualizerView.setAlphaPercent(visualizerAlphaPercent);
+			visualizerView.setLowPowerMode(lowPowerMode);
+			visualizerView.setVisibleOnPage(true); // 歌词页可见后才会调用
+			visualizerView.setPlaying(player != null && player.isPlaying());
+		}
 	}
 
 	public void loadLyricsIfNeeded() {
@@ -188,10 +257,14 @@ public class LyricsController {
 			placeholder.setVisibility(View.VISIBLE);
 		}
 		if (list != null) list.setVisibility(View.GONE);
+		// 省电模式：关闭可视化
+		if (visualizerView != null) {
+			visualizerView.setEnabledBySetting(false);
+		}
 	}
 
-	public void pause() { paused = true; handler.removeCallbacks(tickRunnable); }
-	public void resume() { paused = false; onPlaybackTick(); }
+	public void pause() { paused = true; handler.removeCallbacks(tickRunnable); if (visualizerView != null) visualizerView.setVisibleOnPage(false); try { context.unregisterReceiver(levelsReceiver); } catch (Exception ignore) {} }
+	public void resume() { paused = false; onPlaybackTick(); if (visualizerView != null) visualizerView.setVisibleOnPage(true); refreshVisualizerSettings(); try { context.registerReceiver(levelsReceiver, new android.content.IntentFilter("com.watch.limusic.AUDIO_LEVELS")); } catch (Exception ignore) {} }
 
 	public void onPlaybackTick() { scheduleNextTick(); }
 
@@ -244,22 +317,11 @@ public class LyricsController {
 		if (list == null || layoutManager == null || idx < 0) return;
 		list.post(() -> {
 			try {
-				android.view.View v = layoutManager.findViewByPosition(idx);
-				if (v == null) {
-					layoutManager.scrollToPosition(idx);
-					list.postDelayed(() -> {
-						android.view.View v2 = layoutManager.findViewByPosition(idx);
-						int listH = list.getHeight();
-						int itemH = (v2 != null ? v2.getHeight() : 0);
-						int offset = Math.max(0, (listH - itemH) / 2);
-						try { layoutManager.scrollToPositionWithOffset(idx, offset); } catch (Exception ignore) {}
-					}, 16);
-				} else {
-					int listH = list.getHeight();
-					int itemH = v.getHeight();
-					int offset = Math.max(0, (listH - itemH) / 2);
-					layoutManager.scrollToPositionWithOffset(idx, offset);
-				}
+				int listH = list.getHeight();
+				int itemH = 0;
+				try { if (adapter != null) itemH = Math.max(0, adapter.getPredictedCurrentItemHeightPx()); } catch (Throwable ignore) {}
+				int offset = Math.max(0, (listH - itemH) / 2);
+				layoutManager.scrollToPositionWithOffset(idx, offset);
 			} catch (Exception ignore) {}
 		});
 	}

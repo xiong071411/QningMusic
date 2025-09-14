@@ -13,6 +13,8 @@ import android.widget.TextView;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
+import com.watch.limusic.audio.AudioLevelBus;
+
 public class PlayerSettingsActivity extends AppCompatActivity {
     private static final String PREFS = "player_prefs";
     private static final String KEY_BG_BLUR_ENABLED = "bg_blur_enabled";
@@ -28,6 +30,10 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private static final String KEY_SHOW_AUDIO_TYPE = "show_audio_type_badge";
     // 新增：点击播放后自动打开全屏播放器
     private static final String KEY_AUTO_OPEN_FULL_PLAYER = "auto_open_full_player";
+    // 新增：音频可视化
+    private static final String KEY_VISUALIZER_ENABLED = "visualizer_enabled";
+    private static final String KEY_VISUALIZER_ALPHA = "visualizer_alpha";
+    private static final String KEY_VISUALIZER_FPS = "visualizer_fps"; // 30-60
 
     private TextView txtBlurSummary;
     private TextView txtIntensityValue;
@@ -46,6 +52,11 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private TextView txtShowAudioTypeSummary;
     // 新增：自动打开全屏播放器摘要
     private TextView txtAutoOpenFullPlayerSummary;
+    // 新增：音频可视化摘要/透明度
+    private TextView txtVisualizerSummary;
+    private SeekBar seekVisualizerOpacity;
+    private SeekBar seekVisualizerFps;
+    private TextView txtVisualizerFpsValue;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,6 +85,8 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		initShowAudioTypeCard();
         // 新增：初始化自动打开全屏播放器卡片
         initAutoOpenFullPlayerCard();
+        // 新增：初始化音频可视化控制
+        initVisualizerControls();
 
         updateBlurSummary();
         updateIntensitySummary();
@@ -86,6 +99,8 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		updateShowAudioTypeSummary();
         // 新增：初始化自动打开全屏播放器摘要
         updateAutoOpenFullPlayerSummary();
+        // 新增：更新音频可视化摘要/透明度
+        updateVisualizerSummary();
 
         findViewById(R.id.card_bg_blur).setOnClickListener(v -> {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -178,7 +193,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
         });
     }
 
-	private void initLyricSizeControls() {
+    private void initLyricSizeControls() {
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
 		int cur = sp.getInt(KEY_LYRIC_SIZE_CURRENT, 18);
 		int other = sp.getInt(KEY_LYRIC_SIZE_OTHER, 12);
@@ -266,7 +281,59 @@ public class PlayerSettingsActivity extends AppCompatActivity {
         updateAutoOpenFullPlayerSummary();
 	}
 
-	private void updateShowAudioTypeSummary() {
+    private void initVisualizerControls() {
+        try { txtVisualizerSummary = findViewById(R.id.txt_audio_visualization_summary); } catch (Exception ignore) {}
+        try { seekVisualizerOpacity = findViewById(R.id.seek_visualization_opacity); } catch (Exception ignore) {}
+        // 新增：FPS 控件（需在布局中添加对应视图）
+        try { seekVisualizerFps = findViewById(getResources().getIdentifier("seek_visualization_fps", "id", getPackageName())); } catch (Exception ignore) {}
+        try { txtVisualizerFpsValue = findViewById(getResources().getIdentifier("txt_visualization_fps_value", "id", getPackageName())); } catch (Exception ignore) {}
+
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (seekVisualizerOpacity != null) {
+            seekVisualizerOpacity.setMax(100);
+            int alpha = sp.getInt(KEY_VISUALIZER_ALPHA, 40);
+            seekVisualizerOpacity.setProgress(alpha);
+            seekVisualizerOpacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {}
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                    SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                    sp.edit().putInt(KEY_VISUALIZER_ALPHA, seekBar.getProgress()).apply();
+                    notifyUiVisualizer();
+                }
+            });
+        }
+        if (seekVisualizerFps != null) {
+            seekVisualizerFps.setMax(30); // 映射到 30-60FPS
+            int defFps = Math.max(30, Math.min(60, sp.getInt(KEY_VISUALIZER_FPS, 30)));
+            seekVisualizerFps.setProgress(defFps - 30);
+            if (txtVisualizerFpsValue != null) txtVisualizerFpsValue.setText(defFps + " FPS");
+            seekVisualizerFps.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                    int val = 30 + progress;
+                    if (txtVisualizerFpsValue != null) txtVisualizerFpsValue.setText(val + " FPS");
+                }
+                @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+                @Override public void onStopTrackingTouch(SeekBar seekBar) {
+                    int val = 30 + seekBar.getProgress();
+                    SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+                    sp.edit().putInt(KEY_VISUALIZER_FPS, val).apply();
+                    // 省电模式优先：低功耗时仍强制 15FPS
+                    boolean low = sp.getBoolean("low_power_mode_enabled", false);
+                    AudioLevelBus.setMaxFps(low ? 15 : val);
+                }
+            });
+        }
+        findViewById(R.id.card_audio_visualization).setOnClickListener(v -> {
+            SharedPreferences sp2 = getSharedPreferences(PREFS, MODE_PRIVATE);
+            boolean enabled = sp2.getBoolean(KEY_VISUALIZER_ENABLED, false);
+            sp2.edit().putBoolean(KEY_VISUALIZER_ENABLED, !enabled).apply();
+            updateVisualizerSummary();
+            notifyUiVisualizer();
+        });
+    }
+
+    private void updateShowAudioTypeSummary() {
 		if (txtShowAudioTypeSummary == null) return;
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
 		boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, false);
@@ -279,6 +346,22 @@ public class PlayerSettingsActivity extends AppCompatActivity {
         boolean enabled = sp.getBoolean(KEY_AUTO_OPEN_FULL_PLAYER, false);
         txtAutoOpenFullPlayerSummary.setText(enabled ? "已开启" : "关闭");
 	}
+
+    private void updateVisualizerSummary() {
+        if (txtVisualizerSummary == null) return;
+        SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+        boolean enabled = sp.getBoolean(KEY_VISUALIZER_ENABLED, false);
+        txtVisualizerSummary.setText(enabled ? "已开启" : "关闭");
+        if (seekVisualizerOpacity != null) {
+            int alpha = sp.getInt(KEY_VISUALIZER_ALPHA, 40);
+            seekVisualizerOpacity.setProgress(alpha);
+        }
+        if (seekVisualizerFps != null && txtVisualizerFpsValue != null) {
+            int fps = Math.max(30, Math.min(60, sp.getInt(KEY_VISUALIZER_FPS, 30)));
+            seekVisualizerFps.setProgress(fps - 30);
+            txtVisualizerFpsValue.setText(fps + " FPS");
+        }
+    }
 
     private void notifyUi() {
         try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","player_bg"); sendBroadcast(i);} catch (Exception ignore) {}
@@ -296,6 +379,17 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private void notifyUiBadge() {
 		try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","audio_badge"); sendBroadcast(i);} catch (Exception ignore) {}
 	}
+
+    private void notifyUiVisualizer() {
+        try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","visualizer"); sendBroadcast(i);} catch (Exception ignore) {}
+        try { sendBroadcast(new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED")); } catch (Exception ignore) {}
+        try {
+            SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+            boolean low = sp.getBoolean("low_power_mode_enabled", false);
+            int fps = Math.max(30, Math.min(60, sp.getInt(KEY_VISUALIZER_FPS, 30)));
+            AudioLevelBus.setMaxFps(low ? 15 : fps);
+        } catch (Throwable ignore) {}
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

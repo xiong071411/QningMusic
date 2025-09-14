@@ -53,6 +53,13 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 		recomputeHeights();
 	}
 
+	// 新增：提供预测当前行高度（用于一次性居中定位）
+	public int getPredictedCurrentItemHeightPx() {
+		int extra = Math.max(0, currentLineHeightPx - baseLineHeightPx);
+		int half = (extra + 1) / 2;
+		return Math.max(minItemHeightPx, currentLineHeightPx + basePadPx * 2); // 直接返回当前行的目标高度
+	}
+
 	private int dp(int v) { return (int) (context.getResources().getDisplayMetrics().density * v + 0.5f); }
 	private float spToPx(float sp) { return sp * context.getResources().getDisplayMetrics().scaledDensity; }
 	private static int lineHeightPxFor(Paint p) {
@@ -127,6 +134,8 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 		h.text.setEllipsize(TextUtils.TruncateAt.END);
 		h.text.setSelected(false);
 		h.text.setHorizontallyScrolling(false);
+		// 关闭可能的硬件层
+		try { h.text.setLayerType(View.LAYER_TYPE_NONE, null); } catch (Throwable ignore) {}
 	}
 
 	private void maybeStartHorizontalMarquee(@NonNull VH h) {
@@ -164,11 +173,19 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 				h.marquee.setDuration((long) duration);
 				h.marquee.setInterpolator(new LinearInterpolator());
 				h.marquee.addUpdateListener(a -> h.text.scrollTo((int) a.getAnimatedValue(), 0));
+				// 降耗：横向滚动期间启用硬件层
+				try { h.text.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignore) {}
+				h.marquee.addListener(new android.animation.AnimatorListenerAdapter() {
+					@Override public void onAnimationEnd(android.animation.Animator animation) {
+						try { h.text.setLayerType(View.LAYER_TYPE_NONE, null); } catch (Throwable ignore) {}
+					}
+				});
 				h.marquee.start();
 			} else {
 				// 无需滚动
 				h.text.setSelected(false);
 				h.text.setHorizontallyScrolling(false);
+				try { h.text.setLayerType(View.LAYER_TYPE_NONE, null); } catch (Throwable ignore) {}
 			}
 			// 不使用系统 repeat，避免不确定速度
 
@@ -209,7 +226,11 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 				h.text.setPivotX(0f);
 				h.text.setScaleX(0.96f);
 				h.text.setScaleY(0.96f);
-				h.text.animate().scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(decel).start();
+				// 降耗：缩放动画期间启用硬件层
+				try { h.text.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignore) {}
+				h.text.animate().scaleX(1f).scaleY(1f).setDuration(160).setInterpolator(decel)
+					.withEndAction(() -> { try { h.text.setLayerType(View.LAYER_TYPE_NONE, null); } catch (Throwable ignore) {} })
+					.start();
 				// 动画结束后再尝试水平跑马灯（下一帧），避免干扰观感
 				h.text.postDelayed(() -> maybeStartHorizontalMarquee(h), 16);
 			} else {
@@ -219,7 +240,10 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 				h.text.setPivotX(0f);
 				h.text.setScaleX(1f);
 				h.text.setScaleY(1f);
-				h.text.animate().scaleX(0.96f).scaleY(0.96f).setDuration(120).setInterpolator(decel).start();
+				try { h.text.setLayerType(View.LAYER_TYPE_HARDWARE, null); } catch (Throwable ignore) {}
+				h.text.animate().scaleX(0.96f).scaleY(0.96f).setDuration(120).setInterpolator(decel)
+					.withEndAction(() -> { try { h.text.setLayerType(View.LAYER_TYPE_NONE, null); } catch (Throwable ignore) {} })
+					.start();
 			}
 		}
 		h.itemView.setOnClickListener(v -> { if (listener != null) listener.onLineClick(position, line.startMs); });

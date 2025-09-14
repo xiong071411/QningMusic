@@ -66,6 +66,8 @@ import com.watch.limusic.database.MusicDatabase;
 import com.watch.limusic.database.SongEntity;
 import com.watch.limusic.database.EntityConverter;
 import com.watch.limusic.database.MusicRepository;
+import com.watch.limusic.audio.AudioLevelBus;
+import com.watch.limusic.audio.AudioTapProcessor;
 
 
 public class PlayerService extends Service {
@@ -185,6 +187,8 @@ public class PlayerService extends Service {
     private int localBaseLenAtHeadAppend = -1;
     private int localAppendedHeadCount = 0;
 
+    private AudioTapProcessor audioTapProcessor;
+
     public class LocalBinder extends Binder {
         public PlayerService getService() {
             return PlayerService.this;
@@ -198,6 +202,8 @@ public class PlayerService extends Service {
         // 初始化Navidrome API
         navidromeApi = NavidromeApi.getInstance(this);
         try { musicRepository = MusicRepository.getInstance(this); } catch (Throwable ignore) {}
+        // 新增：初始化音频可视化总线
+        try { AudioLevelBus.init(getApplicationContext()); } catch (Throwable ignore) {}
 
         // 注册配置更新广播：立即切换到新服务器
         try {
@@ -256,9 +262,27 @@ public class PlayerService extends Service {
         DefaultTrackSelector trackSelector = new DefaultTrackSelector(context);
         
         // 构建渲染器工厂：优先使用扩展解码器（如FLAC），并允许在解码器失败时回退
-        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(context)
-                .setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
-                .setEnableDecoderFallback(true);
+        DefaultRenderersFactory renderersFactory = new DefaultRenderersFactory(context) {
+            @Override
+            protected com.google.android.exoplayer2.audio.AudioSink buildAudioSink(Context context,
+                                                                                  boolean enableFloatOutput,
+                                                                                  boolean enableAudioTrackPlaybackParams,
+                                                                                  boolean enableOffload) {
+                // 基于默认AudioSink构建，并插入我们的AudioProcessor
+                com.google.android.exoplayer2.audio.AudioSink defaultSink = super.buildAudioSink(context, enableFloatOutput, enableAudioTrackPlaybackParams, enableOffload);
+                try {
+                    java.util.ArrayList<com.google.android.exoplayer2.audio.AudioProcessor> ps = new java.util.ArrayList<>();
+                    audioTapProcessor = new com.watch.limusic.audio.AudioTapProcessor();
+                    ps.add(audioTapProcessor);
+                    return new com.google.android.exoplayer2.audio.DefaultAudioSink.Builder()
+                            .setAudioProcessors(ps.toArray(new com.google.android.exoplayer2.audio.AudioProcessor[0]))
+                            .build();
+                } catch (Throwable t) {
+                    return defaultSink;
+                }
+            }
+        }.setExtensionRendererMode(DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER)
+         .setEnableDecoderFallback(true);
         
         // 构建播放器
 		DefaultLoadControl loadControl = new DefaultLoadControl.Builder()
@@ -300,6 +324,7 @@ public class PlayerService extends Service {
                 switch (state) {
                     case Player.STATE_READY:
                         Log.d(TAG, "播放器就绪");
+                        try { if (audioTapProcessor != null) audioTapProcessor.setPlaying(player != null && player.isPlaying()); } catch (Throwable ignore) {}
                         updatePlaybackState();
                         logPlaybackDiagnostics("STATE_READY");
                         // 补发一次心跳广播，确保前台/未绑定场景也能拿到正确的时长与进度
@@ -318,18 +343,23 @@ public class PlayerService extends Service {
                                 } catch (Throwable ignore) {}
                             }
                         } }, 250);
+                        // 附带一次 AudioSessionId 变化广播，便于可视化绑定
+                        try { sendAudioSessionBroadcast(); } catch (Throwable ignore) {}
                         break;
                     case Player.STATE_BUFFERING:
                         Log.d(TAG, "正在缓冲");
+                        try { if (audioTapProcessor != null) audioTapProcessor.setPlaying(false); } catch (Throwable ignore) {}
                         logPlaybackDiagnostics("STATE_BUFFERING");
                         break;
                     case Player.STATE_ENDED:
                         Log.d(TAG, "播放结束");
+                        try { if (audioTapProcessor != null) audioTapProcessor.setPlaying(false); } catch (Throwable ignore) {}
                         updatePlaybackState();
                         // 依赖 ExoPlayer 自身的 RepeatMode 处理循环，避免手动 seek 导致索引错乱
                         break;
                     case Player.STATE_IDLE:
                         Log.d(TAG, "播放器空闲");
+                        try { if (audioTapProcessor != null) audioTapProcessor.setPlaying(false); } catch (Throwable ignore) {}
                         break;
                 }
             }
@@ -337,10 +367,14 @@ public class PlayerService extends Service {
             @Override
             public void onIsPlayingChanged(boolean isPlaying) {
                 updatePlaybackState();
+                try { if (audioTapProcessor != null) audioTapProcessor.setPlaying(isPlaying); } catch (Throwable ignore) {}
+                try { sendPlaybackStateBroadcast(); } catch (Throwable ignore) {}
+                try { sendAudioSessionBroadcast(); } catch (Throwable ignore) {}
                 if (!isPlaying) {
                     releaseAudioFocus();
                 }
             }
+
 
             @Override
             public void onPlayerError(com.google.android.exoplayer2.PlaybackException error) {
@@ -650,6 +684,7 @@ public class PlayerService extends Service {
         Intent intent = new Intent(ACTION_PLAYBACK_STATE_CHANGED);
         intent.putExtra("isPlaying", player.isPlaying());
         intent.putExtra("position", player.getCurrentPosition());
+        try { intent.putExtra("audioSessionId", player.getAudioSessionId()); } catch (Throwable ignore) {}
         long dur = player.getDuration();
         intent.putExtra("duration", dur);
         intent.putExtra("isDurationUnset", (dur <= 0 || dur == com.google.android.exoplayer2.C.TIME_UNSET));
@@ -1147,6 +1182,14 @@ public class PlayerService extends Service {
     
     // 设置并播放整个列表，startIndex为开始播放的索引
     public void setPlaylist(List<Song> songs, int startIndex) {
+        // 将重操作转移到服务内部后台线程，避免通过本地Binder在UI线程执行
+        bgExecutor.execute(() -> {
+            try { setPlaylistInternal(songs, startIndex); } catch (Throwable t) { Log.e(TAG, "setPlaylistInternal failed", t); }
+        });
+    }
+
+    // 私有实现：原有重逻辑迁移至此（仅在服务内部线程调用）
+    private void setPlaylistInternal(List<Song> songs, int startIndex) {
         // 普通模式：使用传入列表。若此前处于全局模式，退出之。
         useGlobalAllSongsMode = false;
         // 重置本地窗口扩边与随机锚点状态
@@ -1174,43 +1217,23 @@ public class PlayerService extends Service {
         playlist.clear();
         
         if (!isNetworkAvailable) {
-            // 离线模式：优先使用已下载的歌曲，然后是已缓存的歌曲
-            List<Song> availableSongs = new ArrayList<>();
-            for (Song song : songs) {
-                // 首先检查是否已下载
-                if (localFileDetector.isSongDownloaded(song)) {
-                    availableSongs.add(song);
-                    Log.d(TAG, "离线模式：添加已下载歌曲到播放列表: " + song.getTitle());
-                } else if (CacheManager.getInstance(this).isCachedByAnyKey(song.getId())) {
-                    // 如果没有下载，检查是否已缓存（按自定义缓存键，含mp3/raw/flac）
-                    availableSongs.add(song);
-                    Log.d(TAG, "离线模式：添加已缓存歌曲到播放列表: " + song.getTitle());
+            // 离线模式：过滤不可播放的歌曲，仅保留已下载或已缓存的条目
+            List<Song> filtered = new ArrayList<>();
+            int filteredIndex = -1;
+            for (int i = 0; i < songs.size(); i++) {
+                Song s = songs.get(i);
+                boolean isDownloaded = localFileDetector != null && localFileDetector.isSongDownloaded(s.getId());
+                boolean cachedByKey = CacheManager.getInstance(this).isCachedByAnyKey(s.getId());
+                if (isDownloaded || cachedByKey) {
+                    if (i == startIndex) filteredIndex = filtered.size();
+                    filtered.add(s);
                 }
             }
-
-            if (availableSongs.isEmpty()) {
-                Log.w(TAG, "离线模式下没有找到可播放的歌曲（已下载或已缓存），无法设置播放列表");
+            if (filtered.isEmpty()) {
+                Log.w(TAG, "离线模式下没有可播放的歌曲");
                 return;
             }
-
-            // 在过滤后的列表中定位用户点击的歌曲
-            int filteredIndex = 0;
-            if (clickedSong != null) {
-                filteredIndex = -1;
-                for (int i = 0; i < availableSongs.size(); i++) {
-                    if (availableSongs.get(i).getId().equals(clickedSong.getId())) {
-                        filteredIndex = i;
-                        break;
-                    }
-                }
-                if (filteredIndex == -1) {
-                    // 用户点击的歌曲不在可用列表中，提示并返回
-                    Log.w(TAG, "离线模式下，所选歌曲不可用（未下载/未缓存）");
-                    return;
-                }
-            }
-
-            playlist.addAll(availableSongs);
+            playlist.addAll(filtered);
             Log.d(TAG, "离线模式：过滤后的播放列表包含 " + playlist.size() + " 首可播放歌曲");
 
             // 使用过滤后的索引开始播放
@@ -1239,17 +1262,17 @@ public class PlayerService extends Service {
             String optimalUrl = getOptimalPlayUrl(s, streamUrl);
             windowItems.add(buildStreamingMediaItem(s.getId(), optimalUrl));
         }
+        // 在主线程应用到 ExoPlayer，避免跨线程潜在风险
+        handler.post(() -> {
+            try {
         player.stop();
         player.clearMediaItems();
         player.setMediaItems(windowItems, startIndexInWindow, 0);
-        
-        // 准备并开始播放
         player.prepare();
-        
-        // 应用当前播放模式（尊重随机/单曲/列表）
         applyPlaybackMode();
-        
         play();
+            } catch (Throwable t) { Log.e(TAG, "apply media items failed", t); }
+        });
         
         Log.d(TAG, "窗口化设置播放列表: 总 " + playlist.size() + " 首, 窗口[" + wStart + "," + wEnd + "] 起播索引=" + startIndexInWindow);
     }
@@ -1688,6 +1711,14 @@ public class PlayerService extends Service {
 
     // ============ 全局"所有歌曲"播放入口（滑动窗口） ============
     public void playAllSongsFromGlobal(int globalIndex) {
+        // 将重操作转移到服务内部后台线程，避免通过本地Binder在UI线程执行
+        bgExecutor.execute(() -> {
+            try { playAllSongsFromGlobalInternal(globalIndex); } catch (Throwable t) { Log.e(TAG, "playAllSongsFromGlobalInternal failed", t); }
+        });
+    }
+
+    // 私有实现：原有重逻辑迁移至此（仅在服务内部线程调用）
+    private void playAllSongsFromGlobalInternal(int globalIndex) {
         try {
             if (musicRepository == null) musicRepository = MusicRepository.getInstance(this);
         } catch (Throwable ignore) {}
@@ -1696,7 +1727,7 @@ public class PlayerService extends Service {
             // 回退：仅播放当前点击项
             List<Song> one = new ArrayList<>();
             try { Song s = musicRepository.getSongsRange(1, Math.max(0, globalIndex)).get(0); one.add(s); } catch (Throwable ignore) {}
-            setPlaylist(one, 0);
+            setPlaylistInternal(one, 0);
             return;
         }
         useGlobalAllSongsMode = true;
@@ -1722,13 +1753,18 @@ public class PlayerService extends Service {
             items.add(buildStreamingMediaItem(s.getId(), opt));
         }
         int startInWindow = center - windowStart;
+        // 在主线程应用到 ExoPlayer，避免跨线程潜在风险
+        handler.post(() -> {
+            try {
         player.stop();
         player.clearMediaItems();
         player.setMediaItems(items, Math.max(0, startInWindow), 0);
         player.prepare();
         applyPlaybackMode();
         play();
-        Log.d(TAG, "全局所有歌曲：初始化窗口[" + windowStart + "," + windowEnd + "]，中心=" + center + ", 总数=" + globalTotalCount);
+            } catch (Throwable t) { Log.e(TAG, "apply global media items failed", t); }
+        });
+        Log.d(TAG, "全局所有歌曲：初始化窗口[" + windowStart + "," + windowEnd + "] center=" + center + " startInWindow=" + startInWindow);
     }
 
     private void expandWindowIfNeeded(int playerIndex) {
@@ -2203,5 +2239,21 @@ public class PlayerService extends Service {
         } catch (Throwable e) {
             Log.w(TAG, "重置本地随机顺序失败", e);
         }
+    }
+
+    // 新增：广播音频会话ID，供可视化视图绑定
+    private void sendAudioSessionBroadcast() {
+        try {
+            if (player == null) return;
+            int sid = player.getAudioSessionId();
+            if (sid <= 0) return;
+            Intent i = new Intent("com.watch.limusic.AUDIO_SESSION_CHANGED");
+            i.putExtra("audioSessionId", sid);
+            sendBroadcast(i);
+        } catch (Throwable ignore) {}
+    }
+
+    public int getAudioSessionIdSafe() {
+        try { return player != null ? player.getAudioSessionId() : 0; } catch (Throwable ignore) { return 0; }
     }
 } 
