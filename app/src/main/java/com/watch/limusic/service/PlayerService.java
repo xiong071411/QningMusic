@@ -155,6 +155,7 @@ public class PlayerService extends Service {
     // 随机播放支持
     private final java.util.Random shuffleRandom = new java.util.Random();
     private final java.util.ArrayDeque<Integer> shuffleHistory = new java.util.ArrayDeque<>(64);
+    private volatile boolean handlingAutoRandom = false;
 
 	// 缓冲策略（快速起播 + 更强的重缓冲门槛 + 更大持续缓冲）
 	private static final int MIN_BUFFER_MS = 30_000; // 正常播放时至少维持 30s 缓冲
@@ -479,6 +480,20 @@ public class PlayerService extends Service {
                                 Log.d(TAG, "原因: 播放列表改变");
                                 break;
                         }
+                        // 全局 + 随机 + 自动切歌：触发一次自定义随机跳转，保持自动随机一致性（在首次广播前拦截；AFTER_CURRENT 优先）
+                        if (useGlobalAllSongsMode && playbackMode == PLAYBACK_MODE_SHUFFLE && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && sleepType != SleepType.AFTER_CURRENT) {
+                            try {
+                                if (!handlingAutoRandom) {
+                                    handlingAutoRandom = true;
+                                    final int target = pickRandomGlobalIndexAvoidingCurrent();
+                                    handler.post(new Runnable() { @Override public void run() {
+                                        try { jumpToGlobalIndex(target, 0L, true); } catch (Throwable ignore) {}
+                                        handlingAutoRandom = false;
+                                    }});
+                                }
+                            } catch (Throwable ignore) {}
+                            return;
+                        }
                         // 切歌时补发一次广播，避免未绑定场景下UI停在0:00
                         sendPlaybackStateBroadcast();
                         // AFTER_CURRENT：自动切曲或单曲重复时立即暂停
@@ -490,6 +505,8 @@ public class PlayerService extends Service {
                         }
                         // 额外延迟补发一帧，增大拿到有效duration的概率（轻量，不影响性能）
                         handler.postDelayed(new Runnable() { @Override public void run() { sendPlaybackStateBroadcast(); } }, 250);
+                        
+
                         // 非全局 + 随机：回到起点自动重洗
                         if (!useGlobalAllSongsMode && playbackMode == PLAYBACK_MODE_SHUFFLE) {
                             try {

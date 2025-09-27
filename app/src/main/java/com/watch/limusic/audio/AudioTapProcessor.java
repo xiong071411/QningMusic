@@ -10,10 +10,22 @@ public final class AudioTapProcessor implements AudioProcessor {
 	private static final int DEFAULT_BARS = 16; // 降耗：降低默认频带数
 	private static final int FRAME_SIZE = 512;  // 降耗：缩短分析帧长
 	private static final double MIN_DB = -60.0; // dBFS 映射下限
+	// 新增：频段范围与动态响应参数（手表优先）
+	private static final float F_MIN_HZ = 50f;      // 缩窄低端，去除次低频轰鸣
+	private static final float F_MAX_HZ = 6000f;    // 移除超高频，避免右侧“死条”
+	private static final int ATTACK_MS = 20;        // 快上升，便于捕捉鼓点
+	private static final int RELEASE_MS = 220;      // 慢下降，视觉平滑
+	private static final int PEAK_HOLD_MS = 70;     // 缩短峰值保持
+	private static final int HOLD_RELEASE_MS = 70;  // 持峰结束的缓释时间常数
+	private static final float LOW_SHELF_DB = -6f;  // <80Hz 更强抑制
+	private static final float KICK_BOOST_DB = 2f;  // 80–160Hz 鼓点轻微加权
+	// 新增：噪声门限滞回（开门/关门）
+	private static final float GATE_OPEN_DB = -58f;
+	private static final float GATE_CLOSE_DB = -62f;
 
 	private int barCount = DEFAULT_BARS;
 	private float[] bars = new float[barCount];
-	private float ema = 0.35f; // 平滑系数
+	private float ema = 0.35f; // 平滑系数（保留作为兜底）
 	private int sampleRateHz = 48000;
 	private int channels = 2;
 	private boolean playing = false;
@@ -32,11 +44,17 @@ public final class AudioTapProcessor implements AudioProcessor {
 	// 复用：Hann窗与加窗后的帧缓冲，避免在频带循环内重复计算
 	private double[] hannWin = null;
 	private final float[] winBuf = new float[FRAME_SIZE];
+	// 新增：双时间常数与峰值保持的状态
+	private float[] smoothed = new float[barCount];
+	private float[] held = new float[barCount];
+	private long[] holdUntilMs = new long[barCount];
+	// 新增：噪声门限滞回状态
+	private boolean[] gateOpen = new boolean[barCount];
 
 	public void setPlaying(boolean p) { this.playing = p; }
 	public void setBarCount(int c) {
 		int n = Math.max(8, Math.min(64, c));
-		if (n != barCount) { barCount = n; bars = new float[barCount]; updateBands(); }
+		if (n != barCount) { barCount = n; bars = new float[barCount]; smoothed = new float[barCount]; held = new float[barCount]; holdUntilMs = new long[barCount]; gateOpen = new boolean[barCount]; updateBands(); }
 	}
 	public void setEma(float e) { this.ema = Math.max(0.05f, Math.min(0.9f, e)); }
 
@@ -85,8 +103,8 @@ public final class AudioTapProcessor implements AudioProcessor {
 		bandCentersHz = new float[barCount];
 		coeff = new double[barCount];
 		float nyq = sampleRateHz * 0.5f;
-		float fMin = 60f;
-		float fMax = Math.min(10000f, nyq - 1000f); // 上限略降以降噪且降耗
+		float fMin = F_MIN_HZ;
+		float fMax = Math.min(F_MAX_HZ, nyq * 0.98f); // 上限略降以降噪且降耗
 		if (fMax <= fMin + 200f) fMax = nyq * 0.9f;
 		double ratio = Math.pow(fMax / fMin, 1.0 / Math.max(1, barCount - 1));
 		for (int i = 0; i < barCount; i++) {
@@ -97,6 +115,14 @@ public final class AudioTapProcessor implements AudioProcessor {
 		}
 		// 窗函数缓存无效化（如帧长/采样率变化）
 		hannWin = null;
+		// 状态清零
+		for (int i = 0; i < barCount; i++) { bars[i] = 0f; smoothed[i] = 0f; held[i] = 0f; holdUntilMs[i] = 0L; gateOpen[i] = false; }
+	}
+
+	private float alphaFromMs(long dtMs, float tauMs) {
+		if (dtMs <= 0) return 1f;
+		float a = (float) (1.0 - Math.exp(-dtMs / Math.max(1.0, tauMs)));
+		return a < 0f ? 0f : (a > 1f ? 1f : a);
 	}
 
 	private void analyzeFrame(float[] frame, int n) {
@@ -124,7 +150,10 @@ public final class AudioTapProcessor implements AudioProcessor {
 			double x = (frame[i] - mean) * hannWin[i];
 			winBuf[i] = (float) x;
 		}
-		// 4) 频带 Goertzel
+		// 4) 频带 Goertzel + 能量整形 + 双时间常数 + 峰值保持(缓释) + 门限滞回
+		float aUp = alphaFromMs(minInterval, ATTACK_MS);
+		float aDn = alphaFromMs(minInterval, RELEASE_MS);
+		float aHold = alphaFromMs(minInterval, HOLD_RELEASE_MS);
 		for (int b = 0; b < barCount; b++) {
 			double c = coeff[b];
 			double s0, s1 = 0.0, s2 = 0.0;
@@ -138,19 +167,64 @@ public final class AudioTapProcessor implements AudioProcessor {
 			double mag = Math.sqrt(Math.max(0.0, power)) / (n * 0.5);
 			double db = 20.0 * Math.log10(mag + 1e-9);
 			if (db > 0) db = 0;
-			float level = (float)((db - MIN_DB) / (-MIN_DB));
-			// 轻微增强高频响应（右侧），最多约+8%
-			float hfBoost = 1.0f + 0.08f * (b / (float)Math.max(1, barCount - 1));
-			level *= hfBoost;
-			if (level < 0f) level = 0f; else if (level > 1f) level = 1f;
-			bars[b] = (float)(bars[b] + (level - bars[b]) * ema);
+
+			// 门限滞回：决定是否开门
+			boolean open = gateOpen[b];
+			if (open) {
+				if (db <= GATE_CLOSE_DB) { open = false; gateOpen[b] = false; }
+			} else {
+				if (db >= GATE_OPEN_DB) { open = true; gateOpen[b] = true; }
+			}
+
+			float targetLevel;
+			if (!open || db <= MIN_DB) {
+				// 关门或深低于噪声下限：拉向0
+				targetLevel = 0f;
+			} else {
+				// 频段加权（在dB域操作更符合感知）
+				float fc = bandCentersHz[b];
+				float adjustDb = 0f;
+				if (fc < 70f) adjustDb += LOW_SHELF_DB;           // 低频强抑制
+				else if (fc < 90f) adjustDb += (LOW_SHELF_DB * 0.5f); // 70–90Hz 半量抑制
+				else if (fc <= 160f) adjustDb += KICK_BOOST_DB;   // 鼓点加权
+				db = Math.max((float)MIN_DB, Math.min(0.0f, (float)(db + adjustDb)));
+				targetLevel = (float)((db - MIN_DB) / (-MIN_DB)); // 归一化0..1
+				// 轻微增强高频响应（右侧），最多约+8%
+				float hfBoost = 1.0f + 0.08f * (b / (float)Math.max(1, barCount - 1));
+				targetLevel *= hfBoost;
+				if (targetLevel < 0f) targetLevel = 0f; else if (targetLevel > 1f) targetLevel = 1f;
+			}
+			// 双时间常数平滑
+			float prev = smoothed[b];
+			float a = targetLevel > prev ? aUp : aDn;
+			float sm = prev + (targetLevel - prev) * a;
+			smoothed[b] = sm;
+			bars[b] = applyHoldAndGet(now, b, sm, aHold);
 		}
 		com.watch.limusic.audio.AudioLevelBus.publish(bars, playing);
 	}
 
+	private float applyHoldAndGet(long now, int idx, float value, float releaseAlpha) {
+		float h = held[idx];
+		if (value > h) {
+			held[idx] = value;
+			holdUntilMs[idx] = now + PEAK_HOLD_MS;
+			h = value;
+		} else {
+			if (now < holdUntilMs[idx]) {
+				// 仍在保持期间，维持峰值
+			} else {
+				// 持峰结束：缓释到当前值，避免瞬间跌落
+				held[idx] = h + (value - h) * releaseAlpha;
+				h = held[idx];
+			}
+		}
+		return h > value ? h : value;
+	}
+
 	@Override public void queueEndOfStream() { inputEnded = true; }
-	@Override public ByteBuffer getOutput() { return outputBuffer; }
+	@Override public ByteBuffer getOutput() { ByteBuffer out = outputBuffer; outputBuffer = EMPTY_BUFFER; return out; }
 	@Override public boolean isEnded() { return inputEnded && outputBuffer == EMPTY_BUFFER; }
 	@Override public void flush() { outputBuffer = EMPTY_BUFFER; inputEnded = false; monoFill = 0; }
-	@Override public void reset() { flush(); inputFormat = AudioFormat.NOT_SET; outputFormat = AudioFormat.NOT_SET; bars = new float[barCount]; updateBands(); }
+	@Override public void reset() { flush(); inputFormat = AudioFormat.NOT_SET; outputFormat = AudioFormat.NOT_SET; bars = new float[barCount]; smoothed = new float[barCount]; held = new float[barCount]; holdUntilMs = new long[barCount]; gateOpen = new boolean[barCount]; updateBands(); }
 } 

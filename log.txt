@@ -1,55 +1,43 @@
-2025-08-29 18:05:54.133 24334-24334 AppCompatDelegate       com.watch.limusic                    D  Checking for metadata for AppLocalesMetadataHolderService : Service not found
-2025-08-29 18:05:54.813 24334-24334 NetworkSecurityConfig   com.watch.limusic                    D  No Network Security Config specified, using platform default
-2025-08-29 18:05:54.842 24334-24334 MusicRepository         com.watch.limusic                    D  网络状态更改: 可用
-2025-08-29 18:05:54.845 24334-24363 MainActivity            com.watch.limusic                    D  下载系统迁移已完成，无需重复执行
-2025-08-29 18:05:54.846 24334-24363 MainActivity            com.watch.limusic                    D  下载系统兼容性状态: CompatibilityStatus{compatible=true, cache=true, download=true, database=true, migrated=true, error='null'}
-2025-08-29 18:05:55.015 24334-24370 MainActivity            com.watch.limusic                    D  启动时预加载 - 数据库中的歌曲数量: 283
-2025-08-29 18:05:55.016 24334-24370 MainActivity            com.watch.limusic                    D  启动时预加载 - 数据库中已有足够歌曲，跳过预加载
-2025-08-29 18:05:55.035 24334-24369 okhttp.OkHttpClient     com.watch.limusic                    I  --> GET http://隐藏ip:4533/rest/getRandomSongs?u=xiong071411&t=16b5f4819d02ca939b669163654ae9e1&s=302813145&v=1.16.1&c=LiMusic&f=json&size=500
-2025-08-29 18:05:55.074 24334-24372 MainActivity            com.watch.limusic                    D  数据库中的歌曲数量: 283
-2025-08-29 18:05:55.088 24334-24341 zygote                  com.watch.limusic                    I  Do partial code cache collection, code=30KB, data=27KB
-2025-08-29 18:05:55.089 24334-24341 zygote                  com.watch.limusic                    I  After code cache collection, code=30KB, data=27KB
-2025-08-29 18:05:55.089 24334-24341 zygote                  com.watch.limusic                    I  Increasing code cache capacity to 128KB
-2025-08-29 18:05:55.093 24334-24373 OpenGLRenderer          com.watch.limusic                    D  HWUI GL Pipeline
-2025-08-29 18:05:55.165 24334-24334 ExoPlayerImpl           com.watch.limusic                    I  Init 155a8cb [ExoPlayerLib/2.18.7] [OW20W2, OW20W2, QUALCOMM, 27]
-2025-08-29 18:05:55.226 24334-24334 PlayerService           com.watch.limusic                    D  初始化播放器 - 设置默认模式为列表循环
-2025-08-29 18:05:55.229 24334-24334 MediaSessionCompat      com.watch.limusic                    W  Couldn't find a unique registered media button receiver in the given context.
-2025-08-29 18:05:55.342 24334-24369 okhttp.OkHttpClient     com.watch.limusic                    I  <-- 200 OK http://隐藏ip:4533/rest/getRandomSongs?u=xiong071411&t=16b5f4819d02ca939b669163654ae9e1&s=302813145&v=1.16.1&c=LiMusic&f=json&size=500 (306ms, unknown-length body)
-2025-08-29 18:05:55.463 24334-24341 zygote                  com.watch.limusic                    I  Do partial code cache collection, code=61KB, data=51KB
-2025-08-29 18:05:55.465 24334-24341 zygote                  com.watch.limusic                    I  After code cache collection, code=61KB, data=51KB
-2025-08-29 18:05:55.465 24334-24341 zygote                  com.watch.limusic                    I  Increasing code cache capacity to 256KB
-2025-08-29 18:05:55.740 24334-24334 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=102b685040c50126872eb950dc5f3080&s=527491818&v=1.16.1&c=LiMusic&id=7iZhg7lUUSG2Oht3KUKXmo&format=mp3&maxBitRate=320
-2025-08-29 18:05:55.862 24334-24341 zygote                  com.watch.limusic                    I  Do full code cache collection, code=125KB, data=88KB
-2025-08-29 18:05:55.863 24334-24341 zygote                  com.watch.limusic                    I  After code cache collection, code=95KB, data=55KB
-2025-08-29 18:05:55.927 24334-24334 PlayerService           com.watch.limusic                    D  切换到歌曲: 木兰行, 索引: 149
-2025-08-29 18:05:55.927 24334-24334 PlayerService           com.watch.limusic                    D  原因: 播放列表改变
-2025-08-29 18:05:55.941 24334-24334 PlayerService           com.watch.limusic                    D  正在缓冲
-2025-08-29 18:05:55.950 24334-24334 PlayerService           com.watch.limusic                    D  强制转码启用：统一请求 mp3@320kbps -> http://隐藏ip:4533/rest/stream?u=xiong071411&t=7eb3d19b85e779d4544895853a8b96f7&s=756038244&v=1.16.1&c=LiMusic&id=7iZhg7lUUSG2Oht3KUKXmo&format=mp3&maxBitRate=320
-2025-08-29 18:05:55.951 24334-24334 PlayerService           com.watch.limusic                    D  诊断[STATE_BUFFERING]: state=2, isPlaying=false
-2025-08-29 18:05:55.951 24334-24334 PlayerService           com.watch.limusic                    D  歌曲: 木兰行 - 祖娅纳惜, 索引=149/283
-2025-08-29 18:05:55.952 24334-24334 PlayerService           com.watch.limusic                    D  进度: pos=14256ms, dur=-9223372036854775807ms, bufPos=14256ms(0%)
-2025-08-29 18:05:55.952 24334-24334 PlayerService           com.watch.limusic                    D  网络: available=true, wifi=false, 估算码率=N/A
-2025-08-29 18:05:55.952 24334-24334 PlayerService           com.watch.limusic                    D  来源: 流媒体, url=http://隐藏ip:4533/rest/stream?u=xiong071411&t=7eb3d19b85e779d4544895853a8b96f7&s=756038244&v=1.16.1&c=LiMusic&id=7iZhg7lUUSG2Oht3KUKXmo&format=mp3&maxBitRate=320, 已缓存=false
-2025-08-29 18:05:55.952 24334-24334 PlayerService           com.watch.limusic                    D  缓存: used=18073138/73400320 bytes
-2025-08-29 18:05:55.952 24334-24334 PlayerService           com.watch.limusic                    D  设置播放模式: 列表循环
-2025-08-29 18:05:55.952 24334-24382 AndroidRuntime          com.watch.limusic                    E  FATAL EXCEPTION: PlayerService-IO (Ask Gemini)
-                                                                                                    Process: com.watch.limusic, PID: 24334
-                                                                                                    java.lang.IllegalStateException: Player is accessed on the wrong thread.
-                                                                                                    Current thread: 'PlayerService-IO'
-                                                                                                    Expected thread: 'main'
-                                                                                                    See https://developer.android.com/guide/topics/media/issues/player-accessed-on-wrong-thread
-                                                                                                    	at com.google.android.exoplayer2.ExoPlayerImpl.verifyApplicationThread(ExoPlayerImpl.java:2669)
-                                                                                                    	at com.google.android.exoplayer2.ExoPlayerImpl.getPlaybackState(ExoPlayerImpl.java:484)
-                                                                                                    	at com.google.android.exoplayer2.BasePlayer.isPlaying(BasePlayer.java:116)
-                                                                                                    	at com.watch.limusic.service.PlayerService.lambda$sendPlaybackStateBroadcast$1(PlayerService.java:624)
-                                                                                                    	at com.watch.limusic.service.PlayerService.$r8$lambda$89VSWM8w6b5zKbhMpKoEymxFNvw(Unknown Source:0)
-                                                                                                    	at com.watch.limusic.service.PlayerService$$ExternalSyntheticLambda1.run(D8$$SyntheticClass:0)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1162)
-                                                                                                    	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:636)
-                                                                                                    	at com.watch.limusic.service.PlayerService$1.lambda$newThread$0(PlayerService.java:126)
-                                                                                                    	at com.watch.limusic.service.PlayerService$1$$ExternalSyntheticLambda0.run(D8$$SyntheticClass:0)
-                                                                                                    	at java.lang.Thread.run(Thread.java:764)
-2025-08-29 18:05:55.952 24334-24334 PlayerService           com.watch.limusic                    D  设置播放模式: 列表循环
-2025-08-29 18:05:55.966 24334-24334 Parcel                  com.watch.limusic                    E  Reading a NULL string not supported here.
-2025-08-29 18:05:55.999 24334-24382 Process                 com.watch.limusic                    I  Sending signal. PID: 24334 SIG: 9
-2025-08-29 18:05:56.085  1017-1100  InputDispatcher         system_server                        E  channel '8c2e499 com.watch.limusic/com.watch.limusic.MainActivity (server)' ~ Channel is unrecoverably broken and will be disposed!
+2025-09-21 15:48:35.562 19468-19468 PlayerService           com.watch.limusic                    D  切换到歌曲: 3, 索引: 2
+2025-09-21 15:48:35.562 19468-19468 PlayerService           com.watch.limusic                    D  原因: 自动切换到下一首
+2025-09-21 15:48:41.766 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 40586(5MB) AllocSpace objects, 3(100KB) LOS objects, 23% free, 19MB/25MB, paused 215us total 142.286ms
+2025-09-21 15:49:02.205 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 37063(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 190us total 138.964ms
+2025-09-21 15:49:19.217 19468-19468 PlayerService           com.watch.limusic                    D  切换到歌曲: 2, 索引: 1
+2025-09-21 15:49:19.217 19468-19468 PlayerService           com.watch.limusic                    D  原因: 自动切换到下一首
+2025-09-21 15:49:22.442 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 35355(6MB) AllocSpace objects, 3(100KB) LOS objects, 23% free, 19MB/25MB, paused 172us total 142.001ms
+2025-09-21 15:49:34.251 19468-20150 XingSeeker              com.watch.limusic                    W  XING data size mismatch: 1749376, 1749248
+2025-09-21 15:49:34.760 19468-20151 XingSeeker              com.watch.limusic                    W  XING data size mismatch: 1749376, 1749248
+2025-09-21 15:49:39.560 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 31370(5MB) AllocSpace objects, 4(112KB) LOS objects, 23% free, 19MB/25MB, paused 109us total 134.130ms
+2025-09-21 15:50:00.057 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 33378(5MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 1.227ms total 148.305ms
+2025-09-21 15:50:11.981 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8471277230, 130970937, 6289391, 6286605
+2025-09-21 15:50:12.488 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8471784047, 130970937, 6289391, 6286605
+2025-09-21 15:50:12.994 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8472289955, 130970937, 6289391, 6286605
+2025-09-21 15:50:13.503 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8472798645, 130970937, 6289391, 6286605
+2025-09-21 15:50:14.010 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8473306420, 130970937, 6289391, 6286605
+2025-09-21 15:50:14.512 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8473808315, 130970937, 6289391, 6286605
+2025-09-21 15:50:15.014 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8474309748, 130970937, 6289391, 6286605
+2025-09-21 15:50:15.523 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8474819409, 130970937, 6289391, 6286605
+2025-09-21 15:50:16.035 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8475330984, 130970937, 6289391, 6286605
+2025-09-21 15:50:16.537 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8475832918, 130970937, 6289391, 6286605
+2025-09-21 15:50:17.047 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8476342656, 130970937, 6289391, 6286605
+2025-09-21 15:50:17.555 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8476850542, 130970937, 6289391, 6286605
+2025-09-21 15:50:18.063 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8477358542, 130970937, 6289391, 6286605
+2025-09-21 15:50:18.568 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8477864405, 130970937, 6289391, 6286605
+2025-09-21 15:50:19.073 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8478368544, 130970937, 6289391, 6286605
+2025-09-21 15:50:19.578 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8478874145, 130970937, 6289391, 6286605
+2025-09-21 15:50:20.087 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8479382600, 130970937, 6289391, 6286605
+2025-09-21 15:50:20.591 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8479887438, 130970937, 6289391, 6286605
+2025-09-21 15:50:21.101 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8480396872, 130970937, 6289391, 6286605
+2025-09-21 15:50:21.611 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8480907395, 130970937, 6289391, 6286605
+2025-09-21 15:50:22.112 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8481408386, 130970937, 6289391, 6286605
+2025-09-21 15:50:22.621 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8481917076, 130970937, 6289391, 6286605
+2025-09-21 15:50:23.130 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8482426368, 130970937, 6289391, 6286605
+2025-09-21 15:50:23.631 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8482926671, 130970937, 6289391, 6286605
+2025-09-21 15:50:24.133 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8483428600, 130970937, 6289391, 6286605
+2025-09-21 15:50:24.634 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8483929858, 130970937, 6289391, 6286605
+2025-09-21 15:50:25.146 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8484441506, 130970937, 6289391, 6286605
+2025-09-21 15:50:25.656 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8484952229, 130970937, 6289391, 6286605
+2025-09-21 15:50:26.167 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8485462530, 130970937, 6289391, 6286605
+2025-09-21 15:50:26.673 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8485969217, 130970937, 6289391, 6286605
+2025-09-21 15:50:27.181 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8486476938, 130970937, 6289391, 6286605
+2025-09-21

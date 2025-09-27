@@ -169,6 +169,7 @@ public class LyricsController {
 		boolean enabled = sp.getBoolean("visualizer_enabled", false);
 		int alpha = sp.getInt("visualizer_alpha", 40);
 		boolean low = sp.getBoolean("low_power_mode_enabled", false);
+		int style = Math.max(0, Math.min(2, sp.getInt("visualizer_style", 1)));
 		visualizerEnabled = enabled && !low;
 		visualizerAlphaPercent = Math.max(0, Math.min(100, alpha));
 		lowPowerMode = low;
@@ -176,6 +177,7 @@ public class LyricsController {
 			visualizerView.setEnabledBySetting(visualizerEnabled);
 			visualizerView.setAlphaPercent(visualizerAlphaPercent);
 			visualizerView.setLowPowerMode(lowPowerMode);
+			try { visualizerView.setRenderStyle(style); } catch (Throwable ignore) {}
 			visualizerView.setVisibleOnPage(true); // 歌词页可见后才会调用
 			visualizerView.setPlaying(player != null && player.isPlaying());
 		}

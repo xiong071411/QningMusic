@@ -1732,26 +1732,26 @@ public class MainActivity extends AppCompatActivity
                     // 在线/离线下的处理差异：离线下为了保证可播放性，仍回退构建本地列表并过滤
                     if (!isNetworkAvailable) {
                         // 离线回退：仅当需要离线保证时再取本地列表
-                        currentList = new java.util.ArrayList<>();
-                        int total = musicRepository.getSongCount();
-                        List<Song> range = musicRepository.getSongsRange(Math.max(0, total), 0);
-                        currentList.addAll(range);
+                    currentList = new java.util.ArrayList<>();
+                    int total = musicRepository.getSongCount();
+                    List<Song> range = musicRepository.getSongsRange(Math.max(0, total), 0);
+                    currentList.addAll(range);
                     }
                 } else if (songAdapter != null) {
                     currentList = songAdapter.getSongList();
                 }
                 if (!(adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter)) {
-                    if (currentList == null || currentList.isEmpty()) {
-                        Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
-                        return;
+                if (currentList == null || currentList.isEmpty()) {
+                    Toast.makeText(this, "播放列表为空", Toast.LENGTH_SHORT).show();
+                    return;
                     }
                 }
                 
                 // 在离线模式下，检查歌曲是否已离线可用（已下载优先，其次缓存）
                 if (!isNetworkAvailable) {
                     boolean isDownloaded = localFileDetector.isSongDownloaded(song);
-                    boolean isCached = CacheManager.getInstance(this).isCachedByAnyKey(song.getId());
-                    if (!(isDownloaded || isCached)) {
+boolean isCached = CacheManager.getInstance(this).isCachedByAnyKey(song.getId());
+if (!(isDownloaded || isCached)) {
                         Toast.makeText(this, "离线模式下只能播放已缓存的歌曲", Toast.LENGTH_SHORT).show();
                         Log.d(TAG, "离线模式下尝试播放未缓存的歌曲: " + song.getTitle());
                         return;
@@ -1854,7 +1854,7 @@ public class MainActivity extends AppCompatActivity
                 pendingPlaylist = null;
                 pendingPlaylistRebasedIndex = position;
             } else {
-                pendingPlaylist = buildCurrentPlaylistFor(position);
+            pendingPlaylist = buildCurrentPlaylistFor(position);
             }
             bindService();
             Toast.makeText(this, "正在连接播放服务…", Toast.LENGTH_SHORT).show();

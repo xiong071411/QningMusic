@@ -3,6 +3,9 @@ package com.watch.limusic.view;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Paint;
+import android.graphics.RectF;
+import android.graphics.LinearGradient;
+import android.graphics.Shader;
 import android.media.audiofx.Visualizer;
 import android.util.AttributeSet;
 import android.view.View;
@@ -19,10 +22,17 @@ public class AudioBarsVisualizerView extends View {
 	private static final float DECAY_PER_FRAME = 0.08f; // 暂停或静音时的衰减速度
 	private static final float SMOOTH_FACTOR = 0.35f; // 指数平滑系数（0-1）
 
+	// 新增：样式支持
+	public static final int STYLE_MINIMAL = 0;
+	public static final int STYLE_CAPSULE = 1;
+	public static final int STYLE_AMBIENT = 2;
+
 	private final Paint barPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+	private final Paint glowPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
 	private int barCount = DEFAULT_BAR_COUNT;
 	private float[] barLevels = new float[barCount]; // 0..1
 	private float[] barTargets = new float[barCount];
+	private int renderStyle = STYLE_CAPSULE;
 
 	private volatile boolean enabledBySetting = false;
 	private volatile boolean visibleOnPage = false;
@@ -34,6 +44,11 @@ public class AudioBarsVisualizerView extends View {
 	private boolean visualizerWorking = false;
 	private boolean useFakeMode = false;
 	private boolean useExternalLevels = false;
+
+	// 资源缓存（避免每帧创建对象）
+	private RectF rect = new RectF();
+	private LinearGradient gradient = null;
+	private int lastW = -1, lastH = -1;
 
 	private final Runnable frameTick = new Runnable() {
 		@Override public void run() {
@@ -58,6 +73,8 @@ public class AudioBarsVisualizerView extends View {
 		barPaint.setColor(0xFFFFFFFF); // 默认白色，透明度由View alpha控制
 		setAlpha(0.4f); // 默认40%透明
 		setWillNotDraw(false);
+		glowPaint.setStyle(Paint.Style.FILL);
+		glowPaint.setColor(0x22FFFFFF);
 	}
 
 	@Override
@@ -97,6 +114,15 @@ public class AudioBarsVisualizerView extends View {
 		this.barTargets = new float[c];
 		invalidate();
 	}
+	// 新增：设置样式
+	public void setRenderStyle(int style) {
+		if (style != STYLE_MINIMAL && style != STYLE_CAPSULE && style != STYLE_AMBIENT) return;
+		this.renderStyle = style;
+		// 尺寸变化时将重新创建渐变
+		gradient = null;
+		invalidate();
+	}
+	public int getRenderStyle() { return renderStyle; }
 
 	// 新增：接收外部可视化数据
 	public void setLevels(float[] levels) {
@@ -264,12 +290,48 @@ public class AudioBarsVisualizerView extends View {
 		float maxBarHeight = h * 0.5f; // 上半区域，避免遮挡歌词
 		float bottom = h * 0.95f; // 底对齐稍微上移
 
+		// 渐变与资源按尺寸变更预创建
+		if (lastW != w || lastH != h || gradient == null) {
+			lastW = w; lastH = h;
+			gradient = new LinearGradient(0, bottom - maxBarHeight, 0, bottom,
+					new int[]{0x66FFFFFF, 0xFFFFFFFF}, new float[]{0f, 1f}, Shader.TileMode.CLAMP);
+		}
+		barPaint.setShader(gradient);
+
 		for (int i = 0; i < count; i++) {
 			float level = i < barLevels.length ? barLevels[i] : 0f;
 			float bh = maxBarHeight * level;
 			float left = i * (barWidth + barSpacing);
 			float top = bottom - bh;
-			canvas.drawRoundRect(left, top, left + barWidth, bottom, dp(1), dp(1), barPaint);
+			rect.set(left, top, left + barWidth, bottom);
+			switch (renderStyle) {
+				case STYLE_MINIMAL:
+					canvas.drawRect(rect, barPaint);
+					break;
+				case STYLE_AMBIENT:
+					// 先画一层柔光矩形（非高斯，低成本模拟光晕）
+					glowPaint.setColor(0x22FFFFFF);
+					canvas.drawRoundRect(left, top - dp(2), left + barWidth, bottom + dp(2), dp(2), dp(2), glowPaint);
+					// 再画主体条
+					canvas.drawRoundRect(rect, dp(2), dp(2), barPaint);
+					break;
+				case STYLE_CAPSULE:
+				default:
+					canvas.drawRoundRect(rect, dp(3), dp(3), barPaint);
+					// 顶部小高亮点
+					float dotH = Math.min(dp(3), bh);
+					if (dotH > 0.5f) {
+						float dotTop = top;
+						RectF dot = rect;
+						dot.set(left, dotTop, left + barWidth, dotTop + dotH);
+						Paint p = barPaint;
+						int oldAlpha = p.getAlpha();
+						p.setAlpha(Math.min(255, (int)(oldAlpha * 0.85f)));
+						canvas.drawRoundRect(dot, dp(3), dp(3), p);
+						p.setAlpha(oldAlpha);
+					}
+					break;
+			}
 		}
 	}
 
