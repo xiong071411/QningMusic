@@ -3,6 +3,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     
     <item
+        android:id="@+id/action_enter_selection"
+        android:icon="@drawable/ic_multi_select"
+        android:title="选择"
+        app:showAsAction="always" />
+
+    <item
         android:id="@+id/action_letter_index"
         android:icon="@drawable/ic_letter_index"
         android:title="@string/letter_index"
@@ -15,4 +21,10 @@
         android:visible="false"
         app:showAsAction="always" />
 
+    <item
+        android:id="@+id/action_download_selected"
+        android:icon="@drawable/ic_download"
+        android:title="下载"
+        android:visible="false"
+        app:showAsAction="always" />
 </menu> 

@@ -45,10 +45,10 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 		this.lines = lines;
 		setHasStableIds(true);
 		SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
-		this.sizeCurrentSp = sp.getInt("lyric_size_current_sp", 18);
-		this.sizeOtherSp = sp.getInt("lyric_size_other_sp", 12);
-		this.smoothEnabled = sp.getBoolean("lyric_smooth_enabled", false);
-		this.longMarqueeEnabled = sp.getBoolean("lyric_long_marquee_enabled", false);
+		this.sizeCurrentSp = sp.getInt("lyric_size_current_sp", 24);
+		this.sizeOtherSp = sp.getInt("lyric_size_other_sp", 16);
+		this.smoothEnabled = sp.getBoolean("lyric_smooth_enabled", true);
+		this.longMarqueeEnabled = sp.getBoolean("lyric_long_marquee_enabled", true);
 		this.basePadPx = dp(2);
 		recomputeHeights();
 	}
@@ -88,10 +88,10 @@ public class LyricsAdapter extends RecyclerView.Adapter<LyricsAdapter.VH> {
 
 	public void reloadSizes() {
 		SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
-		this.sizeCurrentSp = sp.getInt("lyric_size_current_sp", 18);
-		this.sizeOtherSp = sp.getInt("lyric_size_other_sp", 12);
-		this.smoothEnabled = sp.getBoolean("lyric_smooth_enabled", false);
-		this.longMarqueeEnabled = sp.getBoolean("lyric_long_marquee_enabled", false);
+		this.sizeCurrentSp = sp.getInt("lyric_size_current_sp", 24);
+		this.sizeOtherSp = sp.getInt("lyric_size_other_sp", 16);
+		this.smoothEnabled = sp.getBoolean("lyric_smooth_enabled", true);
+		this.longMarqueeEnabled = sp.getBoolean("lyric_long_marquee_enabled", true);
 		recomputeHeights();
 		notifyDataSetChanged();
 	}

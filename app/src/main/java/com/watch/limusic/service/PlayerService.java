@@ -428,6 +428,45 @@ public class PlayerService extends Service {
             public void onMediaItemTransition(MediaItem mediaItem, int reason) {
                 if (mediaItem != null) {
                     int newIndex = player.getCurrentMediaItemIndex();
+                    // A修复：非全局+列表循环+自动切歌且此前位于歌单末尾，若回绕到窗口首项且窗口覆盖到歌单尾，则纠正为歌单首项
+                    try {
+                        if (!useGlobalAllSongsMode && playbackMode == PLAYBACK_MODE_REPEAT_ALL && reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO && sleepType != SleepType.AFTER_CURRENT) {
+                            int prevIdx = currentIndex;
+                            int listSize = (playlist != null ? playlist.size() : 0);
+                            int mediaCount = Math.max(0, player.getMediaItemCount());
+                            int windowStartLocal = mediaBasePlaylistIndex;
+                            int windowEndLocal = windowStartLocal + mediaCount;
+                            boolean atListEnd = (prevIdx >= 0 && listSize > 0 && prevIdx == listSize - 1);
+                            boolean windowCoversListEnd = (listSize > 0 && windowEndLocal >= listSize);
+                            boolean wrappedWindowHead = (newIndex == 0);
+                            if (atListEnd && windowCoversListEnd && wrappedWindowHead && windowStartLocal != 0) {
+                                final int NEXT_CHUNK = 15;
+                                int wStart = 0;
+                                int wEnd = Math.min(listSize, NEXT_CHUNK + 1);
+                                java.util.List<MediaItem> items = new java.util.ArrayList<>();
+                                for (int i = wStart; i < wEnd; i++) {
+                                    Song s = playlist.get(i);
+                                    String streamUrl = navidromeApi.getStreamUrl(s.getId());
+                                    items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, streamUrl)));
+                                }
+                                currentIndex = 0;
+                                try { currentSong = playlist.get(0); } catch (Throwable ignore) {}
+                                mediaBasePlaylistIndex = 0;
+                                handler.post(new Runnable() { @Override public void run() {
+                                    try {
+                                        player.stop();
+                                        player.clearMediaItems();
+                                        player.setMediaItems(items, 0, 0);
+                                        player.prepare();
+                                        applyPlaybackMode();
+                                        play();
+                                    } catch (Throwable ignore) {}
+                                }});
+                                Log.d(TAG, "检测到窗口首回绕，已纠正为歌单首项并重建窗口[0," + wEnd + ")");
+                                return;
+                            }
+                        }
+                    } catch (Throwable ignore) {}
                     // 将播放器媒体索引映射为全量播放列表索引（全局模式下支持取模包络）
                     int mappedIndex = mediaBasePlaylistIndex + Math.max(0, newIndex);
                     if (useGlobalAllSongsMode && globalTotalCount > 0) {
@@ -506,7 +545,7 @@ public class PlayerService extends Service {
                         // 额外延迟补发一帧，增大拿到有效duration的概率（轻量，不影响性能）
                         handler.postDelayed(new Runnable() { @Override public void run() { sendPlaybackStateBroadcast(); } }, 250);
                         
-
+                        
                         // 非全局 + 随机：回到起点自动重洗
                         if (!useGlobalAllSongsMode && playbackMode == PLAYBACK_MODE_SHUFFLE) {
                             try {
@@ -728,7 +767,7 @@ public class PlayerService extends Service {
             }
             if (audioType != null) intent.putExtra("audioType", audioType);
         } catch (Throwable ignore) {}
-        if (currentSong != null) {
+                                if (currentSong != null) {
             intent.putExtra("songId", currentSong.getId());
             intent.putExtra("title", currentSong.getTitle());
             intent.putExtra("artist", currentSong.getArtist());
@@ -739,7 +778,7 @@ public class PlayerService extends Service {
             Long cached = durationCacheMs.get(currentSong.getId());
             if (cached != null && cached > 0) {
                 intent.putExtra("fallbackDurationMs", cached);
-            } else {
+                                } else {
                 // 异步多级兜底：本地文件 -> DB -> 服务器API
                 final String sid = currentSong.getId();
                 bgExecutor.execute(() -> {
@@ -835,7 +874,7 @@ public class PlayerService extends Service {
 			boolean fromFile = false;
 			boolean cached = false;
 			if (currentSong != null) {
-				String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(currentSong.getId());
+				String streamUrl = navidromeApi.getStreamUrl(currentSong.getId());
 				url = getOptimalPlayUrl(currentSong, streamUrl);
 				fromFile = url != null && url.startsWith("file://");
 				if (!fromFile) {
@@ -1010,18 +1049,18 @@ public class PlayerService extends Service {
             mediaBasePlaylistIndex = wStart;
             List<MediaItem> windowItems = new ArrayList<>();
             for (int i = wStart; i < wEnd; i++) {
-                Song s = playlist.get(i);
-                String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                                    Song s = playlist.get(i);
+                String streamUrl = navidromeApi.getStreamUrl(s.getId());
                 String optimalUrl = getOptimalPlayUrl(s, streamUrl);
                 windowItems.add(buildStreamingMediaItem(s.getId(), optimalUrl));
-            }
+                                }
             int startIdxInWindow = Math.max(0, currentIndex - wStart);
-            try {
+                                try {
                 player.setMediaItems(windowItems, startIdxInWindow, 0);
                 // 维持当前播放模式（含随机/循环）
                 applyPlaybackMode();
-                player.prepare();
-            } catch (Throwable ignore) {}
+                                    player.prepare();
+                                } catch (Throwable ignore) {}
         } else {
         int targetMediaIndex = Math.max(0, currentIndex - mediaBasePlaylistIndex);
         targetMediaIndex = Math.min(Math.max(0, targetMediaIndex), Math.max(0, player.getMediaItemCount() - 1));
@@ -1091,7 +1130,7 @@ public class PlayerService extends Service {
             List<MediaItem> windowItems = new ArrayList<>();
             for (int i = wStart; i < wEnd; i++) {
                 Song s = playlist.get(i);
-                String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                String streamUrl = navidromeApi.getStreamUrl(s.getId());
                 String optimalUrl = getOptimalPlayUrl(s, streamUrl);
                 windowItems.add(buildStreamingMediaItem(s.getId(), optimalUrl));
             }
@@ -1275,7 +1314,7 @@ public class PlayerService extends Service {
         List<MediaItem> windowItems = new ArrayList<>();
         for (int i = wStart; i < wEnd; i++) {
             Song s = playlist.get(i);
-            String streamUrl = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+            String streamUrl = navidromeApi.getStreamUrl(s.getId());
             String optimalUrl = getOptimalPlayUrl(s, streamUrl);
             windowItems.add(buildStreamingMediaItem(s.getId(), optimalUrl));
         }
@@ -1325,65 +1364,91 @@ public class PlayerService extends Service {
                 player.setRepeatMode(Player.REPEAT_MODE_ALL);
                 player.setShuffleModeEnabled(false);
                 Log.d(TAG, "设置播放模式: 列表循环");
-                break;
-            case PLAYBACK_MODE_REPEAT_ONE:
-                player.setRepeatMode(Player.REPEAT_MODE_ONE);
-                player.setShuffleModeEnabled(false);
-                Log.d(TAG, "设置播放模式: 单曲循环");
-                break;
-            case PLAYBACK_MODE_SHUFFLE:
-                // 对于随机播放，我们仍然需要全部循环
-                player.setRepeatMode(Player.REPEAT_MODE_ALL);
-                if (useGlobalAllSongsMode) {
-                    // 全局模式：禁用内建shuffle，改为自定义全局随机
-                    player.setShuffleModeEnabled(false);
-                    Log.d(TAG, "设置播放模式: 全局随机（自定义）");
-                } else {
-                    // 非全局随机：小列表全量注入，扩大随机覆盖范围
-                    try {
-                        int currentItemIndex = Math.max(0, player.getCurrentMediaItemIndex());
-                        long curPos = Math.max(0, player.getCurrentPosition());
-                        int mediaCount = Math.max(0, player.getMediaItemCount());
-                        int listSize = (playlist != null ? playlist.size() : 0);
-                        if (listSize > 0 && listSize <= FULL_INJECT_THRESHOLD && mediaCount != listSize) {
-                            // 以当前歌曲为基准，重建全量媒体项
-                            List<MediaItem> items = new ArrayList<>(listSize);
-                            for (int i = 0; i < listSize; i++) {
-                                Song s = playlist.get(i);
-                                String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
-                                items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
-                            }
-                            // 定位当前曲在全量列表中的索引
-                            int keep = 0;
-                            if (currentSong != null) {
-                                for (int i = 0; i < listSize; i++) { if (currentSong.getId().equals(playlist.get(i).getId())) { keep = i; break; } }
-                            } else {
-                                // 退化：按原 mediaIndex 映射回全量
-                                keep = Math.min(Math.max(0, currentIndex), Math.max(0, listSize - 1));
-                            }
-                            mediaBasePlaylistIndex = 0;
-                            player.setMediaItems(items, keep, curPos);
-                            player.prepare();
-                            player.setShuffleModeEnabled(true);
-                            player.seekTo(keep, curPos);
+                // C修复：非全局 + 列表循环下，对小歌单全量注入，避免自动回绕仅在窗口内循环
+                if (!useGlobalAllSongsMode) {
+                    int listSize = (playlist != null ? playlist.size() : 0);
+                    int mediaCount = player != null ? player.getMediaItemCount() : 0;
+                    if (listSize > 0 && listSize <= FULL_INJECT_THRESHOLD && mediaCount != listSize) {
+                        int keep = 0;
+                        long curPos = 0L;
+                        try { curPos = Math.max(0, player.getCurrentPosition()); } catch (Throwable ignore) {}
+                        if (currentSong != null) {
+                            for (int i = 0; i < listSize; i++) { if (currentSong.getId().equals(playlist.get(i).getId())) { keep = i; break; } }
                         } else {
-                    player.setShuffleModeEnabled(true);
-                    if (player.getPlaybackState() == Player.STATE_READY) {
-                                player.seekTo(currentItemIndex, curPos);
-                            }
+                            keep = Math.min(Math.max(0, currentIndex), Math.max(0, listSize - 1));
                         }
-                    } catch (Throwable t) {
-                        // 安全兜底
-                        player.setShuffleModeEnabled(true);
+                        java.util.List<MediaItem> items = new java.util.ArrayList<>(listSize);
+                        for (int i = 0; i < listSize; i++) {
+                            Song s = playlist.get(i);
+                            String url = navidromeApi.getStreamUrl(s.getId());
+                            items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
+                        }
+                        mediaBasePlaylistIndex = 0;
+                        try {
+                            player.setMediaItems(items, Math.max(0, keep), Math.max(0, curPos));
+                            player.prepare();
+                        } catch (Throwable ignore) {}
                     }
-                     // 记录随机锚点：以当前歌曲为一轮起点
-                     shuffleAnchorSongId = (currentSong != null ? currentSong.getId() : null);
-                     shuffleVisitedNonAnchor = false;
-                    Log.d(TAG, "设置播放模式: 随机播放（本地列表） 保持索引:" + (player != null ? Math.max(0, player.getCurrentMediaItemIndex()) : 0));
                 }
                 break;
-        }
-    }
+            case PLAYBACK_MODE_REPEAT_ONE:
+                        player.setRepeatMode(Player.REPEAT_MODE_ONE);
+                        player.setShuffleModeEnabled(false);
+                        Log.d(TAG, "设置播放模式: 单曲循环");
+                        break;
+                    case PLAYBACK_MODE_SHUFFLE:
+                        // 对于随机播放，我们仍然需要全部循环
+                        player.setRepeatMode(Player.REPEAT_MODE_ALL);
+                        if (useGlobalAllSongsMode) {
+                            // 全局模式：禁用内建shuffle，改为自定义全局随机
+                            player.setShuffleModeEnabled(false);
+                            Log.d(TAG, "设置播放模式: 全局随机（自定义）");
+                        } else {
+                            // 非全局随机：小列表全量注入，扩大随机覆盖范围
+                            try {
+                                int currentItemIndex = Math.max(0, player.getCurrentMediaItemIndex());
+                                long curPos = Math.max(0, player.getCurrentPosition());
+                                int mediaCount = Math.max(0, player.getMediaItemCount());
+                                int listSize = (playlist != null ? playlist.size() : 0);
+                                if (listSize > 0 && listSize <= FULL_INJECT_THRESHOLD && mediaCount != listSize) {
+                                    // 以当前歌曲为基准，重建全量媒体项
+                                    List<MediaItem> items = new ArrayList<>(listSize);
+                                    for (int i = 0; i < listSize; i++) {
+                                        Song s = playlist.get(i);
+                                        String url = navidromeApi.getStreamUrl(s.getId());
+                                        items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
+                                    }
+                                    // 定位当前曲在全量列表中的索引
+                                    int keep = 0;
+                                    if (currentSong != null) {
+                                        for (int i = 0; i < listSize; i++) { if (currentSong.getId().equals(playlist.get(i).getId())) { keep = i; break; } }
+                                    } else {
+                                        // 退化：按原 mediaIndex 映射回全量
+                                        keep = Math.min(Math.max(0, currentIndex), Math.max(0, listSize - 1));
+                                    }
+                                    mediaBasePlaylistIndex = 0;
+                                    player.setMediaItems(items, keep, curPos);
+                                    player.prepare();
+                                    player.setShuffleModeEnabled(true);
+                                    player.seekTo(keep, curPos);
+                                } else {
+                    player.setShuffleModeEnabled(true);
+                    if (player.getPlaybackState() == Player.STATE_READY) {
+                                    player.seekTo(currentItemIndex, curPos);
+                                }
+                                }
+                            } catch (Throwable t) {
+                                // 安全兜底
+                                player.setShuffleModeEnabled(true);
+                            }
+                             // 记录随机锚点：以当前歌曲为一轮起点
+                             shuffleAnchorSongId = (currentSong != null ? currentSong.getId() : null);
+                             shuffleVisitedNonAnchor = false;
+                            Log.d(TAG, "设置播放模式: 随机播放（本地列表） 保持索引:" + (player != null ? Math.max(0, player.getCurrentMediaItemIndex()) : 0));
+                        }
+                        break;
+                }
+            }
     
     public void shufflePlaylist() {
         if (playlist.size() <= 1) return;
@@ -1408,7 +1473,7 @@ public class PlayerService extends Service {
         // 清除之前的播放列表，添加整个新列表
         List<MediaItem> items = new ArrayList<>();
         for (Song song : newPlaylist) {
-            String url = NavidromeApi.getInstance(this).getStreamUrl(song.getId());
+            String url = navidromeApi.getStreamUrl(song.getId());
 			items.add(buildStreamingMediaItem(song.getId(), url));
         }
         
@@ -1765,7 +1830,7 @@ public class PlayerService extends Service {
 
         List<MediaItem> items = new ArrayList<>();
         for (Song s : songs) {
-            String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+            String url = navidromeApi.getStreamUrl(s.getId());
             String opt = getOptimalPlayUrl(s, url);
             items.add(buildStreamingMediaItem(s.getId(), opt));
         }
@@ -1799,7 +1864,7 @@ public class PlayerService extends Service {
                     if (more != null && !more.isEmpty()) {
                         List<MediaItem> after = new ArrayList<>();
                         for (Song s : more) {
-                            String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                            String url = navidromeApi.getStreamUrl(s.getId());
                             after.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
                         }
                         playlist.addAll(more);
@@ -1815,7 +1880,7 @@ public class PlayerService extends Service {
                         if (head != null && !head.isEmpty()) {
                             List<MediaItem> after = new ArrayList<>();
                             for (Song s : head) {
-                                String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                                String url = navidromeApi.getStreamUrl(s.getId());
                                 after.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
                             }
                             playlist.addAll(head); // 注意：playlist 此时可能超过 totalCount（仅用于映射方便）
@@ -1833,7 +1898,7 @@ public class PlayerService extends Service {
                     if (more != null && !more.isEmpty()) {
                         List<MediaItem> before = new ArrayList<>();
                         for (Song s : more) {
-                            String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                            String url = navidromeApi.getStreamUrl(s.getId());
                             before.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
                         }
                         playlist.addAll(0, more);
@@ -1900,7 +1965,7 @@ public class PlayerService extends Service {
 
         List<MediaItem> items = new ArrayList<>();
         for (Song s : songs) {
-            String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+            String url = navidromeApi.getStreamUrl(s.getId());
             items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
         }
         player.stop();
@@ -1945,7 +2010,7 @@ public class PlayerService extends Service {
             int startInWindow = center - windowStart;
             List<MediaItem> items = new ArrayList<>();
             for (Song s : songs) {
-                String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                String url = navidromeApi.getStreamUrl(s.getId());
                 items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
             }
             handler.post(() -> {
@@ -2177,7 +2242,7 @@ public class PlayerService extends Service {
                     List<MediaItem> items = new ArrayList<>();
                     for (int i = wStart; i < wEnd; i++) {
                         Song s = playlist.get(i);
-                        String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                        String url = navidromeApi.getStreamUrl(s.getId());
                         items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
                     }
                     int keep = Math.max(0, player.getCurrentMediaItemIndex());
@@ -2202,7 +2267,7 @@ public class PlayerService extends Service {
                     List<MediaItem> items = new ArrayList<>();
                     for (int i = wStart; i < wEnd; i++) {
                         Song s = playlist.get(i);
-                        String url = NavidromeApi.getInstance(this).getStreamUrl(s.getId());
+                        String url = navidromeApi.getStreamUrl(s.getId());
                         items.add(buildStreamingMediaItem(s.getId(), getOptimalPlayUrl(s, url)));
                     }
                     int keep = Math.max(0, player.getCurrentMediaItemIndex());

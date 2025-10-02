@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- 上方较小的一枚对勾（缩小并向右下方微移；此处下移约1dp） -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M10.6,13.0 L8.1,10.4 6.6,11.8 10.6,15.0 17.2,7.9 15.9,6.5z"/>
+    <!-- 下方对勾：基于上方形状等比例，整体向右下平移（再左移1dp以拉开间距） -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M11.6,18.0 L9.1,15.4 7.6,16.8 11.6,20.0 18.2,12.9 16.9,11.5z"/>
+</vector> 

@@ -154,7 +154,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 
 		findViewById(R.id.card_lyric_smooth).setOnClickListener(v -> {
 			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_LYRIC_SMOOTH, false);
+			boolean enabled = sp.getBoolean(KEY_LYRIC_SMOOTH, true);
 			sp.edit().putBoolean(KEY_LYRIC_SMOOTH, !enabled).apply();
 			updateLyricSmoothSummary();
 			notifyUiLyric();
@@ -163,7 +163,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		// 新增：长句滚动显示开关
 		findViewById(R.id.card_lyric_long_marquee).setOnClickListener(v -> {
 			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_LYRIC_LONG_MARQUEE, false);
+			boolean enabled = sp.getBoolean(KEY_LYRIC_LONG_MARQUEE, true);
 			sp.edit().putBoolean(KEY_LYRIC_LONG_MARQUEE, !enabled).apply();
 			updateLyricLongSummary();
 			notifyUiLyric();
@@ -172,7 +172,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		// 新增：显示音频类型开关
 		findViewById(R.id.card_show_audio_type).setOnClickListener(v -> {
 			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, false);
+			boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, true);
 			sp.edit().putBoolean(KEY_SHOW_AUDIO_TYPE, !enabled).apply();
 			updateShowAudioTypeSummary();
 			notifyUiBadge();
@@ -202,14 +202,14 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 
 	private void initLyricSizeControls() {
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-		int cur = sp.getInt(KEY_LYRIC_SIZE_CURRENT, 18);
-		int other = sp.getInt(KEY_LYRIC_SIZE_OTHER, 12);
-		seekLyricCur.setMax(8);
-		int curProg = Math.max(0, Math.min(8, cur - 16));
+		int cur = sp.getInt(KEY_LYRIC_SIZE_CURRENT, 24);
+		int other = sp.getInt(KEY_LYRIC_SIZE_OTHER, 16);
+		seekLyricCur.setMax(12);
+		int curProg = Math.max(0, Math.min(12, cur - 16));
 		seekLyricCur.setProgress(curProg);
 		txtLyricCur.setText(cur + "sp");
-		seekLyricOther.setMax(6);
-		int otherProg = Math.max(0, Math.min(6, other - 10));
+		seekLyricOther.setMax(10);
+		int otherProg = Math.max(0, Math.min(10, other - 10));
 		seekLyricOther.setProgress(otherProg);
 		txtLyricOther.setText(other + "sp");
 
@@ -265,7 +265,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 
 	private void updateLyricSmoothSummary() {
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-		boolean enabled = sp.getBoolean(KEY_LYRIC_SMOOTH, false);
+		boolean enabled = sp.getBoolean(KEY_LYRIC_SMOOTH, true);
 		txtLyricSmoothSummary.setText(enabled ? "已开启（会增加歌词显示时的耗电与发热）" : "关闭");
 	}
 
@@ -273,7 +273,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private void updateLyricLongSummary() {
 		if (txtLyricLongSummary == null) return;
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-		boolean enabled = sp.getBoolean(KEY_LYRIC_LONG_MARQUEE, false);
+		boolean enabled = sp.getBoolean(KEY_LYRIC_LONG_MARQUEE, true);
 		txtLyricLongSummary.setText(enabled ? "已开启（仅当前行，超过两行时在两行视窗内滚动）" : "关闭");
 	}
 
@@ -366,7 +366,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private void updateShowAudioTypeSummary() {
 		if (txtShowAudioTypeSummary == null) return;
 		SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-		boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, false);
+		boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, true);
 		txtShowAudioTypeSummary.setText(enabled ? "已开启" : "关闭");
 	}
 

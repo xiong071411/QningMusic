@@ -56,11 +56,13 @@ public class DownloadManager {
     private final ConcurrentHashMap<String, DownloadInfo> activeDownloads;
     private final ConcurrentHashMap<String, Future<?>> downloadTasks;
     private final ConcurrentHashMap<String, Boolean> pauseFlags;
+    private final java.util.concurrent.ConcurrentLinkedQueue<String> waitingQueue;
     private final File downloadDir;
     private final File songsDir;
     private final File coversDir;
     private final DownloadRepository downloadRepository;
     private BroadcastReceiver configUpdatedReceiver;
+    private volatile boolean globalPaused = false;
 
     private DownloadManager(Context context) {
         this.context = context.getApplicationContext();
@@ -69,6 +71,7 @@ public class DownloadManager {
         this.activeDownloads = new ConcurrentHashMap<>();
         this.downloadTasks = new ConcurrentHashMap<>();
         this.pauseFlags = new ConcurrentHashMap<>();
+        this.waitingQueue = new java.util.concurrent.ConcurrentLinkedQueue<>();
         this.downloadRepository = DownloadRepository.getInstance(context);
         
         // 创建下载目录结构
@@ -144,9 +147,25 @@ public class DownloadManager {
         // 更新数据库状态
         downloadRepository.updateDownloadStatus(songId, DownloadStatus.DOWNLOADING);
         
-        // 提交下载任务
-        Future<?> task = downloadExecutor.submit(() -> performDownload(downloadInfo));
-        downloadTasks.put(songId, task);
+        // 全局暂停时，不启动新任务，转为"已暂停"并入等待队列
+        if (globalPaused) {
+            // 全局暂停：仅入等待队列，保持 WAITING，统一由 resumeAll 恢复
+            downloadInfo.setStatus(DownloadStatus.WAITING);
+            downloadRepository.updateDownloadStatus(songId, DownloadStatus.WAITING);
+            waitingQueue.offer(songId);
+            Log.i(TAG, "全局暂停中，加入等待队列: " + song.getTitle());
+            return;
+        }
+        
+        // 若当前正在进行的任务已达上限，标记为 WAITING，否则提交
+        if (downloadTasks.size() >= MAX_CONCURRENT_DOWNLOADS) {
+            downloadInfo.setStatus(DownloadStatus.WAITING);
+            downloadRepository.updateDownloadStatus(songId, DownloadStatus.WAITING);
+            waitingQueue.offer(songId);
+        } else {
+            Future<?> task = downloadExecutor.submit(() -> performDownload(downloadInfo));
+            downloadTasks.put(songId, task);
+        }
         
         Log.i(TAG, "开始下载歌曲: " + song.getTitle());
     }
@@ -156,10 +175,31 @@ public class DownloadManager {
      */
     public void cancelAll() {
         try {
+            // 先取消内存中的运行任务
             java.util.List<String> ids = new java.util.ArrayList<>(activeDownloads.keySet());
             for (String id : ids) {
                 try { cancelDownload(id); } catch (Exception ignore) {}
             }
+            // 清理等待队列
+            waitingQueue.clear();
+            // 将数据库中仍标记为活动态的任务（含 WAITING/PAUSED/FAILED/DOWNLOADING）统一设为 NOT_DOWNLOADED，并清理残留.part
+            java.util.List<com.watch.limusic.database.DownloadEntity> act = downloadRepository.getActiveDownloads();
+            if (act != null) {
+                for (com.watch.limusic.database.DownloadEntity e : act) {
+                    String sid = e.getSongId();
+                    try {
+                        File part = new File(songsDir, sid + ".mp3.part");
+                        if (part.exists()) part.delete();
+                    } catch (Exception ignore) {}
+                    try { downloadRepository.updateDownloadStatus(sid, DownloadStatus.NOT_DOWNLOADED); } catch (Exception ignore) {}
+                    try { sendDownloadCanceledBroadcast(sid); } catch (Exception ignore) {}
+                }
+            }
+            // 清空内存状态
+            activeDownloads.clear();
+            downloadTasks.clear();
+            pauseFlags.clear();
+            globalPaused = false;
         } catch (Exception e) {
             Log.w(TAG, "取消全部下载时发生异常: " + e.getMessage());
         }
@@ -172,7 +212,7 @@ public class DownloadManager {
         String songId = downloadInfo.getSongId();
         
         try {
-            // 获取下载URL，根据“下载强制转码”设置决定是否转码
+            // 获取下载URL，根据"下载强制转码"设置决定是否转码
             SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
             boolean forceDownloadTranscode = sp.getBoolean("force_transcode_download_non_mp3", false);
             String streamUrl;
@@ -259,17 +299,21 @@ public class DownloadManager {
         } finally {
             // 清理：暂停状态保留activeDownloads，移除任务引用；其他状态清空
             if (activeDownloads.containsKey(songId)) {
-                if (activeDownloads.get(songId).getStatus() == DownloadStatus.DOWNLOAD_PAUSED) {
-                    // 仅移除任务Future，保留下载信息便于续传
+                if (activeDownloads.get(songId).getStatus() == DownloadStatus.DOWNLOAD_PAUSED || activeDownloads.get(songId).getStatus() == DownloadStatus.WAITING) {
                     downloadTasks.remove(songId);
+                    // 若有空闲，尝试启动等待中的下一个（全局暂停时不触发）
+                    if (!globalPaused) tryStartNextIfPossible();
                 } else {
                     activeDownloads.remove(songId);
                     downloadTasks.remove(songId);
                     pauseFlags.remove(songId);
+                    // 下载完成/失败/取消一个后，尝试启动等待队列（全局暂停时不触发）
+                    if (!globalPaused) tryStartNextIfPossible();
                 }
             } else {
                 downloadTasks.remove(songId);
                 pauseFlags.remove(songId);
+                if (!globalPaused) tryStartNextIfPossible();
             }
         }
     }
@@ -324,6 +368,8 @@ public class DownloadManager {
                 byte[] buffer = new byte[BUFFER_SIZE];
                 long downloadedBytes = existingBytes;
                 int bytesRead;
+                long lastEmitMs = System.currentTimeMillis();
+                int lastPercent = -1;
 
                 while ((bytesRead = input.read(buffer)) != -1) {
                     // 检查暂停标记
@@ -337,9 +383,14 @@ public class DownloadManager {
                     downloadedBytes += bytesRead;
                     downloadInfo.setDownloadedBytes(downloadedBytes);
 
-                    // 发送进度更新
+                    // 限流发送进度更新：时间 >= 200ms 或 进度变化 >= 1%
                     final int progress = downloadInfo.getProgressPercentage();
-                    sendDownloadProgressBroadcast(downloadInfo.getSongId(), progress);
+                    long now = System.currentTimeMillis();
+                    if (progress != lastPercent || now - lastEmitMs >= 200) {
+                        sendDownloadProgressBroadcast(downloadInfo.getSongId(), progress);
+                        lastPercent = progress;
+                        lastEmitMs = now;
+                    }
                 }
             }
         } finally {
@@ -369,22 +420,18 @@ public class DownloadManager {
             task.cancel(true);
             downloadTasks.remove(songId);
         }
-        
-        DownloadInfo downloadInfo = activeDownloads.remove(songId);
-        if (downloadInfo != null) {
-            downloadInfo.setStatus(DownloadStatus.NOT_DOWNLOADED);
-            
-            // 删除部分下载的文件
+        // 若处于等待队列：直接从activeDownloads移除并标记 NOT_DOWNLOADED；若正在下载：同理处理
+        DownloadInfo info = activeDownloads.remove(songId);
+        try {
             File part = new File(songsDir, songId + ".mp3.part");
             if (part.exists()) part.delete();
-            
-            // 更新数据库
+        } catch (Exception ignore) {}
+        try {
             downloadRepository.updateDownloadStatus(songId, DownloadStatus.NOT_DOWNLOADED);
-        }
-        
-        // 发送取消广播，便于UI立即刷新
+        } catch (Exception ignore) {}
+        if (info != null) info.setStatus(DownloadStatus.NOT_DOWNLOADED);
+        pauseFlags.remove(songId);
         sendDownloadCanceledBroadcast(songId);
-        
         Log.i(TAG, "取消下载: " + songId);
     }
 
@@ -398,6 +445,8 @@ public class DownloadManager {
         pauseFlags.put(songId, true);
         info.setStatus(DownloadStatus.DOWNLOAD_PAUSED);
         downloadRepository.updateDownloadStatus(songId, DownloadStatus.DOWNLOAD_PAUSED);
+        // 主动广播一次以驱动UI刷新（downloadsUiReceiver监听进度动作）
+        try { sendDownloadProgressBroadcast(songId, info.getProgressPercentage()); } catch (Exception ignore) {}
         Log.i(TAG, "已请求暂停下载: " + songId);
     }
 
@@ -413,10 +462,26 @@ public class DownloadManager {
             activeDownloads.put(songId, info);
         }
         final DownloadInfo infoFinal = info;
+        // 全局暂停：仅标记为暂停并入等待队列
+        if (globalPaused) {
+            // 全局暂停：转 WAITING 入队
+            infoFinal.setStatus(DownloadStatus.WAITING);
+            downloadRepository.updateDownloadStatus(songId, DownloadStatus.WAITING);
+            waitingQueue.offer(songId);
+            Log.i(TAG, "全局暂停中，延后恢复(入等待): " + song.getTitle());
+            return;
+        }
+        // 若已在等待中或线程已满，转 WAITING
+        if (downloadTasks.size() >= MAX_CONCURRENT_DOWNLOADS) {
+            infoFinal.setStatus(DownloadStatus.WAITING);
+            downloadRepository.updateDownloadStatus(songId, DownloadStatus.WAITING);
+            waitingQueue.offer(songId);
+        } else {
         infoFinal.setStatus(DownloadStatus.DOWNLOADING);
         downloadRepository.updateDownloadStatus(songId, DownloadStatus.DOWNLOADING);
         Future<?> task = downloadExecutor.submit(() -> performDownload(infoFinal));
         downloadTasks.put(songId, task);
+        }
         Log.i(TAG, "继续下载: " + song.getTitle());
     }
 
@@ -432,10 +497,16 @@ public class DownloadManager {
                 deleted = f.delete() || deleted;
             }
         }
+        // 额外清理残留的.part 文件
+        try {
+            File part = new File(songsDir, songId + ".mp3.part");
+            if (part.exists()) deleted = part.delete() || deleted;
+        } catch (Exception ignore) {}
         
         if (deleted) {
-            // 从数据库中删除记录
+            try {
             downloadRepository.deleteDownload(songId);
+            } catch (Exception ignore) {}
             Log.i(TAG, "删除下载文件: " + songId);
         }
         
@@ -529,5 +600,97 @@ public class DownloadManager {
         } finally {
             if (conn != null) conn.disconnect();
         }
+    }
+
+    /**
+     * 在应用被强杀/重启后，修复卡在 DOWNLOADING 状态的记录：
+     * - 若存在 .part 文件则标记为 DOWNLOAD_PAUSED（可继续/可取消）
+     * - 否则标记为 NOT_DOWNLOADED（无残留）
+     */
+    public void reconcileStaleDownloads() {
+        try {
+            java.util.List<com.watch.limusic.database.DownloadEntity> act = downloadRepository.getActiveDownloads();
+            if (act == null || act.isEmpty()) return;
+            for (com.watch.limusic.database.DownloadEntity e : act) {
+                String songId = e.getSongId();
+                boolean inMemory = activeDownloads.containsKey(songId);
+                if (inMemory) continue;
+                File part = new File(songsDir, songId + ".mp3.part");
+                if (part.exists() && part.length() > 0) {
+                    downloadRepository.updateDownloadStatus(songId, DownloadStatus.DOWNLOAD_PAUSED);
+                } else {
+                    downloadRepository.updateDownloadStatus(songId, DownloadStatus.NOT_DOWNLOADED);
+                }
+            }
+        } catch (Exception ex) {
+            Log.w(TAG, "reconcileStaleDownloads 异常: " + ex.getMessage());
+        }
+    }
+
+    /**
+     * 全局暂停：暂停当前运行并将等待中的任务标记为暂停，禁止新任务启动
+     */
+    public synchronized void pauseAll() {
+        globalPaused = true;
+        try {
+            // 统一处理所有活动项（包含运行中/等待中）：标记为暂停并广播一次以刷新UI
+            java.util.List<String> allIds = new java.util.ArrayList<>(activeDownloads.keySet());
+            for (String id : allIds) {
+                try {
+                    pauseFlags.put(id, true);
+                    DownloadInfo info = activeDownloads.get(id);
+                    if (info != null) {
+                        info.setStatus(DownloadStatus.DOWNLOAD_PAUSED);
+                        downloadRepository.updateDownloadStatus(id, DownloadStatus.DOWNLOAD_PAUSED);
+                        try { sendDownloadProgressBroadcast(id, info.getProgressPercentage()); } catch (Exception ignore) {}
+                    } else {
+                        downloadRepository.updateDownloadStatus(id, DownloadStatus.DOWNLOAD_PAUSED);
+                        try { sendDownloadProgressBroadcast(id, 0); } catch (Exception ignore) {}
+                    }
+                } catch (Exception ignore) {}
+            }
+            // 清空等待队列，防止占位被释放后新的任务被自动拉起
+            waitingQueue.clear();
+        } catch (Exception ignore) {}
+    }
+
+    /**
+     * 全局恢复：允许启动等待任务，将"已暂停"的任务转回 WAITING 并尝试启动
+     */
+    public synchronized void resumeAll() {
+        globalPaused = false;
+        try {
+            // 将已暂停的任务转回 WAITING，并放入等待队列，同时清除暂停标记并更新内存状态
+            for (String id : new java.util.ArrayList<>(activeDownloads.keySet())) {
+                try {
+                    DownloadInfo info = activeDownloads.get(id);
+                    if (info != null && info.getStatus() == DownloadStatus.DOWNLOAD_PAUSED) {
+                        pauseFlags.remove(id);
+                        info.setStatus(DownloadStatus.WAITING);
+                        downloadRepository.updateDownloadStatus(id, DownloadStatus.WAITING);
+                        waitingQueue.offer(id);
+                        // 通知一次UI刷新
+                        try { sendDownloadProgressBroadcast(id, info.getProgressPercentage()); } catch (Exception ignore) {}
+                    }
+                } catch (Exception ignore) {}
+            }
+            tryStartNextIfPossible();
+        } catch (Exception ignore) {}
+    }
+
+    private void tryStartNextIfPossible() {
+        try {
+            if (globalPaused) return;
+            while (downloadTasks.size() < MAX_CONCURRENT_DOWNLOADS) {
+                String nextId = waitingQueue.poll();
+                if (nextId == null) break;
+                DownloadInfo info = activeDownloads.get(nextId);
+                if (info == null) continue;
+                info.setStatus(DownloadStatus.DOWNLOADING);
+                downloadRepository.updateDownloadStatus(nextId, DownloadStatus.DOWNLOADING);
+                Future<?> task = downloadExecutor.submit(() -> performDownload(info));
+                downloadTasks.put(nextId, task);
+            }
+        } catch (Exception ignore) {}
     }
 }

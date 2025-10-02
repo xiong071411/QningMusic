@@ -32,6 +32,21 @@ public class DownloadInfo {
         this.albumId = song.getAlbumId();
     }
 
+    public DownloadInfo(DownloadInfo other) {
+        this.songId = other.songId;
+        this.title = other.title;
+        this.artist = other.artist;
+        this.album = other.album;
+        this.albumId = other.albumId;
+        this.status = other.status;
+        this.downloadedBytes = other.downloadedBytes;
+        this.totalBytes = other.totalBytes;
+        this.downloadTimestamp = other.downloadTimestamp;
+        this.filePath = other.filePath;
+        this.errorMessage = other.errorMessage;
+        this.retryCount = other.retryCount;
+    }
+    
     // Getters and Setters
     public String getSongId() {
         return songId;

@@ -140,7 +140,7 @@
                         android:id="@+id/txt_lyric_current_size_value"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="18sp"
+                        android:text="24sp"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:layout_marginTop="4dp" />
@@ -149,7 +149,7 @@
                         android:id="@+id/seek_lyric_current_size"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="8"
+                        android:max="12"
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp" />
                 </LinearLayout>
@@ -185,7 +185,7 @@
                         android:id="@+id/txt_lyric_other_size_value"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="12sp"
+                        android:text="16sp"
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp"
                         android:layout_marginTop="4dp" />
@@ -194,7 +194,7 @@
                         android:id="@+id/seek_lyric_other_size"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:max="6"
+                        android:max="10"
                         android:paddingTop="4dp"
                         android:paddingBottom="4dp" />
                 </LinearLayout>

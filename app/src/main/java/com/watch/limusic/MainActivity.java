@@ -57,6 +57,11 @@ import com.watch.limusic.util.NetworkUtils;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import com.watch.limusic.cache.CacheManager;
 import com.watch.limusic.util.BlurUtils;
+import com.watch.limusic.adapter.SectionHeaderAdapter;
+import com.watch.limusic.adapter.DownloadTaskAdapter;
+import com.watch.limusic.adapter.DownloadedSongAdapter;
+import com.watch.limusic.model.DownloadInfo;
+import com.watch.limusic.model.DownloadStatus;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -524,8 +529,11 @@ public class MainActivity extends AppCompatActivity
                     if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
                         ((com.watch.limusic.adapter.AllSongsRangeAdapter) adapter).setCurrentPlaying(songIdFromSvc, isPlaying);
                         updateLocateButtonVisibility(songIdFromSvc);
-                    } else if (songAdapter != null) {
+                    } else if (songAdapter != null && adapter == songAdapter) {
                         songAdapter.setCurrentPlaying(songIdFromSvc, isPlaying);
+                        updateLocateButtonVisibility(songIdFromSvc);
+                    } else if ("downloads".equals(currentView) && downloadedSongAdapter != null) {
+                        downloadedSongAdapter.setCurrentPlaying(songIdFromSvc, isPlaying);
                         updateLocateButtonVisibility(songIdFromSvc);
                     }
                 } catch (Exception ignore) {}
@@ -540,7 +548,7 @@ public class MainActivity extends AppCompatActivity
                     }
                     // 音频类型徽标显示（广播未携带时尝试主动查询）
                     try {
-                        boolean show = getSharedPreferences("player_prefs", MODE_PRIVATE).getBoolean("show_audio_type_badge", false);
+                        boolean show = getSharedPreferences("player_prefs", MODE_PRIVATE).getBoolean("show_audio_type_badge", true);
                         if (fullAudioBadge != null) {
                             String badge = audioType;
                             if ((badge == null || badge.isEmpty())) {
@@ -743,6 +751,37 @@ public class MainActivity extends AppCompatActivity
         if (btnLocateCurrent == null || recyclerView == null) return;
         try {
             RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
+            // 下载管理页（ConcatAdapter）：定位到"已下载"分区
+            if ("downloads".equals(currentView) && adapter instanceof androidx.recyclerview.widget.ConcatAdapter) {
+                String sid = currentSongId;
+                if (sid == null) {
+                    if (bound && playerService != null && playerService.getCurrentSong() != null) {
+                        sid = playerService.getCurrentSong().getId();
+                    } else {
+                        SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
+                        sid = sp.getString("last_song_id", null);
+                    }
+                }
+                if (sid == null || downloadedSongAdapter == null) { btnLocateCurrent.setVisibility(View.GONE); return; }
+                int innerPos = downloadedSongAdapter.getPositionBySongId(sid);
+                if (innerPos < 0) { btnLocateCurrent.setVisibility(View.GONE); return; }
+                int offset = 0;
+                offset += 1; // headerActive
+                if (downloadsHeaderActiveExpanded && downloadTaskAdapter != null) offset += downloadTaskAdapter.getItemCount();
+                offset += 1; // headerCompleted
+                int absPos = offset + innerPos;
+                if (!(recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager)) {
+                    btnLocateCurrent.setVisibility(View.VISIBLE);
+                    return;
+                }
+                androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                int first = lm.findFirstVisibleItemPosition();
+                int last = lm.findLastVisibleItemPosition();
+                boolean inView = absPos >= first && absPos <= last;
+                btnLocateCurrent.setVisibility(inView ? View.GONE : View.VISIBLE);
+                return;
+            }
+
             // 仅在歌曲列表或歌单详情使用
             boolean isSongList = (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) || (adapter == songAdapter);
             if (!isSongList) { btnLocateCurrent.setVisibility(View.GONE); return; }
@@ -799,6 +838,21 @@ public class MainActivity extends AppCompatActivity
             }
             if (sid == null) sid = getSharedPreferences("player_prefs", MODE_PRIVATE).getString("last_song_id", null);
             if (sid == null) return;
+
+            // 下载管理页定位到"已下载"分区
+            if ("downloads".equals(currentView) && adapter instanceof androidx.recyclerview.widget.ConcatAdapter) {
+                if (downloadedSongAdapter == null) return; // 未初始化
+                int innerPos = downloadedSongAdapter.getPositionBySongId(sid);
+                if (innerPos < 0) return; // 未下载
+                if (!downloadsHeaderCompletedExpanded) { downloadsHeaderCompletedExpanded = true; rebuildDownloadsConcat(); }
+                int offset = 0;
+                offset += 1; // headerActive
+                if (downloadsHeaderActiveExpanded && downloadTaskAdapter != null) offset += downloadTaskAdapter.getItemCount();
+                offset += 1; // headerCompleted
+                int absPos = offset + innerPos;
+                smoothCenterTo(absPos);
+                return;
+            }
 
             int targetPos = -1;
             if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
@@ -1071,6 +1125,10 @@ public class MainActivity extends AppCompatActivity
         lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_FAILED));
         lbm.registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_CANCELED));
+        lbm.registerReceiver(downloadsUiReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_PROGRESS));
+        lbm.registerReceiver(downloadsUiReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        lbm.registerReceiver(downloadsUiReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_FAILED));
+        lbm.registerReceiver(downloadsUiReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_CANCELED));
         
         // 启动时预加载数据
         preloadData();
@@ -1376,6 +1434,8 @@ public class MainActivity extends AppCompatActivity
         if (btnLocateCurrent != null) {
             btnLocateCurrent.setOnClickListener(v -> locateCurrentPlaying());
         }
+        // 下载管理：移除任何全局触摸拦截可能干扰长按
+        try { recyclerView.setOnTouchListener(null); } catch (Exception ignore) {}
 
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
@@ -1727,7 +1787,11 @@ public class MainActivity extends AppCompatActivity
                 // 获取当前显示的整个歌曲列表作为播放列表
                 List<Song> currentList = null;
                 RecyclerView.Adapter<?> adapter = recyclerView.getAdapter();
-                if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                int playIndexOverride = -1;
+                if ("downloads".equals(currentView) && downloadedSongAdapter != null) {
+                    currentList = downloadedSongAdapter.getSongList();
+                    try { playIndexOverride = downloadedSongAdapter.getPositionBySongId(song.getId()); } catch (Exception ignore) {}
+                } else if (adapter instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
                     // 所有歌曲：不再在UI线程整表查询，直接请求服务端全局滑动窗口从当前位置播放
                     // 在线/离线下的处理差异：离线下为了保证可播放性，仍回退构建本地列表并过滤
                     if (!isNetworkAvailable) {
@@ -1746,7 +1810,6 @@ public class MainActivity extends AppCompatActivity
                     return;
                     }
                 }
-                
                 // 在离线模式下，检查歌曲是否已离线可用（已下载优先，其次缓存）
                 if (!isNetworkAvailable) {
                     boolean isDownloaded = localFileDetector.isSongDownloaded(song);
@@ -1758,21 +1821,17 @@ if (!(isDownloaded || isCached)) {
                     }
                     Log.d(TAG, "离线模式下播放可用歌曲(下载/缓存): " + song.getTitle());
                 }
-                
                 // 显示加载提示
                 Toast.makeText(this, "正在加载: " + song.getTitle(), Toast.LENGTH_SHORT).show();
-                
                 // 预先更新UI
                 songTitle.setText(song.getTitle());
                 songArtist.setText(song.getArtist());
-                
                 // 确保歌曲有专辑ID，用于显示封面
                 if (song.getAlbumId() == null || song.getAlbumId().isEmpty()) {
                     if (song.getCoverArtUrl() != null && !song.getCoverArtUrl().isEmpty()) {
                         song.setAlbumId(song.getCoverArtUrl());
                     }
                 }
-                
                 // 预先加载封面（省略代码保持不变）
                 if (song.getAlbumId() != null && !song.getAlbumId().isEmpty()) {
                     String albumId = song.getAlbumId();
@@ -1799,20 +1858,17 @@ if (!(isDownloaded || isCached)) {
                             .into(albumArt);
                     }
                 }
-                
                 // 设置播放
                 RecyclerView.Adapter<?> adp = recyclerView.getAdapter();
                 if (adp instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
                     try {
                         if (!isNetworkAvailable) {
-                            // 离线：仍然走本地列表过滤，服务端内部已做过滤与窗口注入
                             if (currentList == null || currentList.isEmpty()) {
                                 int total = musicRepository.getSongCount();
                                 currentList = musicRepository.getSongsRange(Math.max(0, total), 0);
                             }
                             playerService.setPlaylist(currentList, position);
                         } else {
-                            // 在线：直接请求全局滑窗，不做整表查询
                             playerService.playAllSongsFromGlobal(position);
                         }
                     } catch (Exception ignore) {}
@@ -1828,7 +1884,8 @@ if (!(isDownloaded || isCached)) {
                         }
                     } catch (Exception ignore) {}
                 } else {
-                    playerService.setPlaylist(currentList, position);
+                    int indexToPlay = playIndexOverride >= 0 ? playIndexOverride : position;
+                    playerService.setPlaylist(currentList, indexToPlay);
                     try {
                         android.content.SharedPreferences sp = getSharedPreferences("player_prefs", MODE_PRIVATE);
                         boolean wantOpen = sp.getBoolean("auto_open_full_player", false);
@@ -1841,7 +1898,6 @@ if (!(isDownloaded || isCached)) {
                         }
                     } catch (Exception ignore) {}
                 }
-                
             } catch (Exception e) {
                 Log.e("MainActivity", "准备播放时出错", e);
                 Toast.makeText(this, "播放出错: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -1854,7 +1910,12 @@ if (!(isDownloaded || isCached)) {
                 pendingPlaylist = null;
                 pendingPlaylistRebasedIndex = position;
             } else {
+                if ("downloads".equals(currentView) && downloadedSongAdapter != null) {
+                    pendingPlaylist = new java.util.ArrayList<>(downloadedSongAdapter.getSongList());
+                    pendingPlaylistRebasedIndex = downloadedSongAdapter.getPositionBySongId(song.getId());
+            } else {
             pendingPlaylist = buildCurrentPlaylistFor(position);
+                }
             }
             bindService();
             Toast.makeText(this, "正在连接播放服务…", Toast.LENGTH_SHORT).show();
@@ -1889,21 +1950,29 @@ if (!(isDownloaded || isCached)) {
             if (menu.findItem(R.id.action_letter_index) != null) {
                 menu.findItem(R.id.action_letter_index).setVisible(!selectionMode);
             }
+            if (menu.findItem(R.id.action_enter_selection) != null) {
+                menu.findItem(R.id.action_enter_selection).setVisible(!selectionMode);
+            }
             if (menu.findItem(R.id.action_add_to_playlist) != null) {
                 menu.findItem(R.id.action_add_to_playlist).setVisible(selectionMode);
             }
+            if (menu.findItem(R.id.action_download_selected) != null) menu.findItem(R.id.action_download_selected).setVisible(selectionMode);
         } else if ("search".equals(currentView)) {
             getMenuInflater().inflate(R.menu.menu_songs, menu);
             if (menu.findItem(R.id.action_letter_index) != null) menu.findItem(R.id.action_letter_index).setVisible(false);
+            if (menu.findItem(R.id.action_enter_selection) != null) menu.findItem(R.id.action_enter_selection).setVisible(false);
             if (menu.findItem(R.id.action_add_to_playlist) != null) menu.findItem(R.id.action_add_to_playlist).setVisible(selectionMode);
+            if (menu.findItem(R.id.action_download_selected) != null) menu.findItem(R.id.action_download_selected).setVisible(selectionMode);
         } else if ("album_songs".equals(currentView) || "artist_songs".equals(currentView)) {
             getMenuInflater().inflate(R.menu.menu_songs, menu);
             if (menu.findItem(R.id.action_letter_index) != null) {
                 menu.findItem(R.id.action_letter_index).setVisible(false);
             }
+            if (menu.findItem(R.id.action_enter_selection) != null) menu.findItem(R.id.action_enter_selection).setVisible(!selectionMode);
             if (menu.findItem(R.id.action_add_to_playlist) != null) {
                 menu.findItem(R.id.action_add_to_playlist).setVisible(selectionMode);
             }
+            if (menu.findItem(R.id.action_download_selected) != null) menu.findItem(R.id.action_download_selected).setVisible(selectionMode);
         } else if ("artists".equals(currentView)) {
             getMenuInflater().inflate(R.menu.menu_songs, menu);
             if (menu.findItem(R.id.action_letter_index) != null) {
@@ -1918,24 +1987,29 @@ if (!(isDownloaded || isCached)) {
                 } catch (Exception ignore) {}
                 menu.findItem(R.id.action_letter_index).setVisible(hasLetters);
             }
+            if (menu.findItem(R.id.action_enter_selection) != null) menu.findItem(R.id.action_enter_selection).setVisible(false);
             if (menu.findItem(R.id.action_add_to_playlist) != null) {
                 menu.findItem(R.id.action_add_to_playlist).setVisible(false);
             }
         } else if ("playlists".equals(currentView)) {
             getMenuInflater().inflate(R.menu.menu_playlist_list, menu);
         } else if ("playlist_detail".equals(currentView)) {
-            // 歌单详情：选择模式下显示删除（白色图标）
+            // 歌单详情：选择模式显示“添加到歌单”和“删除所选”与“下载”
             getMenuInflater().inflate(R.menu.menu_songs, menu);
             if (menu.findItem(R.id.action_letter_index) != null) menu.findItem(R.id.action_letter_index).setVisible(false);
-            if (menu.findItem(R.id.action_add_to_playlist) != null) {
-                MenuItem del = menu.findItem(R.id.action_add_to_playlist);
-                del.setIcon(R.drawable.ic_delete);
-                del.setTitle("删除");
-                del.setVisible(selectionMode);
-                try {
-                    android.graphics.PorterDuffColorFilter white = new android.graphics.PorterDuffColorFilter(getResources().getColor(android.R.color.white), android.graphics.PorterDuff.Mode.SRC_IN);
-                    del.getIcon().setColorFilter(white);
-                } catch (Exception ignore) {}
+            if (menu.findItem(R.id.action_enter_selection) != null) menu.findItem(R.id.action_enter_selection).setVisible(!selectionMode);
+            if (menu.findItem(R.id.action_add_to_playlist) != null) menu.findItem(R.id.action_add_to_playlist).setVisible(selectionMode);
+            if (menu.findItem(R.id.action_download_selected) != null) menu.findItem(R.id.action_download_selected).setVisible(selectionMode);
+            // 追加“删除所选”
+            if (selectionMode) getMenuInflater().inflate(R.menu.menu_playlist_detail_selection, menu);
+        } else if ("downloads".equals(currentView)) {
+            if (selectionMode) {
+                getMenuInflater().inflate(R.menu.menu_downloads_selection, menu);
+                // 下载页多选：显示“添加到歌单”和“删除所选”
+                if (menu.findItem(R.id.action_add_to_playlist) != null) menu.findItem(R.id.action_add_to_playlist).setVisible(true);
+                if (menu.findItem(R.id.action_delete_selected) != null) menu.findItem(R.id.action_delete_selected).setVisible(true);
+            } else {
+                getMenuInflater().inflate(R.menu.menu_downloads, menu);
             }
         }
         return true;
@@ -1944,46 +2018,48 @@ if (!(isDownloaded || isCached)) {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_add_to_playlist && "playlist_detail".equals(currentView)) {
-            if (!selectionMode || selectedSongIds.isEmpty()) return true;
-            // 二次确认，列出要删除的歌曲
-            final java.util.List<String> ids = new java.util.ArrayList<>(selectedSongIds);
-            final java.util.List<String> titles = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getTitlesByIds(ids);
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < titles.size(); i++) {
-                sb.append(i + 1).append(". ").append(titles.get(i)).append("\n");
+        if (id == R.id.action_enter_selection) {
+            if (selectionMode) return true;
+            selectionMode = true;
+            selectedSongIds.clear();
+            if ("downloads".equals(currentView)) {
+                if (downloadedSongAdapter != null) {
+                    downloadedSongAdapter.setSelectionMode(true);
+                    downloadedSongAdapter.setOnSelectionChangedListener(count -> {
+                        selectedSongIds.clear();
+                        selectedSongIds.addAll(downloadedSongAdapter.getSelectedIdsInOrder());
+                        updateSelectionTitle();
+                        invalidateOptionsMenu();
+                    });
+                }
+            } else {
+                RecyclerView.Adapter<?> ad = recyclerView.getAdapter();
+                if (ad instanceof com.watch.limusic.adapter.AllSongsRangeAdapter) {
+                    com.watch.limusic.adapter.AllSongsRangeAdapter ra = (com.watch.limusic.adapter.AllSongsRangeAdapter) ad;
+                    ra.setSelectionMode(true);
+                    ra.setOnSelectionChangedListener(count -> {
+                        selectedSongIds.clear();
+                        selectedSongIds.addAll(ra.getSelectedIdsInOrder());
+                        updateSelectionTitle();
+                        invalidateOptionsMenu();
+                    });
+                } else if (ad instanceof com.watch.limusic.adapter.SongAdapter) {
+                    com.watch.limusic.adapter.SongAdapter sa = (com.watch.limusic.adapter.SongAdapter) ad;
+                    sa.setSelectionMode(true);
+                    sa.setOnSelectionChangedListener(count -> {
+                        selectedSongIds.clear();
+                        selectedSongIds.addAll(sa.getSelectedIdsInOrder());
+                        updateSelectionTitle();
+                        invalidateOptionsMenu();
+                    });
+                }
             }
-            android.widget.ScrollView sv = new android.widget.ScrollView(this);
-            android.widget.TextView tv = new android.widget.TextView(this);
-            tv.setText(sb.toString());
-            tv.setTextColor(getResources().getColor(R.color.text_primary));
-            tv.setTextSize(14);
-            int pad = (int) (getResources().getDisplayMetrics().density * 12);
-            tv.setPadding(pad, pad, pad, pad);
-            sv.addView(tv);
-            new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("确认删除以下歌曲？")
-                .setView(sv)
-                .setPositiveButton("删除", (d,w) -> {
-                    // 计算 ordinals 并删除
-                    java.util.List<Integer> ords = com.watch.limusic.database.MusicDatabase.getInstance(this).playlistSongDao().getOrdinalsForSongIds(currentPlaylistLocalId, ids);
-                    // 构建服务端索引映射（当前本地 ordinal 与服务端顺序一致）
-                    java.util.HashMap<String,Integer> serverIndexBySongId = new java.util.HashMap<>();
-                    for (int i = 0; i < ids.size(); i++) {
-                        String sid = ids.get(i);
-                        int idx = com.watch.limusic.database.MusicDatabase.getInstance(this).playlistSongDao().getOrdinalsForSongIds(currentPlaylistLocalId, java.util.Collections.singletonList(sid)).get(0);
-                        serverIndexBySongId.put(sid, idx);
-                    }
-                    playlistRepository.removeByOrdinals(currentPlaylistLocalId, ords, serverIndexBySongId);
-                    // 刷新UI
-                    java.util.List<com.watch.limusic.model.Song> s2 = playlistRepository.getSongsInPlaylist(currentPlaylistLocalId, 500, 0);
-                    if (songAdapter != null) songAdapter.processAndSubmitListKeepOrder(s2);
-                    exitSelectionMode();
-                })
-                .setNegativeButton("取消", null)
-                .show();
+            updateSelectionTitle();
+            invalidateOptionsMenu();
+            updateNavigationForSelectionMode();
             return true;
         }
+        // 歌单详情的“删除所选”改由 action_delete_selected 处理；此分支不再复用 action_add_to_playlist
         if (id == R.id.action_letter_index) {
             showLetterIndexDialog();
             return true;
@@ -2148,6 +2224,73 @@ if (!(isDownloaded || isCached)) {
             }
             return true;
         }
+        if ("downloads".equals(currentView)) {
+            if (selectionMode && id == R.id.action_delete_selected) {
+                if (!selectionMode || selectedSongIds == null || selectedSongIds.isEmpty()) return true;
+                final java.util.List<String> ids = new java.util.ArrayList<>(selectedSongIds);
+                final java.util.List<String> titles = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getTitlesByIds(ids);
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < titles.size(); i++) {
+                    sb.append(i + 1).append(". ").append(titles.get(i)).append("\n");
+                }
+                android.widget.ScrollView sv = new android.widget.ScrollView(this);
+                android.widget.TextView tv = new android.widget.TextView(this);
+                tv.setText(sb.toString());
+                tv.setTextColor(getResources().getColor(R.color.text_primary));
+                tv.setTextSize(14);
+                int pad = (int) (getResources().getDisplayMetrics().density * 12);
+                tv.setPadding(pad, pad, pad, pad);
+                sv.addView(tv);
+                new androidx.appcompat.app.AlertDialog.Builder(this)
+                    .setTitle("确认删除以下歌曲？")
+                    .setView(sv)
+                    .setPositiveButton("删除", (d,w) -> {
+                        for (String sid : ids) {
+                            try {
+                                boolean deleted = com.watch.limusic.download.DownloadManager.getInstance(this).deleteDownload(sid);
+                                try { com.watch.limusic.database.DownloadRepository.getInstance(this).deleteDownload(sid); } catch (Exception ignore) {}
+                                Intent cacheIntent = new Intent("com.watch.limusic.CACHE_STATUS_CHANGED");
+                                cacheIntent.putExtra("songId", sid);
+                                cacheIntent.putExtra("isCached", false);
+                                sendBroadcast(cacheIntent);
+                            } catch (Exception ignore) {}
+                        }
+                        // 立即清空“已下载”适配器中的歌曲，避免UI残留
+                        try { if (downloadedSongAdapter != null) downloadedSongAdapter.processAndSubmitListKeepOrder(new java.util.ArrayList<>()); } catch (Exception ignore) {}
+                        refreshDownloadsData();
+                        // 为防止异步DB写入延迟，增加一次/二次延迟刷新
+                        try { recyclerView.postDelayed(this::refreshDownloadsData, 250); } catch (Exception ignore) {}
+                        try { recyclerView.postDelayed(this::refreshDownloadsData, 600); } catch (Exception ignore) {}
+                        exitSelectionMode();
+                    })
+                    .setNegativeButton("取消", null)
+                    .show();
+                return true;
+            }
+            if (id == R.id.action_pause_all) { pauseAllDownloads(); return true; }
+            if (id == R.id.action_resume_all) { resumeAllDownloads(); return true; }
+            if (id == R.id.action_cancel_all) { confirmCancelAllDownloads(); return true; }
+        }
+        if (selectionMode && id == R.id.action_download_selected) {
+            if (selectedSongIds == null || selectedSongIds.isEmpty()) { Toast.makeText(this, "未选择歌曲", Toast.LENGTH_SHORT).show(); return true; }
+            new Thread(() -> {
+                for (String sid : new java.util.ArrayList<>(selectedSongIds)) {
+                    try {
+                        com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getSongById(sid);
+                        if (se != null) {
+                            com.watch.limusic.model.Song s = new com.watch.limusic.model.Song(se.getId(), se.getTitle(), se.getArtist(), se.getAlbum(), se.getCoverArt(), se.getStreamUrl(), se.getDuration());
+                            s.setAlbumId(se.getAlbumId());
+                            com.watch.limusic.download.DownloadManager.getInstance(this).downloadSong(s);
+                        }
+                    } catch (Exception ignore) {}
+                }
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "已开始下载所选歌曲", Toast.LENGTH_SHORT).show();
+                    exitSelectionMode();
+                });
+            }).start();
+            return true;
+        }
         
         return super.onOptionsItemSelected(item);
     }
@@ -2190,7 +2333,8 @@ if (!(isDownloaded || isCached)) {
             loadSearchEmbedded();
             invalidateOptionsMenu();
         } else if (id == R.id.nav_downloads) {
-            startActivity(new Intent(this, DownloadSettingsActivity.class));
+            openDownloadsEmbedded();
+            invalidateOptionsMenu();
         } else if (id == R.id.nav_settings) {
             startActivity(new Intent(this, SettingsActivity.class));
         } else if (id == R.id.nav_about) {
@@ -2916,6 +3060,13 @@ if (!(isDownloaded || isCached)) {
         // 取消注册歌单相关广播
         try { unregisterReceiver(playlistsUpdatedReceiver); } catch (Exception ignore) {}
         try { unregisterReceiver(playlistChangedReceiver); } catch (Exception ignore) {}
+        try {
+            LocalBroadcastManager lbm = LocalBroadcastManager.getInstance(this);
+            lbm.unregisterReceiver(downloadsUiReceiver);
+        } catch (Exception ignore) {}
+        try {
+            downloadsRefreshExecutor.shutdownNow();
+        } catch (Exception ignore) {}
     }
 
     // 确保播放进度条可见的方法
@@ -3217,13 +3368,10 @@ if (!(isDownloaded || isCached)) {
             tv.setText(t != null ? t : "");
             try { tv.setSelected(true); } catch (Exception ignore) {}
             androidx.appcompat.app.ActionBar.LayoutParams lp = new androidx.appcompat.app.ActionBar.LayoutParams(
-                androidx.appcompat.app.ActionBar.LayoutParams.MATCH_PARENT,
+                androidx.appcompat.app.ActionBar.LayoutParams.WRAP_CONTENT,
                 androidx.appcompat.app.ActionBar.LayoutParams.WRAP_CONTENT,
                 android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
-            int startPaddingPx = (int) android.util.TypedValue.applyDimension(
-                android.util.TypedValue.COMPLEX_UNIT_DIP, 0,
-                getResources().getDisplayMetrics());
-            custom.setPadding(startPaddingPx, 0, 0, 0);
+            custom.setPadding(0, 0, 0, 0);
             getSupportActionBar().setCustomView(custom, lp);
         }
         if (drawerToggle != null) {
@@ -3668,7 +3816,12 @@ if (!(isDownloaded || isCached)) {
         } else if (songAdapter != null) {
             songAdapter.setSelectionMode(false);
         }
-        if ("songs".equals(currentView)) {
+        // 下载管理页：关闭已下载适配器的选择模式并恢复标题
+        if ("downloads".equals(currentView)) {
+            if (downloadedSongAdapter != null) downloadedSongAdapter.setSelectionMode(false);
+            try { if (headerCompleted != null) headerCompleted.setSelectAllVisible(false, null); } catch (Exception ignore) {}
+            if (getSupportActionBar() != null) getSupportActionBar().setTitle(R.string.download_management);
+        } else if ("songs".equals(currentView)) {
             if (getSupportActionBar() != null) getSupportActionBar().setTitle(R.string.all_songs);
         } else if ("album_songs".equals(currentView)) {
             if (getSupportActionBar() != null && currentAlbumTitle != null) getSupportActionBar().setTitle(currentAlbumTitle);
@@ -3730,7 +3883,7 @@ if (!(isDownloaded || isCached)) {
     }
 
     private void restoreNavigationForView() {
-        if ("albums".equals(currentView) || "songs".equals(currentView) || "artists".equals(currentView) || "playlists".equals(currentView)) { hideBottomHint();
+        if ("albums".equals(currentView) || "songs".equals(currentView) || "artists".equals(currentView) || "playlists".equals(currentView) || "downloads".equals(currentView)) { hideBottomHint();
             enterRootNavigationMode();
         } else if ("search".equals(currentView)) { hideBottomHint();
             enterSearchNavigationMode();
@@ -4307,7 +4460,7 @@ if (!(isDownloaded || isCached)) {
         if (fullSongArtist != null) fullSongArtist.setText(playerService.getCurrentArtist());
         // 音频类型徽标（根据设置；若本地缓存为空则向服务查询）
         try {
-            boolean show = getSharedPreferences("player_prefs", MODE_PRIVATE).getBoolean("show_audio_type_badge", false);
+            boolean show = getSharedPreferences("player_prefs", MODE_PRIVATE).getBoolean("show_audio_type_badge", true);
             if (fullAudioBadge != null) {
                 String badge = (lastAudioType != null && !lastAudioType.isEmpty()) ? lastAudioType : (bound && playerService != null ? safeGetAudioType() : null);
                 if (show && badge != null && !badge.isEmpty()) {
@@ -4619,7 +4772,7 @@ if (!(isDownloaded || isCached)) {
         isSettling = true;
         if (goLyrics) ensureLyricsController();
         float mainTarget = goLyrics ? -w : 0f;
-        float lyricTarget = goLyrics ? 0f : w * 0.25f; // 返回主控时保留25%路程由动画完成，避免瞬跳
+        float lyricTarget = goLyrics ? 0f : w * 0.25f; // 返回主控页前，保留25%路程由动画完成，避免瞬跳
         android.animation.TimeInterpolator interp = new android.view.animation.DecelerateInterpolator();
         long dur = 200L;
         // 切到主控页前，确保主控区可见参与动画
@@ -4894,7 +5047,7 @@ if (!(isDownloaded || isCached)) {
             tv.setText(titleText != null ? titleText : "");
             tv.setSelected(true);
             androidx.appcompat.app.ActionBar.LayoutParams lp = new androidx.appcompat.app.ActionBar.LayoutParams(
-                androidx.appcompat.app.ActionBar.LayoutParams.MATCH_PARENT,
+                androidx.appcompat.app.ActionBar.LayoutParams.WRAP_CONTENT,
                 androidx.appcompat.app.ActionBar.LayoutParams.WRAP_CONTENT,
                 android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL);
             custom.setPadding(0, 0, 0, 0);
@@ -5276,5 +5429,295 @@ if (!(isDownloaded || isCached)) {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    private com.watch.limusic.adapter.SectionHeaderAdapter headerActive;
+    private com.watch.limusic.adapter.SectionHeaderAdapter headerCompleted;
+    private com.watch.limusic.adapter.DownloadTaskAdapter downloadTaskAdapter;
+    private com.watch.limusic.adapter.DownloadedSongAdapter downloadedSongAdapter;
+    private androidx.recyclerview.widget.ConcatAdapter downloadsConcatAdapter;
+    private boolean downloadsHeaderActiveExpanded = true;
+    private boolean downloadsHeaderCompletedExpanded = true;
+    private final java.util.ArrayList<DownloadInfo> activeTaskSnapshot = new java.util.ArrayList<>();
+    // 下载页“全选”按钮点击逻辑（仅多选模式下可见）
+    private android.view.View.OnClickListener downloadsSelectAllClickListener;
+
+    private void openDownloadsEmbedded() {
+        hideBottomHint();
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayShowTitleEnabled(true);
+            getSupportActionBar().setTitle(R.string.download_management);
+        }
+        enterRootNavigationMode();
+        currentView = "downloads";
+        // 进入页面时默认展开两栏，并退出任何残留的选择模式
+        selectionMode = false;
+        selectedSongIds.clear();
+        downloadsHeaderActiveExpanded = true;
+        downloadsHeaderCompletedExpanded = true;
+        if (downloadTaskAdapter == null) downloadTaskAdapter = new DownloadTaskAdapter(this);
+        if (downloadedSongAdapter == null) downloadedSongAdapter = new DownloadedSongAdapter(this, this);
+        // 明确隐藏右侧下载区域图标（保持行右侧不显示）
+        try { downloadedSongAdapter.setShowDownloadStatus(false); } catch (Exception ignore) {}
+        headerActive = new SectionHeaderAdapter("正在下载");
+        headerCompleted = new SectionHeaderAdapter("已下载");
+        // 点击区头实现折叠/展开
+        View.OnClickListener toggleActive = v -> {
+            downloadsHeaderActiveExpanded = !downloadsHeaderActiveExpanded;
+            rebuildDownloadsConcat();
+            // 折叠/展开后立即强制刷新一次，更新计数文案
+            try { refreshDownloadsData(true); } catch (Exception ignore) {}
+        };
+        View.OnClickListener toggleCompleted = v -> {
+            downloadsHeaderCompletedExpanded = !downloadsHeaderCompletedExpanded;
+            rebuildDownloadsConcat();
+            try { refreshDownloadsData(true); } catch (Exception ignore) {}
+        };
+        headerActive.setOnClickListener(toggleActive);
+        headerCompleted.setOnClickListener(toggleCompleted);
+        // 定义“全选”点击行为
+        downloadsSelectAllClickListener = v -> {
+            try {
+                if (!selectionMode || downloadedSongAdapter == null) return;
+                java.util.List<String> allIds = new java.util.ArrayList<>();
+                for (int i = 0; i < downloadedSongAdapter.getItemCount(); i++) {
+                    com.watch.limusic.model.SongWithIndex swi = downloadedSongAdapter.getSongItemAt(i);
+                    if (swi != null && swi.getSong() != null) allIds.add(swi.getSong().getId());
+                }
+                try { downloadedSongAdapter.clearSelection(); } catch (Exception ignore2) {}
+                selectedSongIds.clear();
+                selectedSongIds.addAll(allIds);
+                downloadedSongAdapter.setSelectionMode(true);
+                for (String sid : allIds) downloadedSongAdapter.toggleSelect(sid);
+                updateSelectionTitle();
+                invalidateOptionsMenu();
+            } catch (Exception ignore3) {}
+        };
+        // 初始根据多选状态控制可见性（进入页面默认非多选，隐藏）
+        headerCompleted.setSelectAllVisible(selectionMode, downloadsSelectAllClickListener);
+        recyclerView.setItemAnimator(null);
+        recyclerView.setHasFixedSize(true);
+        rebuildDownloadsConcat();
+        // 为"已下载"列表设置长按进入多选
+        try {
+            downloadedSongAdapter.setOnItemLongClickListener(pos -> {
+                com.watch.limusic.model.Song s = downloadedSongAdapter.getSongItemAt(pos).getSong();
+                if (s == null) return;
+                selectionMode = true;
+                selectedSongIds.clear();
+                selectedSongIds.add(s.getId());
+                downloadedSongAdapter.setSelectionMode(true);
+                downloadedSongAdapter.toggleSelect(s.getId());
+                downloadedSongAdapter.setOnSelectionChangedListener(count -> {
+                    selectedSongIds.clear();
+                    selectedSongIds.addAll(downloadedSongAdapter.getSelectedIdsInOrder());
+                    updateSelectionTitle();
+                    invalidateOptionsMenu();
+                });
+                try { headerCompleted.setSelectAllVisible(true, downloadsSelectAllClickListener); } catch (Exception ignore) {}
+                updateSelectionTitle();
+                invalidateOptionsMenu();
+                updateNavigationForSelectionMode();
+            });
+        } catch (Exception ignore) {}
+        // 长按手势：正在下载 -> 取消该任务；已下载 -> 交由适配器长按回调进入多选
+        try {
+            recyclerView.addOnItemTouchListener(new androidx.recyclerview.widget.RecyclerView.SimpleOnItemTouchListener() {
+                final android.view.GestureDetector detector = new android.view.GestureDetector(MainActivity.this, new android.view.GestureDetector.SimpleOnGestureListener() {
+                    @Override public void onLongPress(android.view.MotionEvent e) {
+                        android.view.View child = recyclerView.findChildViewUnder(e.getX(), e.getY());
+                        if (child == null) return;
+                        int pos = recyclerView.getChildAdapterPosition(child);
+                        if (pos == RecyclerView.NO_POSITION) return;
+                        RecyclerView.Adapter<?> ad = recyclerView.getAdapter();
+                        if (!(ad instanceof androidx.recyclerview.widget.ConcatAdapter)) return;
+                        androidx.recyclerview.widget.ConcatAdapter ca = (androidx.recyclerview.widget.ConcatAdapter) ad;
+                        int offset = 0;
+                        for (RecyclerView.Adapter<?> sub : ca.getAdapters()) {
+                            int count = sub.getItemCount();
+                            if (pos >= offset && pos < offset + count) {
+                                int innerPos = pos - offset;
+                                if (sub == downloadTaskAdapter) {
+                                    com.watch.limusic.model.DownloadInfo di = downloadTaskAdapter.getCurrentList().get(innerPos);
+                                    if (di != null && di.getSongId() != null) {
+                                        new androidx.appcompat.app.AlertDialog.Builder(MainActivity.this)
+                                                .setTitle("取消下载")
+                                                .setMessage("确定取消这首歌的下载吗？")
+                                                .setPositiveButton("确定", (d,w) -> {
+                                                    try { DownloadManager.getInstance(MainActivity.this).cancelDownload(di.getSongId()); } catch (Exception ignore) {}
+                                                    refreshDownloadsData();
+                                                })
+                                                .setNegativeButton("取消", null)
+                                                .show();
+                                    }
+                                }
+                                break;
+                            }
+                            offset += count;
+                        }
+                    }
+                });
+                @Override public boolean onInterceptTouchEvent(@NonNull RecyclerView rv, @NonNull android.view.MotionEvent e) {
+                    detector.onTouchEvent(e);
+                    return false;
+                }
+            });
+        } catch (Exception ignore) {}
+        // 启动时兜底修复被强杀后卡住的任务
+        try { com.watch.limusic.download.DownloadManager.getInstance(this).reconcileStaleDownloads(); } catch (Exception ignore) {}
+        // 初次加载数据
+        refreshDownloadsData();
+    }
+
+    private void rebuildDownloadsConcat() {
+        java.util.List<RecyclerView.Adapter<?>> parts = new java.util.ArrayList<>();
+        if (headerActive == null) headerActive = new SectionHeaderAdapter("正在下载");
+        if (headerCompleted == null) headerCompleted = new SectionHeaderAdapter("已下载");
+        parts.add(headerActive);
+        if (downloadsHeaderActiveExpanded) parts.add(downloadTaskAdapter);
+        parts.add(headerCompleted);
+        if (downloadsHeaderCompletedExpanded) parts.add(downloadedSongAdapter);
+        // 使用稳定ID模式，避免 ConcatAdapter 忽略子适配器的稳定ID并产生警告
+        androidx.recyclerview.widget.ConcatAdapter.Config cfg = new androidx.recyclerview.widget.ConcatAdapter.Config.Builder()
+                .setStableIdMode(androidx.recyclerview.widget.ConcatAdapter.Config.StableIdMode.ISOLATED_STABLE_IDS)
+                .build();
+        downloadsConcatAdapter = new androidx.recyclerview.widget.ConcatAdapter(cfg, parts);
+        recyclerView.setAdapter(downloadsConcatAdapter);
+        try {
+            String pA = downloadsHeaderActiveExpanded ? "▼ " : "▶ ";
+            String pC = downloadsHeaderCompletedExpanded ? "▼ " : "▶ ";
+            int activeCount = downloadTaskAdapter != null ? downloadTaskAdapter.getItemCount() : 0;
+            int completedCount = downloadedSongAdapter != null ? downloadedSongAdapter.getItemCount() : 0;
+            if (headerActive != null) headerActive.setTitle(pA + "正在下载 (" + activeCount + ")");
+            if (headerCompleted != null) headerCompleted.setTitle(pC + "已下载 (" + completedCount + ")");
+        } catch (Exception ignore) {}
+    }
+
+    private final Object downloadsRefreshLock = new Object();
+    private volatile long lastDownloadsRefreshMs = 0L;
+    private static final long DOWNLOADS_REFRESH_MIN_INTERVAL_MS = 150L; // 节流：最少 150ms 刷新一次
+    private final java.util.concurrent.ExecutorService downloadsRefreshExecutor = java.util.concurrent.Executors.newSingleThreadExecutor();
+
+    private void refreshDownloadsData() { refreshDownloadsData(false); }
+
+    private void refreshDownloadsData(boolean force) {
+        long now = System.currentTimeMillis();
+        if (!force && (now - lastDownloadsRefreshMs < DOWNLOADS_REFRESH_MIN_INTERVAL_MS)) return;
+        lastDownloadsRefreshMs = now;
+        downloadsRefreshExecutor.submit(() -> {
+            try {
+                java.util.List<com.watch.limusic.database.DownloadEntity> act = com.watch.limusic.database.DownloadRepository.getInstance(this).getActiveDownloads();
+                java.util.List<DownloadInfo> activeInfos = new java.util.ArrayList<>();
+                if (act != null) {
+                    for (com.watch.limusic.database.DownloadEntity e : act) {
+                        DownloadInfo di = com.watch.limusic.database.DownloadRepository.toDownloadInfo(e);
+                        DownloadInfo mem = DownloadManager.getInstance(this).getDownloadInfo(e.getSongId());
+                        if (mem != null) {
+                            if (mem.getTotalBytes() > 0) di.setTotalBytes(mem.getTotalBytes());
+                            if (mem.getDownloadedBytes() > 0) di.setDownloadedBytes(mem.getDownloadedBytes());
+                            di.setStatus(mem.getStatus());
+                        }
+                        activeInfos.add(di);
+                    }
+                }
+                java.util.List<com.watch.limusic.database.DownloadEntity> comp = com.watch.limusic.database.DownloadRepository.getInstance(this).getCompletedDownloads();
+                java.util.List<Song> completedSongs = new java.util.ArrayList<>();
+                if (comp != null) {
+                    for (com.watch.limusic.database.DownloadEntity e : comp) {
+                        com.watch.limusic.database.SongEntity se = com.watch.limusic.database.MusicDatabase.getInstance(this).songDao().getSongById(e.getSongId());
+                        if (se != null) {
+                            Song s = new Song(se.getId(), se.getTitle(), se.getArtist(), se.getAlbum(), se.getCoverArt(), se.getStreamUrl(), se.getDuration());
+                            s.setAlbumId(se.getAlbumId());
+                            completedSongs.add(s);
+                        }
+                    }
+                }
+                runOnUiThread(() -> {
+                    String pA = downloadsHeaderActiveExpanded ? "▼ " : "▶ ";
+                    String pC = downloadsHeaderCompletedExpanded ? "▼ " : "▶ ";
+                    if (headerActive != null) headerActive.setTitle(pA + "正在下载 (" + (activeInfos != null ? activeInfos.size() : 0) + ")");
+                    if (headerCompleted != null) headerCompleted.setTitle(pC + "已下载 (" + (completedSongs != null ? completedSongs.size() : 0) + ")");
+                    downloadTaskAdapter.submitList(activeInfos);
+                    downloadedSongAdapter.processAndSubmitListKeepOrder(completedSongs);
+                });
+            } catch (Exception ignore) {}
+        });
+    }
+
+    // 下载管理页专用：合并刷新（仅当当前视图为 downloads 时触发刷新）
+    private final BroadcastReceiver downloadsUiReceiver = new BroadcastReceiver() {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (!"downloads".equals(currentView)) return;
+            String action = intent != null ? intent.getAction() : null;
+            if (action == null) return;
+            if (DownloadManager.ACTION_DOWNLOAD_PROGRESS.equals(action)) {
+                refreshDownloadsData(false);
+            } else if (DownloadManager.ACTION_DOWNLOAD_COMPLETE.equals(action)
+                    || DownloadManager.ACTION_DOWNLOAD_CANCELED.equals(action)) {
+                // 完成/取消：强制刷新，绕过节流，修复最后一首驻留问题
+                refreshDownloadsData(true);
+            } else if (DownloadManager.ACTION_DOWNLOAD_FAILED.equals(action)) {
+                refreshDownloadsData(false);
+            }
+        }
+    };
+
+    private void pauseAllDownloads() {
+        try {
+            // 启动全局暂停，禁止等待队列被自动拉起
+            com.watch.limusic.download.DownloadManager.getInstance(this).pauseAll();
+            // 本地立即切换所有任务的UI为暂停
+            java.util.List<com.watch.limusic.model.DownloadInfo> list = downloadTaskAdapter != null ? downloadTaskAdapter.getSnapshot() : java.util.Collections.emptyList();
+            for (com.watch.limusic.model.DownloadInfo di : list) {
+                if (di != null) {
+                    try {
+                        com.watch.limusic.model.DownloadInfo clone = new com.watch.limusic.model.DownloadInfo(di);
+                        clone.setStatus(com.watch.limusic.model.DownloadStatus.DOWNLOAD_PAUSED);
+                        downloadTaskAdapter.upsert(clone);
+                    } catch (Exception ignore) {}
+                }
+            }
+            refreshDownloadsData();
+            // 额外两次轻量延迟刷新，兜底异步写入延迟
+            try { recyclerView.postDelayed(this::refreshDownloadsData, 180); } catch (Exception ignore) {}
+            try { recyclerView.postDelayed(this::refreshDownloadsData, 400); } catch (Exception ignore) {}
+        } catch (Exception ignore) {}
+    }
+
+    private void resumeAllDownloads() {
+        new Thread(() -> {
+            try {
+                // 解除全局暂停，让等待任务重新进入队列并由调度器按并发上限启动
+                com.watch.limusic.download.DownloadManager.getInstance(this).resumeAll();
+                runOnUiThread(() -> {
+                    // UI 侧立即把活动列表内状态为 PAUSED 的项切换成 WAITING 提示
+                    try {
+                        java.util.List<com.watch.limusic.model.DownloadInfo> list = downloadTaskAdapter != null ? downloadTaskAdapter.getSnapshot() : java.util.Collections.emptyList();
+                        for (com.watch.limusic.model.DownloadInfo di : list) {
+                            if (di != null && di.getStatus() == com.watch.limusic.model.DownloadStatus.DOWNLOAD_PAUSED) {
+                                com.watch.limusic.model.DownloadInfo clone = new com.watch.limusic.model.DownloadInfo(di);
+                                clone.setStatus(com.watch.limusic.model.DownloadStatus.WAITING);
+                                downloadTaskAdapter.upsert(clone);
+                            }
+                        }
+                    } catch (Exception ignore) {}
+                    refreshDownloadsData();
+                    try { recyclerView.postDelayed(this::refreshDownloadsData, 180); } catch (Exception ignore) {}
+                    try { recyclerView.postDelayed(this::refreshDownloadsData, 400); } catch (Exception ignore) {}
+                });
+            } catch (Exception ignore) {}
+        }).start();
+    }
+
+    private void confirmCancelAllDownloads() {
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("确认取消所有下载任务？")
+            .setMessage("已完成文件不受影响")
+            .setPositiveButton("取消全部", (d,w) -> {
+                try { DownloadManager.getInstance(this).cancelAll(); } catch (Exception ignore) {}
+                refreshDownloadsData();
+            })
+            .setNegativeButton("返回", null)
+            .show();
     }
 }

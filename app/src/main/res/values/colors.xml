@@ -49,6 +49,8 @@
     <color name="download_complete">#4CAF50</color> <!-- 下载完成 -->
     <color name="download_failed">#F44336</color> <!-- 下载失败 -->
     <color name="download_progress">#2196F3</color> <!-- 下载中 -->
+    <color name="download_progress_running">#2ECC71</color>
+    <color name="download_progress_paused">#F5A623</color>
     
     <!-- 系统默认颜色（兼容性） -->
     <color name="purple_200">#FFBB86FC</color>

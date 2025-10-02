@@ -262,7 +262,7 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
             holder.checkbox.setVisibility(View.VISIBLE);
             holder.songNumber.setVisibility(View.GONE);
             boolean checked = selectedIds.contains(song.getId());
-            holder.checkbox.setImageResource(checked ? R.drawable.ic_check_box : R.drawable.ic_check_box_outline);
+            holder.checkbox.setImageResource(checked ? R.drawable.ic_task_alt_checked : R.drawable.ic_task_alt_unchecked);
             holder.itemView.setBackgroundResource(checked ? R.drawable.item_song_selected_bg : R.drawable.item_background);
         } else {
             holder.checkbox.setVisibility(View.GONE);

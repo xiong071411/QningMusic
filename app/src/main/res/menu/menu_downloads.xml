@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+      xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_pause_all"
+        android:title="暂停全部"
+        android:icon="@drawable/ic_pause"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_resume_all"
+        android:title="继续全部"
+        android:icon="@drawable/ic_play"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_cancel_all"
+        android:title="取消全部"
+        android:icon="@drawable/ic_delete"
+        app:showAsAction="always" />
+    <item
+        android:id="@+id/action_enter_selection"
+        android:title="选择"
+        android:icon="@drawable/ic_multi_select"
+        app:showAsAction="always" />
+</menu> 

@@ -143,17 +143,17 @@ public class LyricsController {
 				});
 			} catch (Exception ignore) {}
 			// 监听滚动状态，用户手势期间暂停自动居中
-			list.addOnScrollListener(new RecyclerView.OnScrollListener() {
-				@Override public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
-					if (newState == RecyclerView.SCROLL_STATE_DRAGGING || newState == RecyclerView.SCROLL_STATE_SETTLING) {
-						userBrowsing = true;
-						lastUserInteractAt = System.currentTimeMillis();
-					} else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
-						// 空闲时不立即抢回控制，交由tickRunnable在超时后恢复
-						lastUserInteractAt = System.currentTimeMillis();
+							list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+					@Override public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
+						if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
+							userBrowsing = true;
+							lastUserInteractAt = System.currentTimeMillis();
+						} else if (newState == RecyclerView.SCROLL_STATE_IDLE) {
+							// 空闲时不立即抢回控制，交由tickRunnable在超时后恢复
+							lastUserInteractAt = System.currentTimeMillis();
+						}
 					}
-				}
-			});
+				});
 		}
 		try {
 			root.setOnTouchListener(new com.watch.limusic.util.SwipeGestureListener(parent.getContext()) {
@@ -295,6 +295,8 @@ public class LyricsController {
 			// 用户正在浏览时不自动回中，避免打断手势
 			if (!userBrowsing) {
 				centerTo(idx);
+				// 二次精确居中：等待一帧后再校正一次，保证放大/内边距变化后的精确居中
+				handler.postDelayed(new Runnable() { @Override public void run() { centerTo(idx); } }, 16);
 			}
 		}
 		long heartbeat = 500L;
@@ -323,6 +325,32 @@ public class LyricsController {
 				int itemH = 0;
 				try { if (adapter != null) itemH = Math.max(0, adapter.getPredictedCurrentItemHeightPx()); } catch (Throwable ignore) {}
 				int offset = Math.max(0, (listH - itemH) / 2);
+				boolean smooth = false;
+				try {
+					SharedPreferences sp = context.getSharedPreferences("player_prefs", Context.MODE_PRIVATE);
+					boolean enabled = sp.getBoolean("lyric_smooth_enabled", true);
+					boolean low = sp.getBoolean("low_power_mode_enabled", false);
+					smooth = enabled && !low;
+				} catch (Throwable ignore) {}
+				if (smooth) {
+					int first = layoutManager.findFirstVisibleItemPosition();
+					int last = layoutManager.findLastVisibleItemPosition();
+					if (first >= 0 && last >= first && idx >= first && idx <= last) {
+						View v = layoutManager.findViewByPosition(idx);
+						if (v != null) {
+							int topPad = list.getPaddingTop();
+							int bottomPad = list.getPaddingBottom();
+							int avail = Math.max(0, listH - topPad - bottomPad);
+							int h = (itemH > 0 ? itemH : Math.max(0, v.getHeight()));
+							int targetTop = topPad + Math.max(0, (avail - h) / 2);
+							int dy = v.getTop() - targetTop;
+							if (Math.abs(dy) > 2) {
+								try { list.smoothScrollBy(0, dy); } catch (Throwable ignore) {}
+								return;
+							}
+						}
+					}
+				}
 				layoutManager.scrollToPositionWithOffset(idx, offset);
 			} catch (Exception ignore) {}
 		});

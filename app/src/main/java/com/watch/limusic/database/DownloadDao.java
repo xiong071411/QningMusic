@@ -74,7 +74,7 @@ public interface DownloadDao {
     /**
      * 获取正在下载的歌曲
      */
-    @Query("SELECT * FROM downloads WHERE status = 'DOWNLOADING' ORDER BY downloadTimestamp DESC")
+    @Query("SELECT * FROM downloads WHERE status IN ('DOWNLOADING','DOWNLOAD_PAUSED','DOWNLOAD_FAILED','WAITING') ORDER BY downloadTimestamp DESC")
     List<DownloadEntity> getActiveDownloads();
 
     /**

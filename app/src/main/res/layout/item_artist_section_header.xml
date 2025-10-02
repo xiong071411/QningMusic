@@ -1,13 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
-<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:paddingStart="12dp"
     android:paddingEnd="12dp"
     android:paddingTop="6dp"
     android:paddingBottom="6dp"
-    android:textColor="@color/text_hint"
-    android:textSize="12sp"
-    android:textStyle="bold"
-    android:background="@color/background_elevated"
-    android:text="分区" /> 
+    android:background="@color/background_elevated">
+
+    <TextView
+        android:id="@+id/section_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="@color/text_hint"
+        android:textSize="12sp"
+        android:textStyle="bold"
+        android:text="分区" />
+
+    <TextView
+        android:id="@+id/btn_select_all"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:background="@drawable/text_button_box"
+        android:paddingLeft="10dp"
+        android:paddingRight="10dp"
+        android:paddingTop="4dp"
+        android:paddingBottom="4dp"
+        android:text="全选"
+        android:textColor="@color/text_primary"
+        android:visibility="gone"/>
+
+</RelativeLayout>

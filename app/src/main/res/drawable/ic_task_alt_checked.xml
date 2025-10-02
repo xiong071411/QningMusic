@@ -4,14 +4,17 @@
     android:height="28dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- 圆形填充，使用主题绿色 -->
     <path
-        android:fillColor="#1E88E5"
-        android:pathData="M3,3h18v18h-18z"/>
+        android:fillColor="@color/colorPrimary"
+        android:pathData="M12,3a9,9 0 1,0 0,18a9,9 0 1,0 0,-18z"/>
+    <!-- 白色长尾对勾（Task Alt 风格） -->
     <path
         android:fillColor="#00000000"
         android:strokeColor="#FFFFFFFF"
-        android:strokeWidth="3.2"
+        android:strokeWidth="3.0"
         android:strokeLineCap="round"
         android:strokeLineJoin="round"
-        android:pathData="M7,12l3,3l7,-8"/>
+        android:pathData="M7.5,12.5 L10.2,15.2 L16.8,8.6"/>
 </vector>
+
