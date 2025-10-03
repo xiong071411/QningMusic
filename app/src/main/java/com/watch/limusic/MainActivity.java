@@ -2010,6 +2010,13 @@ if (!(isDownloaded || isCached)) {
                 if (menu.findItem(R.id.action_delete_selected) != null) menu.findItem(R.id.action_delete_selected).setVisible(true);
             } else {
                 getMenuInflater().inflate(R.menu.menu_downloads, menu);
+                // 非选择模式下，仅当按标题A-Z排序且“已下载”有数据时显示“字母索引”
+                try {
+                    boolean hasAdapter = downloadedSongAdapter != null;
+                    boolean hasData = hasAdapter && downloadedSongAdapter.getItemCount() > 0;
+                    boolean show = (downloadsSortMode == DOWNLOADS_SORT_BY_TITLE_ASC) && hasAdapter && hasData;
+                    if (menu.findItem(R.id.action_letter_index) != null) menu.findItem(R.id.action_letter_index).setVisible(show);
+                } catch (Exception ignore) {}
             }
         }
         return true;
@@ -2057,6 +2064,11 @@ if (!(isDownloaded || isCached)) {
             updateSelectionTitle();
             invalidateOptionsMenu();
             updateNavigationForSelectionMode();
+            return true;
+        }
+        // 下载管理：统一“下载操作”按钮
+        if (id == R.id.action_download_ops) {
+            showDownloadOpsPopup();
             return true;
         }
         // 歌单详情的“删除所选”改由 action_delete_selected 处理；此分支不再复用 action_add_to_playlist
@@ -2267,9 +2279,7 @@ if (!(isDownloaded || isCached)) {
                     .show();
                 return true;
             }
-            if (id == R.id.action_pause_all) { pauseAllDownloads(); return true; }
-            if (id == R.id.action_resume_all) { resumeAllDownloads(); return true; }
-            if (id == R.id.action_cancel_all) { confirmCancelAllDownloads(); return true; }
+            // 旧的三个独立下载操作按钮已合并为 action_download_ops
         }
         if (selectionMode && id == R.id.action_download_selected) {
             if (selectedSongIds == null || selectedSongIds.isEmpty()) { Toast.makeText(this, "未选择歌曲", Toast.LENGTH_SHORT).show(); return true; }
@@ -3113,6 +3123,41 @@ if (!(isDownloaded || isCached)) {
         }
         if (!(recyclerView.getAdapter() instanceof com.watch.limusic.adapter.AllSongsRangeAdapter)) {
             RecyclerView.Adapter<?> ad = recyclerView.getAdapter();
+            // 下载管理页：针对 ConcatAdapter 中的“已下载”分区（DownloadedSongAdapter）提供字母检索
+            if ("downloads".equals(currentView)) {
+                // 仅在“已下载”适配器可用且存在可索引字母时启用
+                if (downloadedSongAdapter == null || downloadedSongAdapter.getItemCount() == 0) return;
+                java.util.List<String> letters = downloadedSongAdapter.getAvailableIndexLetters();
+                if (letters == null || letters.isEmpty()) return;
+                LetterIndexDialog dialog = new LetterIndexDialog(this, letters);
+                dialog.setOnLetterSelectedListener(letter -> {
+                    int innerPos = downloadedSongAdapter.getPositionForLetter(letter);
+                    if (innerPos < 0 || innerPos >= downloadedSongAdapter.getItemCount()) return;
+                    // 若“已下载”分区折叠，则先展开并重建拼接适配器
+                    if (!downloadsHeaderCompletedExpanded) {
+                        downloadsHeaderCompletedExpanded = true;
+                        rebuildDownloadsConcat();
+                    }
+                    int offset = 0;
+                    // headerActive
+                    offset += 1;
+                    // 进行中任务（可折叠）
+                    if (downloadsHeaderActiveExpanded && downloadTaskAdapter != null) {
+                        offset += downloadTaskAdapter.getItemCount();
+                    }
+                    // headerCompleted
+                    offset += 1;
+                    int absPos = offset + innerPos;
+                    if (recyclerView.getLayoutManager() instanceof androidx.recyclerview.widget.LinearLayoutManager) {
+                        androidx.recyclerview.widget.LinearLayoutManager lm = (androidx.recyclerview.widget.LinearLayoutManager) recyclerView.getLayoutManager();
+                        lm.scrollToPositionWithOffset(absPos, 0);
+                    } else {
+                        recyclerView.scrollToPosition(absPos);
+                    }
+                });
+                dialog.show();
+                return;
+            }
             if (ad instanceof com.watch.limusic.adapter.ArtistAdapter) {
                 com.watch.limusic.adapter.ArtistAdapter aa = (com.watch.limusic.adapter.ArtistAdapter) ad;
                 java.util.List<String> letters = aa.getAvailableIndexLetters();
@@ -5439,6 +5484,10 @@ if (!(isDownloaded || isCached)) {
     private boolean downloadsHeaderActiveExpanded = true;
     private boolean downloadsHeaderCompletedExpanded = true;
     private final java.util.ArrayList<DownloadInfo> activeTaskSnapshot = new java.util.ArrayList<>();
+    // 下载页排序：0=按下载时间(默认，最新在前)，1=按标题A-Z
+    private static final int DOWNLOADS_SORT_BY_TIME_DESC = 0;
+    private static final int DOWNLOADS_SORT_BY_TITLE_ASC = 1;
+    private int downloadsSortMode = DOWNLOADS_SORT_BY_TIME_DESC;
     // 下载页“全选”按钮点击逻辑（仅多选模式下可见）
     private android.view.View.OnClickListener downloadsSelectAllClickListener;
 
@@ -5565,7 +5614,11 @@ if (!(isDownloaded || isCached)) {
         } catch (Exception ignore) {}
         // 启动时兜底修复被强杀后卡住的任务
         try { com.watch.limusic.download.DownloadManager.getInstance(this).reconcileStaleDownloads(); } catch (Exception ignore) {}
-        // 初次加载数据
+        // 读取排序偏好并初次加载数据
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("downloads_prefs", MODE_PRIVATE);
+            downloadsSortMode = sp.getInt("sort_mode", DOWNLOADS_SORT_BY_TIME_DESC);
+        } catch (Exception ignore) {}
         refreshDownloadsData();
     }
 
@@ -5638,7 +5691,23 @@ if (!(isDownloaded || isCached)) {
                     if (headerActive != null) headerActive.setTitle(pA + "正在下载 (" + (activeInfos != null ? activeInfos.size() : 0) + ")");
                     if (headerCompleted != null) headerCompleted.setTitle(pC + "已下载 (" + (completedSongs != null ? completedSongs.size() : 0) + ")");
                     downloadTaskAdapter.submitList(activeInfos);
-                    downloadedSongAdapter.processAndSubmitListKeepOrder(completedSongs);
+                    // 排序：标题A-Z则走标准排序；否则按下载时间最新在前（逆序）
+                    if (downloadsSortMode == DOWNLOADS_SORT_BY_TITLE_ASC) {
+                        java.util.List<Song> list = new java.util.ArrayList<>(completedSongs);
+                        java.util.Collections.sort(list, (a,b) -> {
+                            String ta = a != null && a.getTitle() != null ? a.getTitle() : "";
+                            String tb = b != null && b.getTitle() != null ? b.getTitle() : "";
+                            return ta.compareToIgnoreCase(tb);
+                        });
+                        downloadedSongAdapter.processAndSubmitList(list);
+                        try { invalidateOptionsMenu(); } catch (Exception ignore) {}
+                    } else {
+                        java.util.List<Song> list = new java.util.ArrayList<>(completedSongs);
+                        java.util.Collections.reverse(list); // 最新在前
+                        downloadedSongAdapter.processAndSubmitListKeepOrder(list, () -> {
+                            try { invalidateOptionsMenu(); } catch (Exception ignore) {}
+                        });
+                    }
                 });
             } catch (Exception ignore) {}
         });
@@ -5707,6 +5776,44 @@ if (!(isDownloaded || isCached)) {
                 });
             } catch (Exception ignore) {}
         }).start();
+    }
+
+    private void showDownloadOpsPopup() {
+        try {
+            android.view.View anchor = this.toolbar != null ? this.toolbar : findViewById(android.R.id.content);
+            android.widget.PopupMenu pm = new android.widget.PopupMenu(this, anchor, android.view.Gravity.END);
+            pm.getMenu().add(0, 1, 0, "继续全部");
+            pm.getMenu().add(0, 2, 1, "暂停全部");
+            pm.getMenu().add(0, 3, 2, "取消全部");
+            // 排序切换
+            android.view.MenuItem sortTitle = pm.getMenu().add(0, 100, 3, "按标题A-Z排序");
+            android.view.MenuItem sortTime = pm.getMenu().add(0, 101, 4, "按下载时间(最新在前)");
+            try {
+                sortTitle.setCheckable(true).setChecked(downloadsSortMode == DOWNLOADS_SORT_BY_TITLE_ASC);
+                sortTime.setCheckable(true).setChecked(downloadsSortMode == DOWNLOADS_SORT_BY_TIME_DESC);
+            } catch (Exception ignore) {}
+            pm.setOnMenuItemClickListener(mi -> {
+                int mid = mi.getItemId();
+                if (mid == 1) { resumeAllDownloads(); return true; }
+                if (mid == 2) { pauseAllDownloads(); return true; }
+                if (mid == 3) { confirmCancelAllDownloads(); return true; }
+                if (mid == 100) { applyDownloadsSortMode(DOWNLOADS_SORT_BY_TITLE_ASC); return true; }
+                if (mid == 101) { applyDownloadsSortMode(DOWNLOADS_SORT_BY_TIME_DESC); return true; }
+                return false;
+            });
+            pm.show();
+        } catch (Exception ignore) {}
+    }
+
+    private void applyDownloadsSortMode(int mode) {
+        if (mode != DOWNLOADS_SORT_BY_TIME_DESC && mode != DOWNLOADS_SORT_BY_TITLE_ASC) return;
+        if (downloadsSortMode == mode) return;
+        downloadsSortMode = mode;
+        try {
+            android.content.SharedPreferences sp = getSharedPreferences("downloads_prefs", MODE_PRIVATE);
+            sp.edit().putInt("sort_mode", downloadsSortMode).apply();
+        } catch (Exception ignore) {}
+        refreshDownloadsData(true);
     }
 
     private void confirmCancelAllDownloads() {

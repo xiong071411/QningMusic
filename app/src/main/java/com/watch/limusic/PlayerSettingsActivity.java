@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.appcompat.widget.SwitchCompat;
 
 import com.watch.limusic.audio.AudioLevelBus;
 
@@ -40,6 +41,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private TextView txtBlurSummary;
 	private TextView txtIntensityValue;
 	private SeekBar seekIntensity;
+	private SwitchCompat swBgBlur;
 
 	private TextView txtLyricCur;
 	private TextView txtLyricOther;
@@ -47,15 +49,21 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 	private SeekBar seekLyricOther;
 
 	private TextView txtCustomLyricsSummary;
+	private SwitchCompat swCustomLyrics;
 	private TextView txtLyricSmoothSummary;
+	private SwitchCompat swLyricSmooth;
 	// 新增：长句滚动显示摘要
 	private TextView txtLyricLongSummary;
+	private SwitchCompat swLyricLong;
 	// 新增：显示音频类型摘要
 	private TextView txtShowAudioTypeSummary;
+	private SwitchCompat swShowAudioType;
 	// 新增：自动打开全屏播放器摘要
 	private TextView txtAutoOpenFullPlayerSummary;
+	private SwitchCompat swAutoOpenFullPlayer;
 	// 新增：音频可视化摘要/透明度
 	private TextView txtVisualizerSummary;
+	private SwitchCompat swAudioVisualization;
 	private SeekBar seekVisualizerOpacity;
 	private SeekBar seekVisualizerFps;
 	private TextView txtVisualizerFpsValue;
@@ -75,6 +83,7 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		txtBlurSummary = findViewById(R.id.txt_bg_blur_summary);
 		txtIntensityValue = findViewById(R.id.txt_bg_blur_intensity_value);
 		seekIntensity = findViewById(R.id.seek_bg_blur_intensity);
+		try { swBgBlur = findViewById(R.id.switch_bg_blur);} catch (Exception ignore) {}
 
 		txtLyricCur = findViewById(R.id.txt_lyric_current_size_value);
 		txtLyricOther = findViewById(R.id.txt_lyric_other_size_value);
@@ -82,15 +91,21 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		seekLyricOther = findViewById(R.id.seek_lyric_other_size);
 
 		txtCustomLyricsSummary = findViewById(R.id.txt_custom_lyrics_summary);
+		try { swCustomLyrics = findViewById(R.id.switch_custom_lyrics);} catch (Exception ignore) {}
 		txtLyricSmoothSummary = findViewById(R.id.txt_lyric_smooth_summary);
+		try { swLyricSmooth = findViewById(R.id.switch_lyric_smooth);} catch (Exception ignore) {}
 		// 新增：长句滚动显示摘要
 		txtLyricLongSummary = findViewById(R.id.txt_lyric_long_marquee_summary);
+		try { swLyricLong = findViewById(R.id.switch_lyric_long_marquee);} catch (Exception ignore) {}
 		// 新增：显示音频类型摘要
 		initShowAudioTypeCard();
+		try { swShowAudioType = findViewById(R.id.switch_show_audio_type);} catch (Exception ignore) {}
 		// 新增：初始化自动打开全屏播放器卡片
 		initAutoOpenFullPlayerCard();
+		try { swAutoOpenFullPlayer = findViewById(R.id.switch_auto_open_full_player);} catch (Exception ignore) {}
 		// 新增：初始化音频可视化控制
 		initVisualizerControls();
+		try { swAudioVisualization = findViewById(R.id.switch_audio_visualization);} catch (Exception ignore) {}
 		// 新增：初始化音频可视化样式
 		initVisualizerStyleCard();
 
@@ -110,21 +125,62 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 		// 新增：更新音频可视化样式摘要
 		updateVisualizerStyleSummary();
 
-		findViewById(R.id.card_bg_blur).setOnClickListener(v -> {
+		// 初始化 Switch 状态
+		SharedPreferences spInit = getSharedPreferences(PREFS, MODE_PRIVATE);
+		if (swBgBlur != null) swBgBlur.setChecked(spInit.getBoolean(KEY_BG_BLUR_ENABLED, true));
+		if (swCustomLyrics != null) swCustomLyrics.setChecked(spInit.getBoolean(KEY_CUSTOM_LYRICS_ENABLED, false));
+		if (swLyricSmooth != null) swLyricSmooth.setChecked(spInit.getBoolean(KEY_LYRIC_SMOOTH, true));
+		if (swLyricLong != null) swLyricLong.setChecked(spInit.getBoolean(KEY_LYRIC_LONG_MARQUEE, true));
+		if (swShowAudioType != null) swShowAudioType.setChecked(spInit.getBoolean(KEY_SHOW_AUDIO_TYPE, true));
+		if (swAutoOpenFullPlayer != null) swAutoOpenFullPlayer.setChecked(spInit.getBoolean(KEY_AUTO_OPEN_FULL_PLAYER, false));
+		if (swAudioVisualization != null) swAudioVisualization.setChecked(spInit.getBoolean(KEY_VISUALIZER_ENABLED, false));
+
+		// 监听：Switch 改变 → 写入偏好并更新摘要/通知UI
+		if (swBgBlur != null) swBgBlur.setOnCheckedChangeListener((b, checked) -> {
 			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_BG_BLUR_ENABLED, true);
-			sp.edit().putBoolean(KEY_BG_BLUR_ENABLED, !enabled).apply();
+			sp.edit().putBoolean(KEY_BG_BLUR_ENABLED, checked).apply();
 			updateBlurSummary();
 			notifyUi();
 		});
-
-		findViewById(R.id.card_custom_lyrics).setOnClickListener(v -> {
+		if (swCustomLyrics != null) swCustomLyrics.setOnCheckedChangeListener((b, checked) -> {
 			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_CUSTOM_LYRICS_ENABLED, false);
-			sp.edit().putBoolean(KEY_CUSTOM_LYRICS_ENABLED, !enabled).apply();
+			sp.edit().putBoolean(KEY_CUSTOM_LYRICS_ENABLED, checked).apply();
 			updateCustomLyricsSummary();
 			notifyUiLyricSource();
 		});
+		if (swLyricSmooth != null) swLyricSmooth.setOnCheckedChangeListener((b, checked) -> {
+			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+			sp.edit().putBoolean(KEY_LYRIC_SMOOTH, checked).apply();
+			updateLyricSmoothSummary();
+			notifyUiLyric();
+		});
+		if (swLyricLong != null) swLyricLong.setOnCheckedChangeListener((b, checked) -> {
+			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+			sp.edit().putBoolean(KEY_LYRIC_LONG_MARQUEE, checked).apply();
+			updateLyricLongSummary();
+			notifyUiLyric();
+		});
+		if (swShowAudioType != null) swShowAudioType.setOnCheckedChangeListener((b, checked) -> {
+			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+			sp.edit().putBoolean(KEY_SHOW_AUDIO_TYPE, checked).apply();
+			updateShowAudioTypeSummary();
+			notifyUiBadge();
+		});
+		if (swAutoOpenFullPlayer != null) swAutoOpenFullPlayer.setOnCheckedChangeListener((b, checked) -> {
+			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+			sp.edit().putBoolean(KEY_AUTO_OPEN_FULL_PLAYER, checked).apply();
+			updateAutoOpenFullPlayerSummary();
+		});
+		if (swAudioVisualization != null) swAudioVisualization.setOnCheckedChangeListener((b, checked) -> {
+			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
+			sp.edit().putBoolean(KEY_VISUALIZER_ENABLED, checked).apply();
+			updateVisualizerSummary();
+			notifyUiVisualizer();
+		});
+
+		findViewById(R.id.card_bg_blur).setOnClickListener(v -> { if (swBgBlur != null) swBgBlur.performClick(); });
+
+		findViewById(R.id.card_custom_lyrics).setOnClickListener(v -> { if (swCustomLyrics != null) swCustomLyrics.performClick(); });
 
 		findViewById(R.id.card_custom_lyrics).setOnLongClickListener(v -> {
 			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -152,39 +208,16 @@ public class PlayerSettingsActivity extends AppCompatActivity {
 			return true;
 		});
 
-		findViewById(R.id.card_lyric_smooth).setOnClickListener(v -> {
-			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_LYRIC_SMOOTH, true);
-			sp.edit().putBoolean(KEY_LYRIC_SMOOTH, !enabled).apply();
-			updateLyricSmoothSummary();
-			notifyUiLyric();
-		});
+		findViewById(R.id.card_lyric_smooth).setOnClickListener(v -> { if (swLyricSmooth != null) swLyricSmooth.performClick(); });
 
 		// 新增：长句滚动显示开关
-		findViewById(R.id.card_lyric_long_marquee).setOnClickListener(v -> {
-			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_LYRIC_LONG_MARQUEE, true);
-			sp.edit().putBoolean(KEY_LYRIC_LONG_MARQUEE, !enabled).apply();
-			updateLyricLongSummary();
-			notifyUiLyric();
-		});
+		findViewById(R.id.card_lyric_long_marquee).setOnClickListener(v -> { if (swLyricLong != null) swLyricLong.performClick(); });
 
 		// 新增：显示音频类型开关
-		findViewById(R.id.card_show_audio_type).setOnClickListener(v -> {
-			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_SHOW_AUDIO_TYPE, true);
-			sp.edit().putBoolean(KEY_SHOW_AUDIO_TYPE, !enabled).apply();
-			updateShowAudioTypeSummary();
-			notifyUiBadge();
-		});
+		findViewById(R.id.card_show_audio_type).setOnClickListener(v -> { if (swShowAudioType != null) swShowAudioType.performClick(); });
 
 		// 新增：自动打开全屏播放器开关
-		findViewById(R.id.card_auto_open_full_player).setOnClickListener(v -> {
-			SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-			boolean enabled = sp.getBoolean(KEY_AUTO_OPEN_FULL_PLAYER, false);
-			sp.edit().putBoolean(KEY_AUTO_OPEN_FULL_PLAYER, !enabled).apply();
-			updateAutoOpenFullPlayerSummary();
-		});
+		findViewById(R.id.card_auto_open_full_player).setOnClickListener(v -> { if (swAutoOpenFullPlayer != null) swAutoOpenFullPlayer.performClick(); });
 
 		seekIntensity.setMax(100);
 		seekIntensity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {

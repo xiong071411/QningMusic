@@ -129,8 +129,8 @@ public class DownloadTaskAdapter extends ListAdapter<DownloadInfo, DownloadTaskA
                 });
             } else if (info.getStatus() == DownloadStatus.DOWNLOAD_PAUSED) {
                 h.action.setImageResource(R.drawable.ic_play_rounded);
-                // 统一使用运行中颜色（保持一致性）
-                try { h.action.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.download_progress_running))); } catch (Exception ignore) {}
+                // 暂停态：右侧动作按钮改用“暂停色”（与进度条一致的黄色系）
+                try { h.action.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(context, R.color.download_progress_paused))); } catch (Exception ignore) {}
                 h.action.setContentDescription("继续");
                 h.action.setOnClickListener(v -> {
                     try {

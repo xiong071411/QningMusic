@@ -172,17 +172,27 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
     public void setPlaylistDetail(boolean v) { this.isPlaylistDetail = v; notifyDataSetChanged(); }
 
     public int getPositionForLetter(String letter) {
+        if (letter == null) return -1;
         if ("#".equals(letter)) {
+            // 定义：# 命中所有非A-Z首字母（含数字/特殊），取第一个
             for (int i = 0; i < getItemCount(); i++) {
                 String firstChar = getItem(i).getSortLetter();
-                if ("#".equals(firstChar) || Character.isDigit(firstChar.charAt(0))) {
-                    return i;
-                }
+                if (firstChar == null || firstChar.length() == 0) return i;
+                char c = firstChar.charAt(0);
+                boolean isAZ = (c >= 'A' && c <= 'Z');
+                if (!isAZ) return i;
             }
             return 0;
         }
+        // 标准字母A-Z：直接从映射取
         Integer position = letterPositionMap.get(letter);
-        return position != null ? position : -1;
+        if (position != null) return position;
+        // 兜底：若精确未命中，尝试向后回退到最近的之前字母
+        for (char c = letter.charAt(0); c >= 'A'; c--) {
+            Integer pos = letterPositionMap.get(String.valueOf(c));
+            if (pos != null) return pos;
+        }
+        return 0;
     }
 
     public List<String> getAvailableIndexLetters() {
@@ -619,7 +629,12 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
                 swi.setPosition(i);
                 songItems.add(swi);
             }
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> submitList(songItems));
+            ArrayList<SongWithIndex> finalItems = new ArrayList<>(songItems);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                // 在主线程更新字母索引映射，确保与UI数据一致
+                updateLetterPositionMap(finalItems);
+                submitList(finalItems);
+            });
         }).start();
     }
 
@@ -634,7 +649,12 @@ public class SongAdapter extends ListAdapter<SongWithIndex, SongAdapter.ViewHold
                 swi.setPosition(i);
                 songItems.add(swi);
             }
-            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> submitList(songItems, commitCallback));
+            ArrayList<SongWithIndex> finalItems = new ArrayList<>(songItems);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                // 在主线程更新字母索引映射，确保与UI数据一致
+                updateLetterPositionMap(finalItems);
+                submitList(finalItems, commitCallback);
+            });
         }).start();
     }
 

@@ -75,6 +75,12 @@
             android:parentActivityName=".SettingsActivity" />
 
         <activity
+            android:name=".ListenReportSettingsActivity"
+            android:label="听歌记录服务器"
+            android:exported="false"
+            android:parentActivityName=".SettingsActivity" />
+
+        <activity
             android:name=".DownloadSettingsActivity"
             android:label="@string/download_management"
             android:exported="false"

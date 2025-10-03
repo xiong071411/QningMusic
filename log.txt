@@ -1,43 +1,141 @@
-2025-09-21 15:48:35.562 19468-19468 PlayerService           com.watch.limusic                    D  切换到歌曲: 3, 索引: 2
-2025-09-21 15:48:35.562 19468-19468 PlayerService           com.watch.limusic                    D  原因: 自动切换到下一首
-2025-09-21 15:48:41.766 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 40586(5MB) AllocSpace objects, 3(100KB) LOS objects, 23% free, 19MB/25MB, paused 215us total 142.286ms
-2025-09-21 15:49:02.205 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 37063(6MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 190us total 138.964ms
-2025-09-21 15:49:19.217 19468-19468 PlayerService           com.watch.limusic                    D  切换到歌曲: 2, 索引: 1
-2025-09-21 15:49:19.217 19468-19468 PlayerService           com.watch.limusic                    D  原因: 自动切换到下一首
-2025-09-21 15:49:22.442 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 35355(6MB) AllocSpace objects, 3(100KB) LOS objects, 23% free, 19MB/25MB, paused 172us total 142.001ms
-2025-09-21 15:49:34.251 19468-20150 XingSeeker              com.watch.limusic                    W  XING data size mismatch: 1749376, 1749248
-2025-09-21 15:49:34.760 19468-20151 XingSeeker              com.watch.limusic                    W  XING data size mismatch: 1749376, 1749248
-2025-09-21 15:49:39.560 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 31370(5MB) AllocSpace objects, 4(112KB) LOS objects, 23% free, 19MB/25MB, paused 109us total 134.130ms
-2025-09-21 15:50:00.057 19468-19481 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 33378(5MB) AllocSpace objects, 0(0B) LOS objects, 23% free, 19MB/25MB, paused 1.227ms total 148.305ms
-2025-09-21 15:50:11.981 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8471277230, 130970937, 6289391, 6286605
-2025-09-21 15:50:12.488 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8471784047, 130970937, 6289391, 6286605
-2025-09-21 15:50:12.994 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8472289955, 130970937, 6289391, 6286605
-2025-09-21 15:50:13.503 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8472798645, 130970937, 6289391, 6286605
-2025-09-21 15:50:14.010 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8473306420, 130970937, 6289391, 6286605
-2025-09-21 15:50:14.512 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8473808315, 130970937, 6289391, 6286605
-2025-09-21 15:50:15.014 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8474309748, 130970937, 6289391, 6286605
-2025-09-21 15:50:15.523 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8474819409, 130970937, 6289391, 6286605
-2025-09-21 15:50:16.035 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8475330984, 130970937, 6289391, 6286605
-2025-09-21 15:50:16.537 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8475832918, 130970937, 6289391, 6286605
-2025-09-21 15:50:17.047 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8476342656, 130970937, 6289391, 6286605
-2025-09-21 15:50:17.555 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8476850542, 130970937, 6289391, 6286605
-2025-09-21 15:50:18.063 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8477358542, 130970937, 6289391, 6286605
-2025-09-21 15:50:18.568 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8477864405, 130970937, 6289391, 6286605
-2025-09-21 15:50:19.073 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8478368544, 130970937, 6289391, 6286605
-2025-09-21 15:50:19.578 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8478874145, 130970937, 6289391, 6286605
-2025-09-21 15:50:20.087 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8479382600, 130970937, 6289391, 6286605
-2025-09-21 15:50:20.591 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8479887438, 130970937, 6289391, 6286605
-2025-09-21 15:50:21.101 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8480396872, 130970937, 6289391, 6286605
-2025-09-21 15:50:21.611 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8480907395, 130970937, 6289391, 6286605
-2025-09-21 15:50:22.112 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8481408386, 130970937, 6289391, 6286605
-2025-09-21 15:50:22.621 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8481917076, 130970937, 6289391, 6286605
-2025-09-21 15:50:23.130 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8482426368, 130970937, 6289391, 6286605
-2025-09-21 15:50:23.631 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8482926671, 130970937, 6289391, 6286605
-2025-09-21 15:50:24.133 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8483428600, 130970937, 6289391, 6286605
-2025-09-21 15:50:24.634 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8483929858, 130970937, 6289391, 6286605
-2025-09-21 15:50:25.146 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8484441506, 130970937, 6289391, 6286605
-2025-09-21 15:50:25.656 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8484952229, 130970937, 6289391, 6286605
-2025-09-21 15:50:26.167 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8485462530, 130970937, 6289391, 6286605
-2025-09-21 15:50:26.673 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8485969217, 130970937, 6289391, 6286605
-2025-09-21 15:50:27.181 19468-19565 DefaultAudioSink        com.watch.limusic                    W  Spurious audio timestamp (system clock mismatch): 6286605, 8463030899, 8486476938, 130970937, 6289391, 6286605
-2025-09-21
+2025-10-02 17:14:20.825 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: è¥æä½  (åç)
+2025-10-02 17:14:20.834 26556-26831 System                  com.watch.limusic                    W  ClassLoader referenced unknown path: /system/framework/tcmclient.jar
+2025-10-02 17:14:20.837 26556-26831 System                  com.watch.limusic                    W  ClassLoader referenced unknown path: /system/framework/tcmclient.jar
+2025-10-02 17:14:20.906 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: è¥æä½  (åç)
+2025-10-02 17:14:20.940 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
+2025-10-02 17:14:20.944 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: Соколи
+2025-10-02 17:14:20.970 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: Соколи
+2025-10-02 17:14:21.106 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
+2025-10-02 17:14:21.109 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《克洛托的阴谋》Y
+2025-10-02 17:14:21.136 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《克洛托的阴谋》Y
+2025-10-02 17:14:21.165 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
+2025-10-02 17:14:21.171 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《回到从前》L
+2025-10-02 17:14:21.201 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《回到从前》L
+2025-10-02 17:14:21.226 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
+2025-10-02 17:14:21.232 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-02 17:14:21.257 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
+2025-10-02 17:14:21.304 26556-26752 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-02 17:14:21.334 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
+2025-10-02 17:14:21.344 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《希望予你》Y
+2025-10-02 17:14:21.379 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:21.392 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:21.393 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
+2025-10-02 17:14:21.404 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:21.431 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《希望予你》Y
+2025-10-02 17:14:21.458 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
+2025-10-02 17:14:21.509 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
+2025-10-02 17:14:23.045 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:23.147 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:23.231 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:23.991 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:24.060 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:25.892 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 44 lines
+2025-10-02 17:14:25.935 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:25.984 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.009 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.014 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
+2025-10-02 17:14:26.035 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.053 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
+2025-10-02 17:14:26.057 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.085 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
+2025-10-02 17:14:26.090 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.114 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.142 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.184 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.231 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-02 17:14:26.248 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:26.347 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 4 lines
+2025-10-02 17:14:26.358 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:26.997 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:29.566 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
+2025-10-02 17:14:29.569 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《希望予你》Y
+2025-10-02 17:14:29.583 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
+2025-10-02 17:14:29.665 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
+2025-10-02 17:14:29.693 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> WAITING
+2025-10-02 17:14:29.720 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
+2025-10-02 17:14:29.746 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
+2025-10-02 17:14:29.778 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> WAITING
+2025-10-02 17:14:29.801 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
+2025-10-02 17:14:29.828 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
+2025-10-02 17:14:29.858 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:29.862 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
+2025-10-02 17:14:29.894 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
+2025-10-02 17:14:29.899 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
+2025-10-02 17:14:29.919 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-02 17:14:29.933 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-02 17:14:29.949 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
+2025-10-02 17:14:29.952 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
+2025-10-02 17:14:29.976 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
+2025-10-02 17:14:29.999 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
+2025-10-02 17:14:30.041 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
+2025-10-02 17:14:30.077 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
+2025-10-02 17:14:30.098 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
+2025-10-02 17:14:30.144 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:30.147 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:30.175 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:30.218 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:30.876 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 1 line
+2025-10-02 17:14:31.038 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:36.354 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
+2025-10-02 17:14:36.377 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
+2025-10-02 17:14:36.404 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> WAITING
+2025-10-02 17:14:36.450 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
+2025-10-02 17:14:36.471 26556-26580 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 201459(7MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 643us total 194.507ms
+2025-10-02 17:14:36.481 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
+2025-10-02 17:14:36.520 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> WAITING
+2025-10-02 17:14:36.550 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
+2025-10-02 17:14:36.572 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
+2025-10-02 17:14:36.608 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:36.624 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:36.632 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
+2025-10-02 17:14:36.655 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
+2025-10-02 17:14:36.662 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
+2025-10-02 17:14:36.663 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
+2025-10-02 17:14:36.669 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:36.683 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《希望予你》Y
+2025-10-02 17:14:36.696 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-02 17:14:36.743 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
+2025-10-02 17:14:36.776 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
+2025-10-02 17:14:36.800 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
+2025-10-02 17:14:36.833 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
+2025-10-02 17:14:36.852 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:36.882 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 2 lines
+2025-10-02 17:14:36.889 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:36.959 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:36.982 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
+2025-10-02 17:14:37.017 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:37.026 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-02 17:14:37.046 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
+2025-10-02 17:14:37.057 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
+2025-10-02 17:14:37.292 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.040 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
+2025-10-02 17:14:47.063 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> WAITING
+2025-10-02 17:14:47.088 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
+2025-10-02 17:14:47.159 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
+2025-10-02 17:14:47.185 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
+2025-10-02 17:14:47.214 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> WAITING
+2025-10-02 17:14:47.247 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
+2025-10-02 17:14:47.270 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
+2025-10-02 17:14:47.286 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.296 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.304 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
+2025-10-02 17:14:47.318 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.328 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.343 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
+2025-10-02 17:14:47.346 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
+2025-10-02 17:14:47.372 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
+2025-10-02 17:14:47.373 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: 《希望予你》Y
+2025-10-02 17:14:47.396 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-02 17:14:47.400 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
+2025-10-02 17:14:47.424 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
+2025-10-02 17:14:47.450 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
+2025-10-02 17:14:47.473 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
+2025-10-02 17:14:47.504 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.549 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 2 lines
+2025-10-02 17:14:47.558 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-02 17:14:47.559 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
+2025-10-02 17:14:47.589 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:47.619 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
+2025-10-02 17:14:47.624 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-02 17:14:47.667 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-02 17:14:47.688 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи

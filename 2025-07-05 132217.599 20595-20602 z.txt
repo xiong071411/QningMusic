@@ -36,7 +36,7 @@
 2025-07-05 18:17:27.818 32653-32653 PlayerService           com.watch.limusic                    D  初始化播放器 - 设置默认模式为列表循环
 2025-07-05 18:17:27.820 32653-32653 MediaSessionCompat      com.watch.limusic                    W  Couldn't find a unique registered media button receiver in the given context.
 2025-07-05 18:17:27.907 32653-32735 Adreno                  com.watch.limusic                    I  QUALCOMM build                   : 6b98e38, Ia11ce2d146
-                                                                                                    Build Date                       : 02/28/21
+                                                                                     Build Date                       : 02/28/21
                                                                                                     OpenGL ES Shader Compiler Version: EV031.22.00.01_06_07
                                                                                                     Local Branch                     : 
                                                                                                     Remote Branch                    : 

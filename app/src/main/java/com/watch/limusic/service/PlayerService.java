@@ -45,6 +45,7 @@ import com.google.android.exoplayer2.Format;
 import com.watch.limusic.MainActivity;
 import com.watch.limusic.R;
 import com.watch.limusic.api.NavidromeApi;
+import com.watch.limusic.api.ListenReporter;
 import com.watch.limusic.model.Song;
 import com.watch.limusic.cache.CacheManager;
 import com.watch.limusic.download.LocalFileDetector;
@@ -103,6 +104,9 @@ public class PlayerService extends Service {
     
     // 已尝试过转码回退的歌曲，避免无限重试
     private final Set<String> transcodingFallbackTried = new HashSet<>();
+
+    // 听歌上报：每首歌仅上报一次
+    private boolean listenReportedForCurrent = false;
 
 	// 持久化相关
 	private static final String PREFS_NAME = "player_prefs";
@@ -346,6 +350,8 @@ public class PlayerService extends Service {
                         } }, 250);
                         // 附带一次 AudioSessionId 变化广播，便于可视化绑定
                         try { sendAudioSessionBroadcast(); } catch (Throwable ignore) {}
+                        // 若刚开始播放且进度很小，尝试上报一次
+                        try { maybeReportListenIfJustStarted(); } catch (Throwable ignore) {}
                         break;
                     case Player.STATE_BUFFERING:
                         Log.d(TAG, "正在缓冲");
@@ -373,6 +379,9 @@ public class PlayerService extends Service {
                 try { sendAudioSessionBroadcast(); } catch (Throwable ignore) {}
                 if (!isPlaying) {
                     releaseAudioFocus();
+                }
+                if (isPlaying) {
+                    try { maybeReportListenIfJustStarted(); } catch (Throwable ignore) {}
                 }
             }
 
@@ -505,6 +514,8 @@ public class PlayerService extends Service {
                             currentSong = mappedSong;
                         }
                         Log.d(TAG, "切换到歌曲: " + (currentSong != null ? currentSong.getTitle() : "?") + ", 索引: " + currentIndex);
+                        // 切到新曲，重置本首上报标记
+                        listenReportedForCurrent = false;
                         switch (reason) {
                             case Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT:
                                 Log.d(TAG, "原因: 重复播放");
@@ -858,6 +869,21 @@ public class PlayerService extends Service {
             }
         }
         sendBroadcast(intent);
+    }
+
+    // 当开始播放且进度很小（<=2s）时尝试上报一次（仅一次）
+    private void maybeReportListenIfJustStarted() {
+        try {
+            if (player == null || currentSong == null) return;
+            if (listenReportedForCurrent) return;
+            long pos = Math.max(0, player.getCurrentPosition());
+            if (pos > 2000) return; // 仅在刚开始时上报
+            if (!NetworkUtils.isNetworkAvailable(this)) return;
+            ListenReporter.getInstance(this).reportAsync(currentSong);
+            listenReportedForCurrent = true;
+        } catch (Throwable t) {
+            Log.w(TAG, "上报监听失败(忽略)", t);
+        }
     }
 
 	// 将当前播放器/网络/缓存状态打印出来，辅助排查卡顿

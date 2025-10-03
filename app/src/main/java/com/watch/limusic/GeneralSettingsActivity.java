@@ -6,6 +6,7 @@ import android.os.Bundle;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import androidx.appcompat.widget.SwitchCompat;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -29,6 +30,10 @@ public class GeneralSettingsActivity extends AppCompatActivity {
     private TextView txtDownloadTransSummary;
     private TextView txtLowPowerSummary;
     private TextView txtProgressSummary;
+
+    private SwitchCompat swTranscoding;
+    private SwitchCompat swDownloadTranscoding;
+    private SwitchCompat swLowPower;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean clearing = new AtomicBoolean(false);
@@ -54,31 +59,42 @@ public class GeneralSettingsActivity extends AppCompatActivity {
         // 缓存详情
         findViewById(R.id.card_cache_settings).setOnClickListener(v -> startActivity(new Intent(this, CacheSettingsActivity.class)));
 
-        // 解码兼容模式
-        findViewById(R.id.card_transcoding).setOnClickListener(v -> {
+        // 绑定 Switch
+        try { swTranscoding = findViewById(R.id.switch_transcoding); } catch (Exception ignore) {}
+        try { swDownloadTranscoding = findViewById(R.id.switch_download_transcoding); } catch (Exception ignore) {}
+        try { swLowPower = findViewById(R.id.switch_low_power); } catch (Exception ignore) {}
+
+        // 初始化 Switch 状态
+        SharedPreferences spInit = getSharedPreferences(PREFS, MODE_PRIVATE);
+        if (swTranscoding != null) swTranscoding.setChecked(spInit.getBoolean(KEY_FORCE_TRANSCODE, false));
+        if (swDownloadTranscoding != null) swDownloadTranscoding.setChecked(spInit.getBoolean(KEY_FORCE_DOWNLOAD_TRANSCODE, false));
+        if (swLowPower != null) swLowPower.setChecked(spInit.getBoolean(KEY_LOW_POWER_MODE, false));
+
+        // Switch 监听 → 写入偏好并更新摘要
+        if (swTranscoding != null) swTranscoding.setOnCheckedChangeListener((buttonView, isChecked) -> {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-            boolean enabled = sp.getBoolean(KEY_FORCE_TRANSCODE, false);
-            sp.edit().putBoolean(KEY_FORCE_TRANSCODE, !enabled).apply();
+            sp.edit().putBoolean(KEY_FORCE_TRANSCODE, isChecked).apply();
             updateTranscodingSummary();
         });
-        // 下载强制转码
-        findViewById(R.id.card_download_transcoding).setOnClickListener(v -> {
+        if (swDownloadTranscoding != null) swDownloadTranscoding.setOnCheckedChangeListener((buttonView, isChecked) -> {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-            boolean enabled = sp.getBoolean(KEY_FORCE_DOWNLOAD_TRANSCODE, false);
-            sp.edit().putBoolean(KEY_FORCE_DOWNLOAD_TRANSCODE, !enabled).apply();
+            sp.edit().putBoolean(KEY_FORCE_DOWNLOAD_TRANSCODE, isChecked).apply();
             updateDownloadTranscodingSummary();
         });
-        // 省电模式
-        findViewById(R.id.card_low_power).setOnClickListener(v -> {
+        if (swLowPower != null) swLowPower.setOnCheckedChangeListener((buttonView, isChecked) -> {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
-            boolean enabled = sp.getBoolean(KEY_LOW_POWER_MODE, false);
-            sp.edit().putBoolean(KEY_LOW_POWER_MODE, !enabled).apply();
+            sp.edit().putBoolean(KEY_LOW_POWER_MODE, isChecked).apply();
             updateLowPowerSummary();
-            Toast.makeText(this, !enabled ? "已开启低耗模式" : "已关闭低耗模式", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, isChecked ? "已开启低耗模式" : "已关闭低耗模式", Toast.LENGTH_SHORT).show();
             // 通知主界面刷新
             try { Intent i = new Intent("com.watch.limusic.UI_SETTINGS_CHANGED"); i.putExtra("what","low_power"); sendBroadcast(i);} catch (Exception ignore) {}
             try { sendBroadcast(new Intent("com.watch.limusic.PLAYBACK_STATE_CHANGED")); } catch (Exception ignore) {}
         });
+
+        // 卡片点击 → 触发 Switch 点击（扩大可点击区域）
+        findViewById(R.id.card_transcoding).setOnClickListener(v -> { if (swTranscoding != null) swTranscoding.performClick(); });
+        findViewById(R.id.card_download_transcoding).setOnClickListener(v -> { if (swDownloadTranscoding != null) swDownloadTranscoding.performClick(); });
+        findViewById(R.id.card_low_power).setOnClickListener(v -> { if (swLowPower != null) swLowPower.performClick(); });
         // 进度刷新频率
         findViewById(R.id.card_progress_broadcast).setOnClickListener(v -> {
             SharedPreferences sp = getSharedPreferences(PREFS, MODE_PRIVATE);
@@ -97,6 +113,10 @@ public class GeneralSettingsActivity extends AppCompatActivity {
         updateDownloadTranscodingSummary();
         updateLowPowerSummary();
         updateProgressSummary();
+
+        // 听歌记录服务器设置入口
+        View listenReport = findViewById(R.id.card_listen_report_settings);
+        if (listenReport != null) listenReport.setOnClickListener(v -> startActivity(new Intent(this, ListenReportSettingsActivity.class)));
 
         // 测试日志记录（仅测试版有效；release为占位实现）
         View cardLog = findViewByIdName("card_test_log_recorder");

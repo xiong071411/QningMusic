@@ -462,13 +462,29 @@ public class DownloadManager {
             activeDownloads.put(songId, info);
         }
         final DownloadInfo infoFinal = info;
-        // 全局暂停：仅标记为暂停并入等待队列
+        // 全局暂停：允许单曲“显式恢复”成为一次性例外，临时解除暂停启动一个任务，然后立即恢复暂停
         if (globalPaused) {
-            // 全局暂停：转 WAITING 入队
-            infoFinal.setStatus(DownloadStatus.WAITING);
-            downloadRepository.updateDownloadStatus(songId, DownloadStatus.WAITING);
-            waitingQueue.offer(songId);
-            Log.i(TAG, "全局暂停中，延后恢复(入等待): " + song.getTitle());
+            Log.i(TAG, "全局暂停中，单曲显式恢复：临时放行一次 -> " + song.getTitle());
+            boolean restored = false;
+            try {
+                globalPaused = false;
+                // 尝试直接启动（若线程已满则入等待）
+                if (downloadTasks.size() >= MAX_CONCURRENT_DOWNLOADS) {
+                    infoFinal.setStatus(DownloadStatus.WAITING);
+                    downloadRepository.updateDownloadStatus(songId, DownloadStatus.WAITING);
+                    waitingQueue.offer(songId);
+                } else {
+                    infoFinal.setStatus(DownloadStatus.DOWNLOADING);
+                    downloadRepository.updateDownloadStatus(songId, DownloadStatus.DOWNLOADING);
+                    Future<?> task = downloadExecutor.submit(() -> performDownload(infoFinal));
+                    downloadTasks.put(songId, task);
+                    restored = true;
+                }
+            } finally {
+                // 立即恢复全局暂停，避免其他等待任务被批量拉起
+                globalPaused = true;
+            }
+            if (!restored) Log.i(TAG, "已入等待队列(全局暂停生效)：" + song.getTitle());
             return;
         }
         // 若已在等待中或线程已满，转 WAITING
