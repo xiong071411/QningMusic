@@ -1,141 +1,92 @@
-2025-10-02 17:14:20.825 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: è¥æä½  (åç)
-2025-10-02 17:14:20.834 26556-26831 System                  com.watch.limusic                    W  ClassLoader referenced unknown path: /system/framework/tcmclient.jar
-2025-10-02 17:14:20.837 26556-26831 System                  com.watch.limusic                    W  ClassLoader referenced unknown path: /system/framework/tcmclient.jar
-2025-10-02 17:14:20.906 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: è¥æä½  (åç)
-2025-10-02 17:14:20.940 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
-2025-10-02 17:14:20.944 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: Соколи
-2025-10-02 17:14:20.970 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: Соколи
-2025-10-02 17:14:21.106 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
-2025-10-02 17:14:21.109 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《克洛托的阴谋》Y
-2025-10-02 17:14:21.136 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《克洛托的阴谋》Y
-2025-10-02 17:14:21.165 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
-2025-10-02 17:14:21.171 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《回到从前》L
-2025-10-02 17:14:21.201 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《回到从前》L
-2025-10-02 17:14:21.226 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
-2025-10-02 17:14:21.232 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
-2025-10-02 17:14:21.257 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
-2025-10-02 17:14:21.304 26556-26752 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
-2025-10-02 17:14:21.334 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
-2025-10-02 17:14:21.344 26556-26830 DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《希望予你》Y
-2025-10-02 17:14:21.379 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:21.392 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:21.393 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
-2025-10-02 17:14:21.404 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:21.431 26556-26753 DownloadRepository      com.watch.limusic                    D  添加下载记录: 《希望予你》Y
-2025-10-02 17:14:21.458 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
-2025-10-02 17:14:21.509 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
-2025-10-02 17:14:23.045 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:23.147 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:23.231 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:23.991 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:24.060 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:25.892 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 44 lines
-2025-10-02 17:14:25.935 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:25.984 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.009 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.014 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
-2025-10-02 17:14:26.035 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.053 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
-2025-10-02 17:14:26.057 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.085 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
-2025-10-02 17:14:26.090 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.114 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.142 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.184 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.231 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
-2025-10-02 17:14:26.248 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:26.347 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 4 lines
-2025-10-02 17:14:26.358 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:26.997 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:29.566 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
-2025-10-02 17:14:29.569 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《希望予你》Y
-2025-10-02 17:14:29.583 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
-2025-10-02 17:14:29.665 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
-2025-10-02 17:14:29.693 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> WAITING
-2025-10-02 17:14:29.720 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
-2025-10-02 17:14:29.746 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
-2025-10-02 17:14:29.778 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> WAITING
-2025-10-02 17:14:29.801 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
-2025-10-02 17:14:29.828 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
-2025-10-02 17:14:29.858 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:29.862 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
-2025-10-02 17:14:29.894 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
-2025-10-02 17:14:29.899 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
-2025-10-02 17:14:29.919 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
-2025-10-02 17:14:29.933 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
-2025-10-02 17:14:29.949 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
-2025-10-02 17:14:29.952 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
-2025-10-02 17:14:29.976 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
-2025-10-02 17:14:29.999 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
-2025-10-02 17:14:30.041 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
-2025-10-02 17:14:30.077 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
-2025-10-02 17:14:30.098 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
-2025-10-02 17:14:30.144 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:30.147 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:30.175 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:30.218 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:30.876 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 1 line
-2025-10-02 17:14:31.038 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:36.354 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
-2025-10-02 17:14:36.377 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
-2025-10-02 17:14:36.404 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> WAITING
-2025-10-02 17:14:36.450 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
-2025-10-02 17:14:36.471 26556-26580 zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 201459(7MB) AllocSpace objects, 1(20KB) LOS objects, 23% free, 19MB/25MB, paused 643us total 194.507ms
-2025-10-02 17:14:36.481 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
-2025-10-02 17:14:36.520 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> WAITING
-2025-10-02 17:14:36.550 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
-2025-10-02 17:14:36.572 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
-2025-10-02 17:14:36.608 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:36.624 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:36.632 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
-2025-10-02 17:14:36.655 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
-2025-10-02 17:14:36.662 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
-2025-10-02 17:14:36.663 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
-2025-10-02 17:14:36.669 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:36.683 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《希望予你》Y
-2025-10-02 17:14:36.696 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
-2025-10-02 17:14:36.743 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
-2025-10-02 17:14:36.776 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
-2025-10-02 17:14:36.800 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
-2025-10-02 17:14:36.833 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
-2025-10-02 17:14:36.852 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:36.882 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 2 lines
-2025-10-02 17:14:36.889 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:36.959 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:36.982 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
-2025-10-02 17:14:37.017 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:37.026 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
-2025-10-02 17:14:37.046 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
-2025-10-02 17:14:37.057 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
-2025-10-02 17:14:37.292 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.040 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
-2025-10-02 17:14:47.063 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> WAITING
-2025-10-02 17:14:47.088 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
-2025-10-02 17:14:47.159 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
-2025-10-02 17:14:47.185 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
-2025-10-02 17:14:47.214 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> WAITING
-2025-10-02 17:14:47.247 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
-2025-10-02 17:14:47.270 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
-2025-10-02 17:14:47.286 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.296 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.304 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
-2025-10-02 17:14:47.318 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.328 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.343 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: è¥æä½  (åç)
-2025-10-02 17:14:47.346 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
-2025-10-02 17:14:47.372 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOAD_PAUSED
-2025-10-02 17:14:47.373 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: 《希望予你》Y
-2025-10-02 17:14:47.396 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
-2025-10-02 17:14:47.400 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
-2025-10-02 17:14:47.424 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
-2025-10-02 17:14:47.450 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
-2025-10-02 17:14:47.473 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
-2025-10-02 17:14:47.504 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.549 26556-26556 chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 2 lines
-2025-10-02 17:14:47.558 26556-26556 StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
-2025-10-02 17:14:47.559 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
-2025-10-02 17:14:47.589 26556-26753 DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:47.619 26556-26835 DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
-2025-10-02 17:14:47.624 26556-26752 DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
-2025-10-02 17:14:47.667 26556-26831 DownloadManager         com.watch.limusic                    I  下载已暂停: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
-2025-10-02 17:14:47.688 26556-26833 DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
+2025-10-03 22:38:39.344  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: @草东没有派对创作的原声
+2025-10-03 22:38:39.407  1954-2412  DownloadRepository      com.watch.limusic                    D  添加下载记录: @草东没有派对创作的原声
+2025-10-03 22:38:39.424  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: HAEFdY3Ov2ifOxKjgfiW2G -> DOWNLOADING
+2025-10-03 22:38:39.428  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: è¥æä½  (åç)
+2025-10-03 22:38:39.446  1954-2412  DownloadRepository      com.watch.limusic                    D  添加下载记录: è¥æä½  (åç)
+2025-10-03 22:38:39.463  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: UCMIzsWW3gMKDNgEBtah4u -> DOWNLOADING
+2025-10-03 22:38:39.468  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: Соколи
+2025-10-03 22:38:39.492  1954-2412  DownloadRepository      com.watch.limusic                    D  添加下载记录: Соколи
+2025-10-03 22:38:39.513  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOADING
+2025-10-03 22:38:39.519  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《克洛托的阴谋》Y
+2025-10-03 22:38:39.548  1954-2412  DownloadRepository      com.watch.limusic                    D  添加下载记录: 《克洛托的阴谋》Y
+2025-10-03 22:38:39.586  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
+2025-10-03 22:38:39.589  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《回到从前》L
+2025-10-03 22:38:39.619  1954-2411  DownloadRepository      com.watch.limusic                    D  添加下载记录: 《回到从前》L
+2025-10-03 22:38:39.669  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
+2025-10-03 22:38:39.695  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
+2025-10-03 22:38:39.698  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-03 22:38:39.732  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> WAITING
+2025-10-03 22:38:39.761  1954-2411  DownloadRepository      com.watch.limusic                    D  添加下载记录: 《在游戏厅输了陆佰肆拾叁次的时候你在想什么》Y
+2025-10-03 22:38:39.797  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOADING
+2025-10-03 22:38:39.804  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《希望予你》Y
+2025-10-03 22:38:39.830  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> WAITING
+2025-10-03 22:38:39.856  1954-2412  DownloadRepository      com.watch.limusic                    D  添加下载记录: 《希望予你》Y
+2025-10-03 22:38:39.880  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOADING
+2025-10-03 22:38:39.886  1954-2868  DownloadManager         com.watch.limusic                    I  开始下载歌曲: 《泥的名字》
+2025-10-03 22:38:39.913  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
+2025-10-03 22:38:39.926  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:39.935  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:39.938  1954-2411  DownloadRepository      com.watch.limusic                    D  添加下载记录: 《泥的名字》
+2025-10-03 22:38:39.942  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:39.960  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: I0fAjK8sY2lbDslwwvbvWg -> DOWNLOADING
+2025-10-03 22:38:40.002  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: I0fAjK8sY2lbDslwwvbvWg -> WAITING
+2025-10-03 22:38:41.504  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:41.615  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:41.664  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:41.811  1954-1954  chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 1 line
+2025-10-03 22:38:41.963  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:41.999  1954-1970  zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 120734(5MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 147us total 154.330ms
+2025-10-03 22:38:42.176  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:42.330  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:42.511  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:42.972  1954-1954  chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 12 lines
+2025-10-03 22:38:42.974  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:43.020  1954-2459  DownloadManager         com.watch.limusic                    I  下载完成: @草东没有派对创作的原声
+2025-10-03 22:38:43.072  1954-2412  DownloadRepository      com.watch.limusic                    D  标记下载完成: HAEFdY3Ov2ifOxKjgfiW2G
+2025-10-03 22:38:43.104  1954-2415  MusicRepository         com.watch.limusic                    D  更新歌曲缓存状态: HAEFdY3Ov2ifOxKjgfiW2G, 缓存=true
+2025-10-03 22:38:43.124  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOADING
+2025-10-03 22:38:43.155  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:44.383  1954-1954  chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 13 lines
+2025-10-03 22:38:44.532  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:44.642  1954-2463  DownloadManager         com.watch.limusic                    I  下载完成: è¥æä½  (åç)
+2025-10-03 22:38:44.674  1954-2412  DownloadRepository      com.watch.limusic                    D  标记下载完成: UCMIzsWW3gMKDNgEBtah4u
+2025-10-03 22:38:44.693  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOADING
+2025-10-03 22:38:44.721  1954-2338  MusicRepository         com.watch.limusic                    D  更新歌曲缓存状态: UCMIzsWW3gMKDNgEBtah4u, 缓存=true
+2025-10-03 22:38:44.746  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:45.017  1954-1954  chatty                  com.watch.limusic                    I  uid=10257(com.watch.limusic) identical 2 lines
+2025-10-03 22:38:45.163  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:45.331  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:45.464  1954-2459  DownloadManager         com.watch.limusic                    I  下载已暂停: 《克洛托的阴谋》Y
+2025-10-03 22:38:45.479  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.501  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.520  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.544  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: I0fAjK8sY2lbDslwwvbvWg -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.565  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: 9WXWMjcUcgctdhS9foNBvJ -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.588  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.614  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> DOWNLOAD_PAUSED
+2025-10-03 22:38:45.627  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:45.649  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:45.694  1954-2166  OpenGLRenderer          com.watch.limusic                    D  endAllActiveAnimators on 0x88dc3900 (MenuPopupWindow$MenuDropDownListView) with handle 0x893f13b0
+2025-10-03 22:38:45.760  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:46.307  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:46.436  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: r2FFW9XfCdF8HFealba7rJ -> DOWNLOAD_PAUSED
+2025-10-03 22:38:46.515  1954-2461  DownloadManager         com.watch.limusic                    I  下载已暂停: Соколи
+2025-10-03 22:38:46.721  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:38:47.997  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: ozNa0V9e8ub9ivLH5U3u8I -> DOWNLOAD_PAUSED
+2025-10-03 22:38:48.068  1954-2463  DownloadManager         com.watch.limusic                    I  下载已暂停: 《回到从前》L
+2025-10-03 22:38:48.697  1954-1954  DownloadManager         com.watch.limusic                    I  全局暂停中，延后恢复(入等待): 《泥的名字》
+2025-10-03 22:38:48.723  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: I0fAjK8sY2lbDslwwvbvWg -> WAITING
+2025-10-03 22:39:02.349  1954-1954  DownloadManager         com.watch.limusic                    I  已请求暂停下载: I0fAjK8sY2lbDslwwvbvWg
+2025-10-03 22:39:02.374  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: I0fAjK8sY2lbDslwwvbvWg -> DOWNLOAD_PAUSED
+2025-10-03 22:39:02.401  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:39:02.842  1954-1954  DownloadManager         com.watch.limusic                    I  全局暂停中，延后恢复(入等待): 《泥的名字》
+2025-10-03 22:39:02.872  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: I0fAjK8sY2lbDslwwvbvWg -> WAITING
+2025-10-03 22:39:05.537  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:39:05.801  1954-1970  zygote                  com.watch.limusic                    I  Background concurrent copying GC freed 112249(5MB) AllocSpace objects, 0(0B) LOS objects, 22% free, 20MB/26MB, paused 130us total 163.225ms
+2025-10-03 22:39:06.202  1954-1954  DownloadManager         com.watch.limusic                    I  全局暂停中，延后恢复(入等待): 《希望予你》Y
+2025-10-03 22:39:06.233  1954-2411  DownloadRepository      com.watch.limusic                    D  更新下载状态: VDZsRCrpY31GjK71PpDPLy -> WAITING
+2025-10-03 22:39:19.420  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:39:19.431  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:39:23.241  1954-1954  DownloadManager         com.watch.limusic                    I  全局暂停中，延后恢复(入等待): 《克洛托的阴谋》Y
+2025-10-03 22:39:23.257  1954-1954  StaticLayout            com.watch.limusic                    W  maxLineHeight should not be -1.  maxLines:1 lineCount:1
+2025-10-03 22:39:23.315  1954-2412  DownloadRepository      com.watch.limusic                    D  更新下载状态: LEM39YwrtOu8eZGb3jkfRw -> WAITING
