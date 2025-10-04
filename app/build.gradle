@@ -11,8 +11,8 @@ android {
         applicationId "com.watch.limusic"
         minSdk 27
         targetSdk 33
-        versionCode 27
-        versionName "4.0Beta6"
+        versionCode 28
+        versionName "4.0"
     }
 
     buildTypes {

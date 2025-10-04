@@ -546,6 +546,12 @@ public class PlayerService extends Service {
                         }
                         // 切歌时补发一次广播，避免未绑定场景下UI停在0:00
                         sendPlaybackStateBroadcast();
+                        // 若自动切歌/重复等场景且当前处于播放状态，直接尝试一次上报（覆盖自动切歌不触发 READY/playing 变更的情况）
+                        try {
+                            if (sleepType != SleepType.AFTER_CURRENT && player != null && player.isPlaying()) {
+                                maybeReportListenIfJustStarted();
+                            }
+                        } catch (Throwable ignore) {}
                         // AFTER_CURRENT：自动切曲或单曲重复时立即暂停
                         if (sleepType == SleepType.AFTER_CURRENT) {
                             if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO || reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {

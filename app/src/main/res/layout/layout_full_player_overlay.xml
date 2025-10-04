@@ -212,11 +212,14 @@
         android:layout_height="56dp"
         android:layout_gravity="bottom"
         android:gravity="center_vertical"
-        android:padding="8dp">
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:paddingTop="0dp"
+        android:paddingBottom="0dp">
         <ImageButton
             android:id="@+id/btn_play_mode_full"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_repeat_off"
             android:tint="@android:color/white"
@@ -227,8 +230,8 @@
             android:layout_weight="1"/>
         <ImageButton
             android:id="@+id/btn_volume_toggle"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_volume"
             android:tint="@android:color/white"
@@ -239,8 +242,8 @@
             android:layout_weight="1"/>
         <ImageButton
             android:id="@+id/btn_more"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:background="?attr/selectableItemBackgroundBorderless"
             android:src="@drawable/ic_info"
             android:tint="@android:color/white"
